@@ -61,6 +61,29 @@ function splitCommas(str) {
 	return output;
 }
 
+function removeNewlinesFromParentheses(str) {
+  let newstr = "";
+  let depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    let char = str[i];
+    if (char === "(") {
+      depth++;
+      newstr += char;
+    } else if (char === ")") {
+      depth--;
+      newstr += char;
+    } else if (depth > 0 && (char === "\n" || char === " ")) {
+      continue;
+    } else if(depth > 0 && newstr[newstr.length-1] === " "){
+      continue;
+    } else {
+      newstr += char;
+    }
+  }
+  return newstr;
+}
+
+
 
 function evalMath(mathString) {
 	try {
@@ -135,7 +158,7 @@ function performOperation(operator, op1, op2) {
 
 //#region //* Is Validators *//
 	const isReturn = section => section?.match(/^return (.*?);/) != null;
-	const isFunc = section => section?.match(/^func (.*?)\(/) != null;
+	const isFunc = section => section?.match(/^!(.*?)\([\w\s](.*?)[\w\s]\)+$/) != null;
 	const isFuncCaller = section => section?.match(/^!(.*?)\((.*?)\)+$/) != null;
 	const isString = section => /~(\w+)/.test(section);
 	const isVariable = section => /~(\w+)/.test(section);
@@ -274,7 +297,12 @@ const parseFunc = input => {
 }
 
 const mittzlang = inputs => {
-	const text = inputs[0].replace(/\n\n/g, '\n').replace(/\t\t/g, '\t').replace(/^\n/g, '');
+	const text = (
+		inputs[0]
+		.replace(/\n\n/g, '\n')
+		.replace(/\t\t/g, '\t')
+		.replace(/^\n/g, '')
+	);
 
 	const langData = {
 		variables: {}
@@ -289,9 +317,13 @@ const mittzlang = inputs => {
 
 			if (isFuncCaller(funcValue)){
 				const data = parseSection(funcValue, sectionData);
+				if (builtIn.hasOwnProperty(funcName)){
+					return builtIn[funcName]('testo');
+				}
+				
 				return data;
 			}
-
+			
 			const args = [];
 
 			for (let part of splitCommas(funcValue).map(trimSection))
@@ -325,6 +357,7 @@ const mittzlang = inputs => {
 		for (let section of sections){
 			const response = parseSection(section, { blockData });
 
+
 			if (response){
 				console.log('!!!!!', response)
 			}
@@ -343,24 +376,5 @@ const mittzlang = inputs => {
 
 
 mittzlang`
-
-func test(tesawt, yes){
-	return !add(1 + 2);
-}
-
-var cat = 'yes';
-var yoMama = 25;
-
-
-
-func add(first, second){
-	return ~first + ~second;
-}
-
-func mult(first, second){
-	return ~first * ~second;
-}
-
-!print(!mult(!add(5, 4), 3) )
 
 `;
