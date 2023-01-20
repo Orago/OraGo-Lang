@@ -215,7 +215,6 @@ function performOperation(operator, op1, op2) {
 	const runBlock = (sections = [], langData, argNames = [], argInputs = [], variableData = {}) => {
 		for (let section of sections){
 			if (isFuncCaller(section)){
-				console.log("'sect'",sections)
 				const funcName = parseFuncCallerName(section);
 				const funcValue = (parseFuncCallerContent(section) ?? '').replace(/ $/g, '');
 
@@ -229,8 +228,6 @@ function performOperation(operator, op1, op2) {
 						argInputs,
 						variableData
 					)
-
-					console.log('eep', eep, [funcValue])
 				}
 				
 				
