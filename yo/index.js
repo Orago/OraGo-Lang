@@ -37,7 +37,7 @@ function splitCommas(str) {
 	let insideParenthesis = false;
 	let current = "";
 	let output = [];
-	for (let i = 0; i < str.length; i++) {
+	for (let i = 0; i < str?.length; i++) {
 			if (str[i] === "\"") {
 					insideDoubleQuotes = !insideDoubleQuotes;
 					current += str[i];
@@ -61,38 +61,6 @@ function splitCommas(str) {
 	return output;
 }
 
-	function evalMathmeh(expression) {
-    let stack = [];
-    let num = "";
-
-    for (let i = 0; i < expression.length; i++) {
-        let char = expression[i];
-        if (isNumber(char)) {
-            num += char;
-        }
-				else if (char === " ") {
-            continue;
-        } else {
-						console.log([num], num !== "")
-            if (num !== "") {
-                stack.push(parseFloat(num));
-                num = "";
-            }
-
-            if (isOperator(char)) {
-                let op2 = stack.pop();
-                let op1 = stack.pop();
-                let result = performOperation(char, op1, op2);
-                stack.push(result);
-            }
-        }
-    }
-
-    if (num !== "") stack.push( parseFloat(num) );
-		// console.log('@', stack, num, '@')
-
-    return stack.pop();
-}
 
 function evalMath(mathString) {
 	try {
@@ -180,9 +148,12 @@ function performOperation(operator, op1, op2) {
 //#region //* Parsers *//
 	const parseParenthesis = text => (/\(([^)]+)\)/).exec(text)?.[1].split(',').map($ => $.replace(/^ /g, ''));
 	const parseFuncName = text => (/\b(\w+)\s*(?=\()/).exec(text)?.[1];
-	const parseFuncCallerName = text => /!(.*?)\(/.exec(text)?.[1];
+
 	const parseFuncBlock = text => text.match(/func.*?\{([^}]*(}[^}]*)*)}/)?.[1];
 	const parseFuncCaller = text => /^!(\S+)\(([^()]*(?:\((?:[^()]*|(\2))*\))*[^()]*)\)$/.exec(text);
+	const parseFuncCallerName = text => /!(.*?)\(/.exec(text)?.[1];
+	const parseFuncCallerContent = text => /^!(\w+)\((.*)\)$/.exec(text)?.[2];
+
 
 	const findVariables = text => text.match(/~(\w+)/g);
 
@@ -244,21 +215,25 @@ function performOperation(operator, op1, op2) {
 	const runBlock = (sections = [], langData, argNames = [], argInputs = [], variableData = {}) => {
 		for (let section of sections){
 			if (isFuncCaller(section)){
-				console.log(parseFuncCaller(section))
-				const [funcSection, funcName, funcValue] = parseFuncCaller(section) ?? [];
+				console.log("'sect'",sections)
+				const funcName = parseFuncCallerName(section);
+				const funcValue = (parseFuncCallerContent(section) ?? '').replace(/ $/g, '');
 
-				if (builtIn.hasOwnProperty(funcName)){
-					const args = splitCommas(funcValue).map($ => {
-						console.log($, '%%%%%%%%%%%%')
-						return convertToType($)[0];
-					})
+				if (isFuncCaller(funcValue)){
+					const eep = runBlock(
+						handleSections(
+							funcValue
+						),
+						langData,
+						argNames,
+						argInputs,
+						variableData
+					)
 
-					builtIn[funcName](
-						...args
-					);
-
-					continue;
+					console.log('eep', eep, [funcValue])
 				}
+				
+				
 
 				let nextBlock = runBlock(
 					handleSections(
@@ -300,7 +275,7 @@ function performOperation(operator, op1, op2) {
 			// )
 		}
 		if (isMath(returnText)){
-			return evalMath('3 * 9')
+			return evalMath(returnText)
 		}
 	}
 
@@ -369,10 +344,13 @@ var yoMama = 25;
 
 
 func add(first, second){
-	
 	return ~first + ~second;
 }
 
-!print(3, !add(5, 4))
+func mult(first, second){
+	return ~first * ~second;
+}
+
+!print(!mult(!add(5, 4), 4) )
 
 `;
