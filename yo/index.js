@@ -154,6 +154,8 @@ function performOperation(operator, op1, op2) {
 	const parseFuncCallerName = text => /!(.*?)\(/.exec(text)?.[1];
 	const parseFuncCallerContent = text => /^!(\w+)\((.*)\)$/.exec(text)?.[2];
 
+	const trimSection = text => text.replace(/^ +| +$/g, '');
+
 
 	const findVariables = text => text.match(/~(\w+)/g);
 
@@ -193,7 +195,7 @@ function performOperation(operator, op1, op2) {
 		return setVariable(langData, variableName, variableValue);
 	}
 
-	const initBlock = (sections = [], langData, variablePath = [], variableData = {}) => {
+	const initBlock = ({ sections = [], langData, variablePath = [], variableData = {} }) => {
 		langData.depth ??= 0;
 
 		for (let section of sections){
@@ -212,55 +214,13 @@ function performOperation(operator, op1, op2) {
 		print: (...args) => console.log(...args)
 	}
 
-	const runBlock = (sections = [], langData, argNames = [], argInputs = [], variableData = {}) => {
-		for (let section of sections){
-			if (isFuncCaller(section)){
-				const funcName = parseFuncCallerName(section);
-				const funcValue = (parseFuncCallerContent(section) ?? '').replace(/ $/g, '');
 
-				if (isFuncCaller(funcValue)){
-					const eep = runBlock(
-						handleSections(
-							funcValue
-						),
-						langData,
-						argNames,
-						argInputs,
-						variableData
-					)
-				}
-				
-				
-
-				let nextBlock = runBlock(
-					handleSections(
-						langData.variables?.[funcName]?.code
-					), // Sections
-					langData, // Lang Data
-					langData.variables?.[funcName]?.args,
-					splitCommas(funcValue), // Arg Inputs
-					// variablePath, // Variable Path
-					variableData // Variable Data
-				);
-
-				if (nextBlock){
-					return nextBlock;
-				}
-			}
-			else if (isReturn(section)){
-				return runReturn({ input: section, langData, variableData, argInputs, argNames });
-			}
-		}
-	}
 
 	const runReturn = ({ input, langData, variableData, argNames = [], argInputs = [] }) => {
 		let returnText = input.match(/return\s*(.*?);/)?.[1] ?? '';
 
-		for (let i = 0; i < argNames.length; i++){
+		for (let i = 0; i < argNames.length; i++)
 			returnText = returnText.replace('~'+argNames[i], argInputs?.[i] || null);
-		}
-
-		
 
 		if (isFuncCaller(returnText)){
 			// console.log(null, returnText)
@@ -271,9 +231,12 @@ function performOperation(operator, op1, op2) {
 			// 	)
 			// )
 		}
+
 		if (isMath(returnText)){
 			return evalMath(returnText)
 		}
+
+		return 'return*null'
 	}
 
 	const setVariable = (langData, key, value = null, data = {}) => {
@@ -317,15 +280,65 @@ const mittzlang = inputs => {
 		variables: {}
 	}
 
-	initBlock(
-		handleSections(text),
-		langData
-	);
+	const parseSection = (section, sectionData = {}) => {
+		const { blockData = {} } = sectionData;
+		
+		if (isFuncCaller(section)){
+			const funcName = parseFuncCallerName(section);
+			const funcValue = (parseFuncCallerContent(section) ?? '').replace(/ $/g, '');
 
-	runBlock(
-		handleSections(text),
+			if (isFuncCaller(funcValue)){
+				const data = parseSection(funcValue, sectionData);
+				return data;
+			}
+
+			const args = [];
+
+			for (let part of splitCommas(funcValue).map(trimSection))
+				args.push(
+					isFuncCaller(part) ? parseSection(part, sectionData) : convertToType(part)[0]
+				);
+
+			const { [funcName]: variable } = blockData?.langData?.variables ?? {};
+
+			if (variable != null){
+				for (let nestedSection of handleSections(variable.code)){
+					if (isReturn(nestedSection)){
+						return runReturn({
+							input: nestedSection,
+							langData,
+							variableData: {}, 
+							argInputs: args,
+							argNames: variable.args
+						});
+					}
+				}
+			}
+			
+			return null;
+		}
+	}
+
+	const runBlock = (blockData = {}) => {
+		const { sections } = blockData;
+
+		for (let section of sections){
+			const response = parseSection(section, { blockData });
+
+			if (response){
+				console.log('!!!!!', response)
+			}
+		}
+
+	}
+
+	const baseData = {
+		sections: handleSections(text),
 		langData
-	);
+	}
+
+	initBlock(baseData);
+	runBlock(baseData);
 }
 
 
@@ -348,6 +361,6 @@ func mult(first, second){
 	return ~first * ~second;
 }
 
-!print(!mult(!add(5, 4), 4) )
+!print(!mult(!add(5, 4), 3) )
 
 `;
