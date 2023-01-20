@@ -119,15 +119,6 @@ function evalMath(mathString) {
 		return NaN;
 	}
 }
-
-function performOperation(operator, op1, op2) {
-	switch (operator) {
-		case "+": return op1 + op2;
-		case "-": return op1 - op2;
-		case "*": return op1 * op2;
-		case "/": return op1 / op2;
-	}
-}
 //#endregion //* Util *//
 
 //#region //* Is Validators *//
@@ -158,10 +149,12 @@ function performOperation(operator, op1, op2) {
 	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	const isVariable = section => /\((.*?)=\s?(.*?)\s?\)/.test(section);
 	const parseVariable = text => {
-		const [originalText, variableName, variableValue] = text.match(/\((.*?)=\s?(.*?)\s?\)$/);
-		console.log(null, originalText, variableName, variableValue)
+		const [originalText, variableName, variableValue] = text.match(/\(\s?(.*?)=\s?(.*?)\s?\)$/);
 		return [trimSection(variableName), convertToType(trimSection(variableValue))?.[0]];
 	};
+
+	const isArray = text => /\[(.*)\]/.test(text);
+	const parseArray = text => splitCommas(/\[(.*)\]/.exec(text)[1]);
 
 	function convertToType(str) {
 		const strReg = /(['"])(.*?)\1/;
@@ -181,8 +174,8 @@ function performOperation(operator, op1, op2) {
     else if (str[0] === "[" || str[0] === "{")
       return [JSON.parse(str), 'object'];
 
-			// else if (strReg.test(str))
-			// return [strReg.exec(str)?.[2], 'string']
+		else if (strReg.test(str))
+			return [strReg.exec(str)?.[2], 'string']
 
     return [str, 'string'];
 	}
@@ -248,6 +241,8 @@ function performOperation(operator, op1, op2) {
 			})
 		);
 
+		//\'([^']*|\'([^']*|\'[^']*\')*\')*\'
+
 		const langData = {
 			stack: [],
 			cache: [],
@@ -288,5 +283,7 @@ export {
 	flatLang,
 	splitCommas,
 	convertToType,
-	isVariable, parseVariable
+	isVariable, parseVariable,
+	isArray, parseArray,
+	trimSection
 };

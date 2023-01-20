@@ -1,4 +1,4 @@
-import { flatLang, splitCommas, convertToType, isVariable, parseVariable } from './flatlang/index.js'
+import { flatLang, splitCommas, convertToType, isVariable, parseVariable, isArray, parseArray, trimSection } from './flatlang/index.js'
 import { brush as brushTool, engine as brushEngine, keyboard, cursor } from './engine/main.js';
 import scenes from './scenes/index.js';
 
@@ -25,13 +25,33 @@ flatLang({
 		},
 		gameObject: (options) => {
 			const objectData = {};
+			const renderData = [];
 
 			for (let option of options){
 				if (isVariable(option)){
 					const [key, value] = parseVariable(option);
 					
-					console.log(value)
+					if (key == 'render' && Array.isArray(value)){
+						for (let optValue of value){
+							let [method, ...opts] = splitCommas(optValue).map($ => convertToType(trimSection($))[0]);
 
+							console.log(opts)
+
+							if (method == 'shape'){
+								renderData.push({
+									method,
+									color: opts[0],
+									x: opts[1],
+									y: opts[2],
+									w: opts[3],
+									h: opts[4]
+								});
+							}
+
+
+						}
+
+					}
 					if (key == 'dimensions'){
 						let [x, y, w, h] = splitCommas(value).map($ => convertToType($)[0]);
 						objectData.x = x;
@@ -58,13 +78,19 @@ flatLang({
 				render: function (){
 					const { canvas } = this;
 
-					canvas.shape({
-						color: 'black',
-						x: this.x,
-						y: this.y,
-						w: this.w,
-						h: this.h
-					});
+					for (let { method, color, x, y, w, h} of renderData){
+						console.log(x, y, w, h)
+
+						if (method == 'shape'){
+							canvas.shape({
+								color: 'black',
+								x: x == '~' ? this.x : x,
+								y: y == '~' ? this.y : y,
+								w: w == '~' ? this.w : w,
+								h: h == '~' ? this.h : h
+							});
+						}
+					}
 				}
 			}).push()
 		}
@@ -72,8 +98,8 @@ flatLang({
 })`
 engine,resizable
 
-gameObject,(id = 'cool'),(dimensions=50,50,200,150),(
-	render  = shape ('red', '50', '50', '50')
+gameObject,(id = 'cool'),(dimensions=50,50,50,50),(
+	render = ["'shape','red', ~, ~, ~, ~"]
 )
 
 
