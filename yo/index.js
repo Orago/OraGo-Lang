@@ -9,7 +9,7 @@ function splitByNewlines(text) {
 	let openBrackets = 0;
 	let closedBrackets = 0;
 	let insideFunction = false;
-	for (let i = 0; i < text.length; i++) {
+	for (let i = 0; i < text?.length; i++) {
 			if (text[i] === "{") {
 					openBrackets++;
 					current += text[i];
@@ -31,7 +31,37 @@ function splitByNewlines(text) {
 	return output;
 }
 
-	function evalMath(expression) {
+function splitCommas(str) {
+	let insideQuotes = false;
+	let insideDoubleQuotes = false;
+	let insideParenthesis = false;
+	let current = "";
+	let output = [];
+	for (let i = 0; i < str.length; i++) {
+			if (str[i] === "\"") {
+					insideDoubleQuotes = !insideDoubleQuotes;
+					current += str[i];
+			} else if (str[i] === "'") {
+					insideQuotes = !insideQuotes;
+					current += str[i];
+			} else if(str[i] === "(" ) {
+					insideParenthesis = true;
+					current += str[i];
+			} else if (str[i] === ")" ) {
+					insideParenthesis = false;
+					current += str[i];
+			} else if (str[i] === "," && !insideDoubleQuotes && !insideQuotes && !insideParenthesis) {
+					output.push(current);
+					current = "";
+			} else {
+					current += str[i];
+			}
+	}
+	output.push(current);
+	return output;
+}
+
+	function evalMathmeh(expression) {
     let stack = [];
     let num = "";
 
@@ -43,10 +73,12 @@ function splitByNewlines(text) {
 				else if (char === " ") {
             continue;
         } else {
+						console.log([num], num !== "")
             if (num !== "") {
                 stack.push(parseFloat(num));
                 num = "";
             }
+
             if (isOperator(char)) {
                 let op2 = stack.pop();
                 let op1 = stack.pop();
@@ -57,11 +89,71 @@ function splitByNewlines(text) {
     }
 
     if (num !== "") stack.push( parseFloat(num) );
+		// console.log('@', stack, num, '@')
 
     return stack.pop();
 }
 
-
+function evalMath(mathString) {
+	try {
+			// using a stack and a postfix notation algorithm to evaluate the math string
+			let stack = [];
+			let postfix = [];
+			let operators = ['+', '-', '*', '/', '^'];
+			let precedence = {'+':1, '-':1, '*':2, '/':2, '^':3};
+			for (let i = 0; i < mathString.length; i++) {
+					let char = mathString[i];
+					if (!isNaN(parseFloat(char)) || char === '.') {
+							let number = char;
+							while (!isNaN(parseFloat(mathString[i+1])) || mathString[i+1] === '.') {
+									number += mathString[++i];
+							}
+							postfix.push(parseFloat(number));
+					}
+					else if (operators.indexOf(char) !== -1) {
+							while (stack.length && operators.indexOf(stack[stack.length-1]) !== -1 && precedence[char] <= precedence[stack[stack.length-1]]) {
+									postfix.push(stack.pop());
+							}
+							stack.push(char);
+					}
+					else if (char === '(') {
+							stack.push(char);
+					}
+					else if (char === ')') {
+							while (stack[stack.length-1] !== '(') {
+									postfix.push(stack.pop());
+							}
+							stack.pop();
+					}
+			}
+			while (stack.length) {
+					postfix.push(stack.pop());
+			}
+			for (let i = 0; i < postfix.length; i++) {
+					if (typeof postfix[i] === 'number') {
+							stack.push(postfix[i]);
+					}
+					else {
+							let a = stack.pop();
+							let b = stack.pop();
+							let result;
+							switch (postfix[i]) {
+									case '+': result = b + a; break;
+									case '-': result = b - a; break;
+									case '*': result = b * a; break;
+									case '/': result = b / a; break;
+									case '^': result = Math.pow(b,a); break;
+							}
+							stack.push(result);
+					}
+			}
+			return stack[0];
+	}
+	catch (error) {
+		console.error(`Error: ${error}`);
+		return NaN;
+	}
+}
 
 function performOperation(operator, op1, op2) {
 	switch (operator) {
@@ -76,9 +168,10 @@ function performOperation(operator, op1, op2) {
 //#region //* Is Validators *//
 	const isReturn = section => section?.match(/^return (.*?);/) != null;
 	const isFunc = section => section?.match(/^func (.*?)\(/) != null;
-	const isFuncCaller = section => section?.match(/^!(.*?)\(/) != null;
+	const isFuncCaller = section => section?.match(/^!(.*?)\((.*?)\)+$/) != null;
 	const isString = section => /~(\w+)/.test(section);
 	const isVariable = section => /~(\w+)/.test(section);
+	const isVariableSetter = section => /^\s*var\s+(\S+)\s*=\s*(.+);?\s*$/.test(section);
 	const isNumber = char => /[0-9]/.test(char);
 	const isOperator = char => /[+\-*/]/.test(char);
 	const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
@@ -89,16 +182,54 @@ function performOperation(operator, op1, op2) {
 	const parseFuncName = text => (/\b(\w+)\s*(?=\()/).exec(text)?.[1];
 	const parseFuncCallerName = text => /!(.*?)\(/.exec(text)?.[1];
 	const parseFuncBlock = text => text.match(/func.*?\{([^}]*(}[^}]*)*)}/)?.[1];
+	const parseFuncCaller = text => /^!(\S+)\(([^()]*(?:\((?:[^()]*|(\2))*\))*[^()]*)\)$/.exec(text);
+
+	const findVariables = text => text.match(/~(\w+)/g);
+
+	function convertToType(str) {
+		const strReg = /(['"])(.*?)\1/;
+
+    if (!isNaN(str))
+			return [Number(str), 'number'];
+    
+		else if (str === "true" || str === "false")
+      return [str === "true", 'bool'];
+    
+		else if (str === "undefined")
+      return [undefined, 'undefined'];
+		
+		else if (str === "null")
+      return [null, 'null'];
+
+    else if (str[0] === "[" || str[0] === "{")
+      return [JSON.parse(str), 'object'];
+
+		else if (strReg.test(str))
+			return [strReg.exec(str)?.[2], 'string']
+
+    else return [str, 'string'];
+	}
 //#endregion //* Parsers *//
 
 //#region //* Handlers *//
 	const handleSections = text => splitByNewlines(text).map($ => $.replace(/^[\n\t]/g, '')).filter($ => $ != '');
+	const handleVariable = (section, langData) => {
+		let [originalFunc, variableName, variableValue] = section.match(/var\s(.*?)\s=\s(.*?);/);
+
+		if (variableName == null)
+			return console.error ('Variable Name Cannot Be Null!');
+		
+		return setVariable(langData, variableName, variableValue);
+	}
 
 	const initBlock = (sections = [], langData, variablePath = [], variableData = {}) => {
 		langData.depth ??= 0;
 
 		for (let section of sections){
-			if (isFunc(section)){
+			if (isVariableSetter(section)){
+				handleVariable(section, langData);
+			}
+			else if (isFunc(section)){
 				initFuncBlock(section, langData, variablePath, variableData);
 			}
 		}
@@ -106,71 +237,97 @@ function performOperation(operator, op1, op2) {
 		if (langData.depth > 0) langData.depth--;
 	}
 
-	const runBlock = (sections = [], langData, variablePath = [], variableData = {}) => {
+	const builtIn = {
+		print: (...args) => console.log(...args)
+	}
+
+	const runBlock = (sections = [], langData, argNames = [], argInputs = [], variableData = {}) => {
 		for (let section of sections){
 			if (isFuncCaller(section)){
-				runBlock(
+				console.log(parseFuncCaller(section))
+				const [funcSection, funcName, funcValue] = parseFuncCaller(section) ?? [];
+
+				if (builtIn.hasOwnProperty(funcName)){
+					const args = splitCommas(funcValue).map($ => {
+						console.log($, '%%%%%%%%%%%%')
+						return convertToType($)[0];
+					})
+
+					builtIn[funcName](
+						...args
+					);
+
+					continue;
+				}
+
+				let nextBlock = runBlock(
 					handleSections(
-						langData.variables?.[parseFuncCallerName(section)]?.code
-					)
-				)
+						langData.variables?.[funcName]?.code
+					), // Sections
+					langData, // Lang Data
+					langData.variables?.[funcName]?.args,
+					splitCommas(funcValue), // Arg Inputs
+					// variablePath, // Variable Path
+					variableData // Variable Data
+				);
+
+				if (nextBlock){
+					return nextBlock;
+				}
 			}
 			else if (isReturn(section)){
-				return runReturn(section, langData, variableData, []);
+				return runReturn({ input: section, langData, variableData, argInputs, argNames });
 			}
 		}
-		
 	}
 
-	const runReturn = (input, langData, variableData, args = {}) => {
-		const returnText = input.match(/return\s*(.*?);/)?.[1];
+	const runReturn = ({ input, langData, variableData, argNames = [], argInputs = [] }) => {
+		let returnText = input.match(/return\s*(.*?);/)?.[1] ?? '';
+
+		for (let i = 0; i < argNames.length; i++){
+			returnText = returnText.replace('~'+argNames[i], argInputs?.[i] || null);
+		}
+
+		
+
 		if (isFuncCaller(returnText)){
-			return runBlock(
-				handleSections(
-					langData.variables?.[parseFuncCallerName(returnText)]?.code
-				)
-			)
+			// console.log(null, returnText)
+
+			// return runBlock(
+			// 	handleSections(
+			// 		langData.variables?.[parseFuncCallerName(returnText)]?.code
+			// 	)
+			// )
 		}
 		if (isMath(returnText)){
-
+			return evalMath('3 * 9')
 		}
-
-		// for (let part of returnText.split(/ /g)){
-		// 	console.log(part)
-		// }
 	}
 
-	const newVariable = (value = null, type = 'var', data = {}) => ({
-		...data,
-		type,
-		value,
-		variables: {}
-	});
+	const setVariable = (langData, key, value = null, data = {}) => {
+		if (!key) throw 'Trying To Set Variable Without A Key!';
+		const [parsedValue, type] = convertToType(value);
 
-	const initFuncBlock = (input, langData, variablePath, variableData) => {
-		const inside = parseFuncBlock(input);
-		// if (inside == null) throw 'Incorrect Function Syntax!!';
-		const sections = handleSections(inside);
-		const funcName = parseFuncName(input);
-		const funcArgs = parseParenthesis(input);
+		langData.variables[key] = {
+			...data,
+			key,
+			value: parsedValue,
+			type: data?.variable ?? type
+		};
+
+		return parsedValue;
+	}
+
+	const initFuncBlock = (input, langData) => {
+		const code = parseFuncBlock(input);
+		const args = parseParenthesis(input);
 		
-		if (langData.depth == 0){
-			langData.variables[funcName] = newVariable(null, 'func', {
-				code: inside,
-				args: funcArgs
-			});
-		}
-
-		for (let variableName of variablePath.slice(0, variablePath.length)){
-			if (typeof variableData[variableName]?.variables == 'object')
-				variableData = variableData[variableName]?.variables;
-
-			else variableData[variableName] = newVariable('testo', 'func');
-		}
-
-		variablePath.push(funcName);
-
-		return initBlock(sections, langData, variablePath, variableData);
+		setVariable(
+			langData,
+			parseFuncName(input),
+			null,
+			{ code, args }
+		);
 	}
 //#endregion //* Handlers *//
 
@@ -196,11 +353,7 @@ const mittzlang = inputs => {
 	runBlock(
 		handleSections(text),
 		langData
-	)
-
-	// console.log(
-	// 	JSON.stringify(langData, null, 2)
-	// )
+	);
 }
 
 
@@ -210,14 +363,16 @@ func test(tesawt, yes){
 	return !add(1 + 2);
 }
 
-func add (first, second){
+var cat = 'yes';
+var yoMama = 25;
+
+
+
+func add(first, second){
+	
 	return ~first + ~second;
 }
 
-!test('yo')
+!print(3, !add(5, 4))
+
 `;
-// console.log(
-// 	getType(testText),
-// 	parseParenthesis(testText),
-// 	parseFuncName(testText)
-// )
