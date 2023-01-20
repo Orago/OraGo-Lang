@@ -1,4 +1,4 @@
-import { flatLang } from './flatlang/index.js'
+import { flatLang, splitCommas, convertToType, isVariable, parseVariable } from './flatlang/index.js'
 import { brush as brushTool, engine as brushEngine, keyboard, cursor } from './engine/main.js';
 import scenes from './scenes/index.js';
 
@@ -23,14 +23,24 @@ flatLang({
 		alert: options => {
 			alert(...options)
 		},
-		gameObject: (options, { isVariable, parseVariable }) => {
+		gameObject: (options) => {
 			const objectData = {};
 
 			for (let option of options){
 				if (isVariable(option)){
 					const [key, value] = parseVariable(option);
 					
-					objectData[key] = value;
+					console.log(value)
+
+					if (key == 'dimensions'){
+						let [x, y, w, h] = splitCommas(value).map($ => convertToType($)[0]);
+						objectData.x = x;
+						objectData.y = y;
+						objectData.w = w;
+						objectData.h = h;
+					}
+					else 
+						objectData[key] = value;
 				}
 			}
 
@@ -62,8 +72,9 @@ flatLang({
 })`
 engine,resizable
 
-gameObject,(id = 'cool'),(w=50),(h=40),(x=30),(y=20)
-
+gameObject,(id = 'cool'),(dimensions=50,50,200,150),(
+	render  = shape ('red', '50', '50', '50')
+)
 
 
 `

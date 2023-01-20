@@ -156,10 +156,10 @@ function performOperation(operator, op1, op2) {
 
 	const findVariables = text => text.match(/~(\w+)/g);
 	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	const isVariable = section => /\((.*?)=(.*?)\)/.test(section);
+	const isVariable = section => /\((.*?)=\s?(.*?)\s?\)/.test(section);
 	const parseVariable = text => {
-		const [originalText, variableName, variableValue] = text.match(/\((.*?)=(.*?)\)/)
-		
+		const [originalText, variableName, variableValue] = text.match(/\((.*?)=\s?(.*?)\s?\)$/);
+		console.log(null, originalText, variableName, variableValue)
 		return [trimSection(variableName), convertToType(trimSection(variableValue))?.[0]];
 	};
 
@@ -181,10 +181,10 @@ function performOperation(operator, op1, op2) {
     else if (str[0] === "[" || str[0] === "{")
       return [JSON.parse(str), 'object'];
 
-		else if (strReg.test(str))
-			return [strReg.exec(str)?.[2], 'string']
+			// else if (strReg.test(str))
+			// return [strReg.exec(str)?.[2], 'string']
 
-    else return [str, 'string'];
+    return [str, 'string'];
 	}
 //#endregion //* Parsers *//
 
@@ -243,6 +243,9 @@ function performOperation(operator, op1, op2) {
 			.replace(/\n\n/g, '\n')
 			.replace(/\t\t/g, '\t')
 			.replace(/^\n/g, '')
+			.replace(/\(([^()]*|\(([^()]*|\([^()]*\))*\))*\)/g, (...options) => {
+				return options[0].replace(/[\t\n]| {2,}/g, '');
+			})
 		);
 
 		const langData = {
@@ -281,4 +284,9 @@ function performOperation(operator, op1, op2) {
 		
 	}
 
-export { flatLang };
+export {
+	flatLang,
+	splitCommas,
+	convertToType,
+	isVariable, parseVariable
+};
