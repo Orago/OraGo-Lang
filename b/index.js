@@ -1,4 +1,4 @@
-import { flatLang, splitCommas, convertToType, isVariable, parseVariable } from './flatlang/index.js'
+import { flatLang, splitCommas, convertToType, isVariable, parseVariable } from '../flatlang/index.js'
 import { brush as brushTool, engine as brushEngine, keyboard, cursor } from './engine/main.js';
 import scenes from './scenes/index.js';
 

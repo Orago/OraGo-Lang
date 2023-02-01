@@ -235,7 +235,7 @@ function performOperation(operator, op1, op2) {
 		}
 	});
 
-	const flatLang = ({ functions = () => ({}) }) => 
+	const flatLang = ({ functions = () => ({}) } = {}) => 
 	
 	inputs => {
 		const text = (
@@ -267,6 +267,8 @@ function performOperation(operator, op1, op2) {
 			curVal = null;
 			langData.stack.push([method, options]);
 
+			console.log('sect:'+section, isFunc(section))
+
 			if (extraFuncs.hasOwnProperty(method))
 				extraFuncs[method](options, { isVariable, parseVariable });
 
@@ -284,7 +286,7 @@ function performOperation(operator, op1, op2) {
 		
 	}
 
-export {
+module.exports =  {
 	flatLang,
 	splitCommas,
 	convertToType,
