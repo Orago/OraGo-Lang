@@ -143,14 +143,17 @@ function evalMath(mathString) {
 	const parseFuncCallerContent = text => /^!(\w+)\((.*)\)$/.exec(text)?.[2];
 
 	const trimSection = text => text.replace(/^ +| +$/g, '');
-
-
 	const findVariables = text => text.match(/~(\w+)/g);
+	
 	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	const isVariable = section => /\((.*?)=\s?(.*?)\s?\)/.test(section);
 	const parseVariable = text => {
 		const [originalText, variableName, variableValue] = text.match(/\(\s?(.*?)=\s?(.*?)\s?\)$/);
-		return [trimSection(variableName), convertToType(trimSection(variableValue))?.[0]];
+		
+		return [
+			trimSection(variableName),
+			convertToType(trimSection(variableValue))?.[0]
+		];
 	};
 
 	const isArray = text => /\[(.*)\]/.test(text);
@@ -239,9 +242,7 @@ function evalMath(mathString) {
 			.replace(/\(([^()]*|\(([^()]*|\([^()]*\))*\))*\)/g, (...options) => {
 				return options[0].replace(/[\t\n]| {2,}/g, '');
 			})
-		);
-
-		//\'([^']*|\'([^']*|\'[^']*\')*\')*\'
+		);//\'([^']*|\'([^']*|\'[^']*\')*\')*\'
 
 		const langData = {
 			stack: [],
@@ -252,8 +253,7 @@ function evalMath(mathString) {
 
 		let curVal;
 
-		let setCurVal = value => curVal = value;
-
+		const setCurVal = value => curVal = value;
 		const funcs = flatFunctions({ langData, setCurVal });
 		const extraFuncs = functions({ langData, setCurVal });
 
@@ -262,20 +262,25 @@ function evalMath(mathString) {
 			curVal = null;
 			langData.stack.push([method, options]);
 
-			console.log('sect:'+section, isFunc(section))
+			// console.log('sect:'+section, isFunc(section))
 
 			if (extraFuncs.hasOwnProperty(method))
-				extraFuncs[method](options, { isVariable, parseVariable });
+				extraFuncs[method](options, {
+					isVariable,
+					parseVariable
+				});
 
 			else if (funcs.hasOwnProperty(method))
-				funcs[method](options, { isVariable, parseVariable });
-
-			
+				funcs[method](options, {
+					isVariable,
+					parseVariable
+				});
 
 			if ((langData.cacheIsOpen == true || langData.cacheIsOpen == 'next') && curVal != null){
 				langData.cache.push(curVal);
 
-				if (langData.cacheIsOpen == 'next' && method != 'cache') langData.cacheIsOpen = false;
+				if (langData.cacheIsOpen == 'next' && method != 'cache') 
+					langData.cacheIsOpen = false;
 			}
 		}
 		
