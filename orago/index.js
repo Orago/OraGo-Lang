@@ -56,6 +56,14 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 			return variables[variableName]
 	}
 
+	else if (input.value === 'CURRENT_DATE'){
+		return Date.now();
+	}
+
+	// else if (input.value === 'GET_DATE'){
+	// 	const input = iter.next().value;
+	// }
+
 	return undefined;
 }
 
@@ -116,7 +124,6 @@ const oraGo = (settings = {}) => codeInput => {
 		}
 	}
 
-
 	return oraGoData;
 }
 
@@ -132,4 +139,6 @@ run(`
 
 	PRINT "HELLO WORLD";
 	PRINT ~cat;
+
+	PRINT CURRENT_DATE
 `);
