@@ -64,8 +64,9 @@ function evalMath(mathString) {
 			// using a stack and a postfix notation algorithm to evaluate the math string
 			let stack = [];
 			let postfix = [];
-			let operators = ['+', '-', '*', '/', '^'];
-			let precedence = {'+':1, '-':1, '*':2, '/':2, '^':3};
+			const operators = ['+', '-', '*', '/', '^'];
+			const precedence = {'+':1, '-':1, '*':2, '/':2, '^':3};
+
 			for (let i = 0; i < mathString.length; i++) {
 					let char = mathString[i];
 					if (!isNaN(parseFloat(char)) || char === '.') {
@@ -123,7 +124,7 @@ function evalMath(mathString) {
 //#endregion //* UTIL *//
 
 function oraLexer (input){
-	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()_+"\\/.;:\[\]\s]/g;
+	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"\\/.;:\[\]\s]/g;
 	const output = input.match(regex);
 
 	while (output.indexOf(' ') != -1)
@@ -164,17 +165,19 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 		return parseString(value);
 
 	else if (!isNaN(value)){
+		const mathSymbols = ['+', '-', '*', '/'];
 		let total = Number(value);
 		let index = 1;
-		const mathSymbols = ['+', '-', '*', '/'];
-
 
 		while (
 			mathSymbols.includes(iter.peek(index).value) &&
-			(
-				!isNaN(iter.peek(index + 1).value)
-			)
-		) total = evalMath(total + " " + iter.next().value + " " + iter.next().value);
+			!isNaN(iter.peek(index + 1).value)
+		){
+			const symbol = iter.next().value;
+			const num = iter.next().value;
+
+			total = evalMath(total + " " + symbol + " " + num);
+		}
 
 		return total;
 	}
@@ -203,7 +206,7 @@ const oraGo = (settings = {}) => codeInput => {
 		variables: {},
 		functions: {
 			...forceType.forceObject(customFunctions),
-			SET ({ iter, data }) {
+			SET ({ iter }) {
 				const variableName = iter.next().value;
 				const nextSeq = iter.next();
 				let value;
