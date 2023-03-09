@@ -42,6 +42,28 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
+function peekableIterator(iterator) {
+  let state = iterator.next();
+
+	function* buildIterator (initial) {
+    while (!state.done) {
+      const current = state.value;
+			
+      state = iterator.next();
+      
+			yield current;
+    }
+
+    return state.value;
+  }
+
+  const _i = buildIterator();
+
+  _i.peek = () => state;
+
+  return _i;
+}
+
 const parseInput = (iter, input, { variables = {} } = {}) => {
 	if (isString(input.value))
 		return parseString(input.value);
@@ -103,13 +125,20 @@ const oraGo = (settings = {}) => codeInput => {
 				if (input)
 					console.log(parseInput(iter, input, data));
 			},
+
+			PRINT ({ iter, data }) {
+				const input = iter.next();
+			
+				if (input)
+					console.log(parseInput(iter, input, data));
+			},
 		}
 	}
 
 	const { functions } = oraGoData;
 	
 	for (const chunk of chunks){
-		const iter = chunk[Symbol.iterator]();
+		const iter = peekableIterator(chunk[Symbol.iterator]());
 
 		itemsLoop: for (const method of iter){
 			if (functions.hasOwnProperty(method)){
