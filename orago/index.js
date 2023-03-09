@@ -172,11 +172,10 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 		while (
 			mathSymbols.includes(iter.peek(index).value) &&
 			(
-				!isNaN(iter.peek(index + 1).value) //||
-				// [].includes(index + 1)
+				!isNaN(iter.peek(index + 1).value)
 			)
 		) total = evalMath(total + " " + iter.next().value + " " + iter.next().value);
-		
+
 		return total;
 	}
 	
