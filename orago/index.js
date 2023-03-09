@@ -1,3 +1,44 @@
+//#region //* UTIL *//
+function betterIterable (itemsInput) {
+	const items = [...itemsInput];
+	const source = items;
+	
+  return {
+		source,
+
+    *[Symbol.iterator]() {
+      while (items.length > 0)
+				yield this.next().value;
+    },
+    
+    next (){
+     return {
+				value: items.shift(),
+				done: 1 > items.length
+			}
+		},
+
+		peek (n = 1){
+			return {
+				value: items[n - 1],
+				done: 1 > items.length - n
+			}
+		},
+
+		clone (){
+			return betterIterable(items);
+		},
+
+		push (...itemToPush){
+			items.push(itemToPush);
+		},
+
+		size (){
+			return items.length;
+		}
+  };
+}
+
 const typeEnforcer = (type, value) => typeof new type().valueOf() === typeof value && value !== null ? value : new type().valueOf();
 
 const forceType = {
@@ -12,6 +53,8 @@ const forceType = {
 
 const isA0 = (x) => x == undefined || /[^a-z0-9]/i.test(x);
 const isA_0 = (x) => x == undefined || /[^a-z0-9_]/i.test(x);
+
+//#endregion //* UTIL *//
 
 const oraLexer = input => {
 	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()_+"\\/.;:\[\]\s]/g;
@@ -42,27 +85,6 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-function peekableIterator () {
-  let state = iterator.next();
-
-	function* buildIterator () {
-    while (!state.done) {
-      const current = state.value;
-      state = iterator.next();
-      
-			yield current;
-    }
-
-    return state.value;
-  }
-
-  const _i = buildIterator();
-
-  _i.peek = () => state;
-	
-  return _i;
-}
-
 const parseInput = (iter, input, { variables = {} } = {}) => {
 	if (input.value == 'true')
 		return true;
@@ -78,8 +100,6 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 
 	else if (input.value === '~'){
 		const variableName = iter.next().value;
-		console.log(variableName, 'vn')
-
 
 		if (!isA_0(variableName) && variables.hasOwnProperty(variableName))
 			return variables[variableName]
@@ -87,43 +107,7 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 	else if (input.value === 'CURRENT_DATE'){
 		return Date.now();
 	}
-
-	// else if (input.value === 'GET_DATE'){
-	// 	const input = iter.next().value;
-	// }
-
 	return undefined;
-}
-
-
-function tee(iterable) {
-    const source = iterable[Symbol.iterator]();
-    const buffers = [[], []];  // substitute in queue type for efficiency
-    const DONE = Object.create(null);
-
-    const next = i => {
-        if (buffers[i].length !== 0)
-					return buffers[i].shift();
-
-        const x = source.next();
-
-        if (x.done) return DONE;
-
-        buffers[1 - i].push(x.value);
-        return x.value;
-    };
-
-    return buffers.map(function* (_, i) {
-        for (;;) {
-            const x = next(i);
-
-            if (x === DONE) {
-                break;
-            }
-
-            yield x;
-        }
-    });
 }
 
 const oraGo = (settings = {}) => codeInput => {
@@ -151,6 +135,8 @@ const oraGo = (settings = {}) => codeInput => {
 							 value = parseInput(iter, nextSeq, oraGoData)
 					}
 					else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
+
+					console.log(`Updated ${variableName} to ${value}`);
 
 					oraGoData.variables[variableName] = value;
 				}
@@ -181,31 +167,39 @@ const oraGo = (settings = {}) => codeInput => {
 			},
 
 			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
-				const input = parseInput([...iter][Symbol.iterator](), input, data);
+				const input = parseInput(iter, iter.next(), data);
 				const items = [];
 				let calls = 0;
-				
-				for (let item of [...iter][Symbol.iterator]())
+
+				for (let item of iter)
 						items.push(item);
 
+				console.log(items, input)
 
-				if (parseInput([...iter][Symbol.iterator](), input, data) == true){
-					
-
-
-					while (parseInput([...iter][Symbol.iterator](), input, data) == true){
-						if (calls++ >= maxCalls){
-							console.log('Call Stack Exceeded Maximum Amount');
-							break;
-						}
-
-						handleItems(
-							items[Symbol.iterator]()
-						);
+				while (val = parseInput(iter.clone(), input, data) == true){
+					if (calls++ >= maxCalls){
+						console.log('Call Stack Exceeded Maximum Amount');
+						break;
 					}
 
+					handleItems(
+						betterIterable(items)
+					);
 				}
-				else throw 'Cannot Find FOR Status';
+			},
+
+			IF ({ iter, data, handleItems, maxCalls = 100 }) {
+				const input = parseInput(iter, iter.next(), data);
+				const items = [];
+
+				for (let item of iter.clone())
+						items.push(item);
+
+				if (parseInput(iter.clone(), input, data) == true){
+					handleItems(
+						betterIterable(items)
+					);
+				}
 			}
 		}
 	}
@@ -229,7 +223,7 @@ const oraGo = (settings = {}) => codeInput => {
 	
 	for (const chunk of chunks){
 		handleItems(
-			peekableIterator(
+			betterIterable(
 				chunk[Symbol.iterator]()
 			)
 		);
@@ -256,8 +250,9 @@ run(`
 	SET ~canLoop TO true;
 
 	FOR ~canLoop
-		SET ~canLoop TO false
 		PRINT "hehe loop"
-		
+		PRINT "meow"
+
+		SET ~canLoop TO false
 	;
 `);

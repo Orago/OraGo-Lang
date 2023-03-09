@@ -1,22 +1,27 @@
 function betterIterable (itemsInput) {
 	const items = [...itemsInput];
-	const startItems = items;
+	const source = items;
 	
   return {
+		source,
+
     *[Symbol.iterator]() {
       while (items.length > 0)
-				yield this.next.value;
+				yield this.next().value;
     },
     
-    get next (){
+    next (){
      return {
 				value: items.shift(),
 				done: 1 > items.length
 			}
 		},
 
-		get peek (){
-			
+		peek (n = 1){
+			return {
+				value: items[n - 1],
+				done: 1 > items.length - n
+			}
 		},
 
 		clone (){
@@ -30,12 +35,7 @@ function betterIterable (itemsInput) {
 }
 
 // Create Iterable
-const n = superIterable([ 1, 'a', 2, 3, 4, 5 ]);
+const n = betterIterable([ 1, 'a', 2, 3, 4, 5 ]);
 
-for (let e of n.clone())
-	console.log(e);
-
-
-for (let e of n){
-	console.log(e, 'd')
-}
+for (const method of n)
+	console.log(method)
