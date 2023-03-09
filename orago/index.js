@@ -42,13 +42,12 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-function peekableIterator(iterator) {
+function peekableIterator () {
   let state = iterator.next();
 
-	function* buildIterator (initial) {
+	function* buildIterator () {
     while (!state.done) {
       const current = state.value;
-			
       state = iterator.next();
       
 			yield current;
@@ -60,12 +59,18 @@ function peekableIterator(iterator) {
   const _i = buildIterator();
 
   _i.peek = () => state;
-
+	
   return _i;
 }
 
 const parseInput = (iter, input, { variables = {} } = {}) => {
-	if (isString(input.value))
+	if (input.value == 'true')
+		return true;
+
+	else if (input.value == 'false')
+		return false;
+
+	else if (isString(input.value))
 		return parseString(input.value);
 
 	else if (!isNaN(input.value))
@@ -73,11 +78,12 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 
 	else if (input.value === '~'){
 		const variableName = iter.next().value;
+		console.log(variableName, 'vn')
+
 
 		if (!isA_0(variableName) && variables.hasOwnProperty(variableName))
 			return variables[variableName]
 	}
-
 	else if (input.value === 'CURRENT_DATE'){
 		return Date.now();
 	}
@@ -87,6 +93,37 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 	// }
 
 	return undefined;
+}
+
+
+function tee(iterable) {
+    const source = iterable[Symbol.iterator]();
+    const buffers = [[], []];  // substitute in queue type for efficiency
+    const DONE = Object.create(null);
+
+    const next = i => {
+        if (buffers[i].length !== 0)
+					return buffers[i].shift();
+
+        const x = source.next();
+
+        if (x.done) return DONE;
+
+        buffers[1 - i].push(x.value);
+        return x.value;
+    };
+
+    return buffers.map(function* (_, i) {
+        for (;;) {
+            const x = next(i);
+
+            if (x === DONE) {
+                break;
+            }
+
+            yield x;
+        }
+    });
 }
 
 const oraGo = (settings = {}) => codeInput => {
@@ -126,31 +163,76 @@ const oraGo = (settings = {}) => codeInput => {
 					console.log(parseInput(iter, input, data));
 			},
 
-			PRINT ({ iter, data }) {
-				const input = iter.next();
-			
-				if (input)
-					console.log(parseInput(iter, input, data));
+			LOOP ({ iter, handleItems }) {
+				const input = iter.next().value;
+				const items = [];
+
+				if (!isNaN(input)){
+					const timesToRun = forceType.forceNumber(input);
+					for (const item of [...iter])
+						items.push(item);
+					
+					for (let i = 0; i < timesToRun; i++)
+						handleItems(
+							items[Symbol.iterator]()
+						);
+				}
+				else throw 'Cannot Find Loop Status';
 			},
+
+			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
+				const input = parseInput([...iter][Symbol.iterator](), input, data);
+				const items = [];
+				let calls = 0;
+				
+				for (let item of [...iter][Symbol.iterator]())
+						items.push(item);
+
+
+				if (parseInput([...iter][Symbol.iterator](), input, data) == true){
+					
+
+
+					while (parseInput([...iter][Symbol.iterator](), input, data) == true){
+						if (calls++ >= maxCalls){
+							console.log('Call Stack Exceeded Maximum Amount');
+							break;
+						}
+
+						handleItems(
+							items[Symbol.iterator]()
+						);
+					}
+
+				}
+				else throw 'Cannot Find FOR Status';
+			}
 		}
 	}
 
 	const { functions } = oraGoData;
-	
-	for (const chunk of chunks){
-		const iter = peekableIterator(chunk[Symbol.iterator]());
 
+	function handleItems (iter){
 		itemsLoop: for (const method of iter){
 			if (functions.hasOwnProperty(method)){
 				const response = functions[method]({
 					iter,
-					data: oraGoData
+					data: oraGoData,
+					handleItems
 				});
 
 				if (response?.break == true)
 					break itemsLoop;
 			}
 		}
+	}
+	
+	for (const chunk of chunks){
+		handleItems(
+			peekableIterator(
+				chunk[Symbol.iterator]()
+			)
+		);
 	}
 
 	return oraGoData;
@@ -169,5 +251,13 @@ run(`
 	PRINT "HELLO WORLD";
 	PRINT ~cat;
 
-	PRINT CURRENT_DATE
+	PRINT CURRENT_DATE;
+
+	SET ~canLoop TO true;
+
+	FOR ~canLoop
+		SET ~canLoop TO false
+		PRINT "hehe loop"
+		
+	;
 `);

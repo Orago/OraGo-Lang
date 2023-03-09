@@ -1,56 +1,41 @@
-function peekableIterator(iterator) {
-  let cache = [];
-  let currentIndex = 0;
-
-  function fillCache() {
-    while (true) {
-      let next = iterator.next();
-      if (next.done) break;
-      cache.push(next);
-    }
-
-		cache[cache.length - 1].done = true;
-  }
+function betterIterable (itemsInput) {
+	const items = [...itemsInput];
+	const startItems = items;
 	
-
-  fillCache();
-
   return {
-    next() {
-      if (currentIndex < cache.length) {
-        const value = cache[currentIndex++];
-				
-        return value;
-      }
-			else {
-        const next = iterator.next();
-        if (next.done) return next;
-        
-				else {
-          cache.push(next);
-          cache.shift();
-          return next
-        }
-      }
+    *[Symbol.iterator]() {
+      while (items.length > 0)
+				yield this.next.value;
     },
+    
+    get next (){
+     return {
+				value: items.shift(),
+				done: 1 > items.length
+			}
+		},
 
-    peek(n = 1) {
-			console.log(cache)
-      if (currentIndex + n - 1 < cache.length)
-        return cache[currentIndex + n - 1];
+		get peek (){
+			
+		},
 
-			else return { value: [].u, done: true };
-    }
+		clone (){
+			return betterIterable(items);
+		},
+
+		push (...itemToPush){
+			items.push(itemToPush);
+		}
   };
 }
 
+// Create Iterable
+const n = superIterable([ 1, 'a', 2, 3, 4, 5 ]);
 
-function* someIterator () { yield 1; yield 2; yield 3; yield 4; yield 5; yield 6; }
-let iter = peekableIterator(someIterator());
+for (let e of n.clone())
+	console.log(e);
 
-console.log(
-	iter.next(),
-	iter.peek(5),
-	iter.peek(1),
-	iter.next()
-)
+
+for (let e of n){
+	console.log(e, 'd')
+}
