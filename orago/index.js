@@ -21,7 +21,7 @@ function betterIterable (itemsInput) {
 		peek (n = 1){
 			return {
 				value: items[n - 1],
-				done: 1 > items.length - n
+				done: 1 > items.length
 			}
 		},
 
@@ -35,6 +35,10 @@ function betterIterable (itemsInput) {
 
 		size (){
 			return items.length;
+		},
+
+		stringify (join = ' '){
+			return items.join(join);
 		}
   };
 }
@@ -54,9 +58,71 @@ const forceType = {
 const isA0 = (x) => x == undefined || /[^a-z0-9]/i.test(x);
 const isA_0 = (x) => x == undefined || /[^a-z0-9_]/i.test(x);
 
+const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
+function evalMath(mathString) {
+	try {
+			// using a stack and a postfix notation algorithm to evaluate the math string
+			let stack = [];
+			let postfix = [];
+			let operators = ['+', '-', '*', '/', '^'];
+			let precedence = {'+':1, '-':1, '*':2, '/':2, '^':3};
+			for (let i = 0; i < mathString.length; i++) {
+					let char = mathString[i];
+					if (!isNaN(parseFloat(char)) || char === '.') {
+							let number = char;
+							while (!isNaN(parseFloat(mathString[i+1])) || mathString[i+1] === '.') {
+									number += mathString[++i];
+							}
+							postfix.push(parseFloat(number));
+					}
+					else if (operators.indexOf(char) !== -1) {
+							while (stack.length && operators.indexOf(stack[stack.length-1]) !== -1 && precedence[char] <= precedence[stack[stack.length-1]]) {
+									postfix.push(stack.pop());
+							}
+							stack.push(char);
+					}
+					else if (char === '(') {
+							stack.push(char);
+					}
+					else if (char === ')') {
+							while (stack[stack.length-1] !== '(') {
+									postfix.push(stack.pop());
+							}
+							stack.pop();
+					}
+			}
+			while (stack.length) {
+					postfix.push(stack.pop());
+			}
+			for (let i = 0; i < postfix.length; i++) {
+					if (typeof postfix[i] === 'number') {
+							stack.push(postfix[i]);
+					}
+					else {
+							let a = stack.pop();
+							let b = stack.pop();
+							let result;
+							switch (postfix[i]) {
+									case '+': result = b + a; break;
+									case '-': result = b - a; break;
+									case '*': result = b * a; break;
+									case '/': result = b / a; break;
+									case '^': result = Math.pow(b,a); break;
+							}
+							stack.push(result);
+					}
+			}
+			return stack[0];
+	}
+	catch (error) {
+		console.error(`Error: ${error}`);
+		return NaN;
+	}
+}
+
 //#endregion //* UTIL *//
 
-const oraLexer = input => {
+function oraLexer (input){
 	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()_+"\\/.;:\[\]\s]/g;
 	const output = input.match(regex);
 
@@ -66,7 +132,7 @@ const oraLexer = input => {
 	return output;
 }
 
-const chunkLexed = lexed => {
+function chunkLexed (lexed) {
 	const chunks = [];
 	let chunk = [];
 
@@ -86,27 +152,44 @@ const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
 const parseInput = (iter, input, { variables = {} } = {}) => {
-	if (input.value == 'true')
+	const { value } = input;
+
+	if (value == 'true')
 		return true;
 
-	else if (input.value == 'false')
+	else if (value == 'false')
 		return false;
 
-	else if (isString(input.value))
-		return parseString(input.value);
+	else if (isString(value))
+		return parseString(value);
 
-	else if (!isNaN(input.value))
-		return Number(input.value);
+	else if (!isNaN(value)){
+		let total = Number(value);
+		let index = 1;
+		const mathSymbols = ['+', '-', '*', '/'];
 
-	else if (input.value === '~'){
-		const variableName = iter.next().value;
 
-		if (!isA_0(variableName) && variables.hasOwnProperty(variableName))
-			return variables[variableName]
+		while (
+			mathSymbols.includes(iter.peek(index).value) &&
+			(
+				!isNaN(iter.peek(index + 1).value) //||
+				// [].includes(index + 1)
+			)
+		) total = evalMath(total + " " + iter.next().value + " " + iter.next().value);
+		
+		return total;
 	}
-	else if (input.value === 'CURRENT_DATE'){
+	
+	else if (value === 'CURRENT_DATE')
 		return Date.now();
+
+	else {
+		const variableName = value;
+		
+		if (!isA_0(variableName) && variables.hasOwnProperty(variableName))
+			return variables[variableName];
 	}
+
 	return undefined;
 }
 
@@ -122,31 +205,33 @@ const oraGo = (settings = {}) => codeInput => {
 		functions: {
 			...forceType.forceObject(customFunctions),
 			SET ({ iter, data }) {
-				if (iter.next().value === '~'){
-					const variableName = iter.next().value;
-					const nextSeq = iter.next();
-					let value;
-			
-					if (!isA_0(variableName && !nextSeq.done)){
-						if (nextSeq.value === 'TO')
-							value = parseInput(iter, iter.next(), oraGoData);
-						
-						else if (nextSeq.value === '~')
-							 value = parseInput(iter, nextSeq, oraGoData)
-					}
-					else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
+				const variableName = iter.next().value;
+				const nextSeq = iter.next();
+				let value;
+		
+				if (!isA_0(variableName && !nextSeq.done && nextSeq.value === 'TO'))
+					value = parseInput(iter, iter.next(), oraGoData);
 
-					console.log(`Updated ${variableName} to ${value}`);
+				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
 
-					oraGoData.variables[variableName] = value;
-				}
-				else throw 'augh'
+				oraGoData.variables[variableName] = value;
 			},
 			PRINT ({ iter, data }) {
 				const input = iter.next();
+
+				const results = [];
 			
-				if (input)
-					console.log(parseInput(iter, input, data));
+				if (input){
+					results.push(parseInput(iter, input, data));
+
+					while (iter.peek().value == '&' && iter.peek(2).done == false){
+						iter.next();
+
+						results.push(parseInput(iter, iter.next(), data));
+					}
+				}
+
+				results.length > 0 && console.log(...results);
 			},
 
 			LOOP ({ iter, handleItems }) {
@@ -167,16 +252,14 @@ const oraGo = (settings = {}) => codeInput => {
 			},
 
 			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
-				const input = parseInput(iter, iter.next(), data);
+				const input = iter.next();
 				const items = [];
 				let calls = 0;
 
 				for (let item of iter)
 						items.push(item);
 
-				console.log(items, input)
-
-				while (val = parseInput(iter.clone(), input, data) == true){
+				while (val = parseInput(iter, input, data) == true){
 					if (calls++ >= maxCalls){
 						console.log('Call Stack Exceeded Maximum Amount');
 						break;
@@ -188,18 +271,17 @@ const oraGo = (settings = {}) => codeInput => {
 				}
 			},
 
-			IF ({ iter, data, handleItems, maxCalls = 100 }) {
-				const input = parseInput(iter, iter.next(), data);
+			IF ({ iter, data, handleItems }) {
+				const input = iter.next();
 				const items = [];
 
-				for (let item of iter.clone())
+				for (const item of iter)
 						items.push(item);
 
-				if (parseInput(iter.clone(), input, data) == true){
+				if (parseInput(iter, input, data) == true)
 					handleItems(
 						betterIterable(items)
 					);
-				}
 			}
 		}
 	}
@@ -221,38 +303,40 @@ const oraGo = (settings = {}) => codeInput => {
 		}
 	}
 	
-	for (const chunk of chunks){
+	for (const chunk of chunks)
 		handleItems(
 			betterIterable(
 				chunk[Symbol.iterator]()
 			)
 		);
-	}
 
 	return oraGoData;
 }
 
 const run = oraGo({
-	customFunctions: {
-		
-	}
+	customFunctions: {}
 });
 
-run(`
-	COMMENT this is a test;
-	SET ~cat TO "Meow lol";
+const test1 = `
+COMMENT this is a test;
+SET cat TO "Meow lol";
 
-	PRINT "HELLO WORLD";
-	PRINT ~cat;
+PRINT "HELLO WORLD" & cat;
 
-	PRINT CURRENT_DATE;
+PRINT CURRENT_DATE;
 
-	SET ~canLoop TO true;
+SET canLoop TO true;
 
-	FOR ~canLoop
-		PRINT "hehe loop"
-		PRINT "meow"
+IF canLoop
+	PRINT "hehe loop" & "meow"
 
-		SET ~canLoop TO false
-	;
-`);
+	SET canLoop TO false
+;
+`;
+
+const test2 = `
+SET theMath to 5 + 2 - 3;
+PRINT "Result equals" & theMath;
+`;
+
+run(test2);
