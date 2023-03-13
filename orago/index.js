@@ -1,7 +1,9 @@
 //#region //* UTIL *//
-function betterIterable(itemsInput) {
+function betterIterable(itemsInput, settings = {}) {
+	const { tracking = false, maxStack = 10 } = settings;
 	const items = [...itemsInput];
 	const source = items;
+	let stack = [];
 
 	return {
 		source,
@@ -12,6 +14,11 @@ function betterIterable(itemsInput) {
 		},
 
 		next() {
+			if (tracking){
+				stack.push(items[0]);
+				if (stack.length > maxStack) stack.shift();
+			}
+
 			return {
 				value: items.shift(),
 				done: 1 > items.length
@@ -23,7 +30,7 @@ function betterIterable(itemsInput) {
 		},
 
 		clone() {
-			return betterIterable(items);
+			return betterIterable(items, settings);
 		},
 
 		push(...itemToPush) {
@@ -36,6 +43,10 @@ function betterIterable(itemsInput) {
 
 		stringify(join = ' ') {
 			return items.join(join);
+		},
+		
+		stack (){
+			return stack;
 		}
 	};
 }
@@ -213,7 +224,7 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 const oraGo = (settings = {}) => codeInput => {
 	if (typeof codeInput != 'string') return;
 
-	const { customFunctions } = settings;
+	const { customFunctions, customClasses } = forceType.forceObject(settings);
 
 	const lexed = oraLexer(codeInput);
 	const chunks = chunkLexed(lexed);
@@ -223,13 +234,17 @@ const oraGo = (settings = {}) => codeInput => {
 				cat: 'meow',
 				person: {
 					age: 18,
-					cool: true
+					cool: true,
+					welcome: (name, num = 1) => console.log('hello, my name is', name, 'and I like the number', num)
 				}
 			}
 		},
+		classes: {
+			...forceType.forceObject(customClasses)
+		},
 		functions: {
 			...forceType.forceObject(customFunctions),
-			SET({ iter }) {
+			SET ({ iter }) {
 				const variableName = iter.next().value;
 				const path = [variableName];
 				
@@ -248,13 +263,14 @@ const oraGo = (settings = {}) => codeInput => {
 
 						obj = obj[subVar];
 					}
+					const i = path.length > 1 ? path.length - 1 : 0;
 					
-					obj[path[path.length - 1]] = parseInput(iter, iter.next(), oraGoData);
+					obj[path[i]] = parseInput(iter, iter.next(), oraGoData);
 				}
 
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
 			},
-			PRINT({ iter, data }) {
+			PRINT ({ iter, data }) {
 				const input = iter.next();
 				const results = [];
 
@@ -271,7 +287,7 @@ const oraGo = (settings = {}) => codeInput => {
 				results.length > 0 && console.log(...results);
 			},
 
-			LOOP({ iter, handleItems }) {
+			LOOP ({ iter, handleItems }) {
 				const input = iter.next().value;
 				const items = [];
 
@@ -288,7 +304,7 @@ const oraGo = (settings = {}) => codeInput => {
 				else throw 'Cannot Find Loop Status';
 			},
 
-			FOR({ iter, data, handleItems, maxCalls = 100 }) {
+			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
 				const input = iter.next();
 				const items = [];
 				let calls = 0;
@@ -308,7 +324,7 @@ const oraGo = (settings = {}) => codeInput => {
 				}
 			},
 
-			IF({ iter, data, handleItems }) {
+			IF ({ iter, data, handleItems }) {
 				const input = iter.next();
 				const items = [];
 
@@ -319,6 +335,49 @@ const oraGo = (settings = {}) => codeInput => {
 					handleItems(
 						betterIterable(items)
 					);
+			},
+
+			LOG_VARIABLES ({ data }) {
+				console.log(`ORAGO LANG DATA:`);
+				console.table(data.variables);
+			},
+
+			RUN ({ iter, data }){
+				const func = parseInput(iter, iter.next(), data);
+
+				if (typeof(func) !== 'function'){
+					return console.error(
+						new Error('Command To Run Is Not A Function'),
+						'\n',
+						iter.stack()
+					);
+				}
+
+				if (iter.next().value != '('){
+					console.error(
+						new Error('Missing opening parenthesis to function'),
+						'\n',
+						iter.stack()
+					)
+				}
+
+				let items = [];
+
+				let passes = 0;
+
+				while (iter.peek(1).value != ')'){
+					if (iter.peek(1).value == ','){
+						iter.next();
+						continue;
+					}
+
+					items.push(
+						parseInput(iter, iter.next(), data)
+					);
+				}
+
+				iter.next();
+				
 			}
 		}
 	}
@@ -343,7 +402,8 @@ const oraGo = (settings = {}) => codeInput => {
 	for (const chunk of chunks)
 		handleItems(
 			betterIterable(
-				chunk[Symbol.iterator]()
+				chunk[Symbol.iterator](),
+				{ tracking: true }
 			)
 		);
 
@@ -358,6 +418,7 @@ const test1 = `
 COMMENT this is a test;
 SET cat TO "Meow lol";
 SET testObj.person.orago TO 'yeahhh';
+SET testObj.person.orago.isCool TO true;
 
 PRINT "HELLO WORLD" & cat;
 
@@ -371,7 +432,7 @@ IF canLoop
 	SET canLoop TO false
 ;
 
-PRINT testObj;
+PRINT testObj.person.orago;
 `;
 
 const test2 = `
@@ -379,4 +440,10 @@ SET theMath to 5 + 2 - 3;
 PRINT "Result equals" & theMath;
 `;
 
-run(test1);
+const test3 = `
+SET testo TO 'hehe';
+RUN testObj.person.welcome('thomas', 4 + 5);
+LOG_VARIABLES;
+`
+
+run(test3);
