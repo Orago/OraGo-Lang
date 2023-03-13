@@ -193,7 +193,7 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-const parseInputToVariable = (iter, input, data = {}) => {
+const parseInputToVariable = (iter, input, data = {}, callFunction = true) => {
 	const { variables = {} } = data;
 	const { value } = input;
 	const scaleTree = ({ property, source, i = 1 }) => {
@@ -217,8 +217,8 @@ const parseInputToVariable = (iter, input, data = {}) => {
 		source: variables
 	});
 	
-	if (typeof(resultObj) === 'function'){
-		if (iter.next().value === '('){
+	if (typeof(resultObj) === 'function' && callFunction){
+		if ( iter.next().value === '('){
 			const items = [];
 			let passes = 0;
 	
@@ -258,9 +258,9 @@ const parseInput = (iter, input, data = {}) => {
 
 	else if (isString(value)) return parseString(value);
 
-	else if (!isNaN(value) || isA_0(value) && parseInputToVariable(iter.clone(), input, data) != null) {
+	else if (!isNaN(value) || isA_0(value) && parseInputToVariable(iter.clone(), input, data, false) != null) {
 		const mathSymbols = ['+', '-', '*', '/', '^'];
-		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data));
+		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data, false));
 		let index = 1;
 
 		while (
@@ -284,8 +284,6 @@ const parseInput = (iter, input, data = {}) => {
 
 	else if (isA_0(value) && variables.hasOwnProperty(value))
 		return parseInputToVariable(iter, input, data);
-
-	// console.log(value)
 
 	return undefined;
 }
@@ -470,7 +468,6 @@ const oraGo = (settings = {}) => codeInput => {
 
 					for (let [i, value] of Object.entries(args))
 						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
-					
 
 					return handleItems(
 						betterIterable(items),
@@ -559,14 +556,9 @@ PRINT "Result equals" & theMath;
 `;
 
 const test3 = `
-SET eep TO 25;
-PRINT 5 + eep - 1 & 3 + 6 + 9;
 
 FUNCTION myAge (birthyear, currentyear)
 	PRINT currentyear - birthyear;
-
-FUNCTION cool.stuff(recipient)
-	PRINT "hello" & recipient;
 
 myAge(2004, 2023);
 // LOG_VARIABLES;
