@@ -93,8 +93,8 @@ const forceType = {
 	forceArray:   $ => Array.isArray($) ? $ : []
 }
 
-const isA0 = (x) => x == undefined || /[^a-z0-9]/i.test(x);
-const isA_0 = (x) => x == undefined || /[^a-z0-9_]/i.test(x);
+const isA0 = (x) => x == undefined || /[a-z0-9]/i.test(x);
+const isA_0 = (x) => x == undefined || /[a-z0-9_]/i.test(x);
 
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 function evalMath(mathString) {
@@ -193,6 +193,64 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
+const parseInputToVariable = (iter, input, data = {}) => {
+	const { variables = {} } = data;
+	const { value } = input;
+	const scaleTree = ({ property, source, i = 1 }) => {
+		if (iter.peek(i).value === '.' && isA_0(iter.peek(i + 1).value)){
+			return scaleTree({
+				source: source[property],
+				property: iter.next(1).value,
+				i: i++
+			});
+		}
+		// console.log(isA_0(property) , source?.hasOwnProperty(property), source, property, value)
+		
+		if (isA_0(property) && source?.hasOwnProperty(property)){
+			if (source[property]?.hasOwnProperty('value')){
+				return source[property].value;
+			}
+
+			return source[property];
+		}
+	}
+
+	const resultObj = scaleTree({
+		property: value,
+		source: variables
+	});
+	
+	if (typeof(resultObj) === 'function'){
+		if (iter.next().value === '('){
+			const items = [];
+			let passes = 0;
+	
+			while (!iter.disposeIf(')')){
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+				items.push( iter.next().value );
+				
+				if (passes++ > 100){
+					console.error(new Error('Cannot run more than 100 args on a function'));
+					return;
+				}
+			}
+
+			return resultObj(...items);
+		}
+		else {
+			console.error('Missing opening parenthesis to function',
+				'\n',
+				iter.stack()
+			);
+
+			return;
+		}
+	}
+
+	return resultObj
+}
+
 const parseInput = (iter, input, data = {}) => {
 	const { variables = {} } = data;
 	const { value } = input;
@@ -210,11 +268,19 @@ const parseInput = (iter, input, data = {}) => {
 		let index = 1;
 
 		while (
-			mathSymbols.includes(iter.peek(index).value) &&
-			!isNaN(iter.peek(index + 1).value)
+			// Next Item is a Mathematical Symbol
+			mathSymbols.includes(iter.peek(index).value)
 		) {
 			const symbol = iter.next().value;
-			const num = iter.next().value;
+			const nn = iter.next().value;
+
+			// const num = iter.next().value;
+			let num = 0;
+
+			if (isNaN(nn) && !isA_0(nn)) continue;
+
+			if (!isNaN(nn)) num = nn;
+			else if (isA_0(nn)) num = parseInputToVariable(iter, { value: nn }, data);
 
 			total = evalMath(total + " " + symbol + " " + num);
 		}
@@ -225,61 +291,10 @@ const parseInput = (iter, input, data = {}) => {
 	else if (value === 'CURRENT_DATE') return Date.now();
 
 	else if (!isA_0(value) && variables.hasOwnProperty(value)){
-		const scaleTree = ({ property, source, i = 1 }) => {
-			if (iter.peek(i).value === '.' && !isA_0(iter.peek(i + 1).value)){
-				return scaleTree({
-					source: source[property],
-					property: iter.next(1).value,
-					i: i++
-				});
-			}
-			else if (!isA_0(property) && source?.hasOwnProperty(property)){
-				if (source[property]?.hasOwnProperty('value')){
-					return source[property].value;
-				}
 
-				return source[property];
-			}
-		}
-
-		const resultObj = scaleTree({
-			property: value,
-			source: variables
-		});
-
-		
-		if (typeof(resultObj) === 'function'){
-			if (iter.next().value === '('){
-				const items = [];
-				let passes = 0;
-		
-				while (!iter.disposeIf(')')){
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-					console.log(iter.peek().value)
-
-					items.push( iter.next().value );
-					
-					if (passes++ > 100){
-						console.error(new Error('Cannot run more than 100 args on a function'));
-						return;
-					}
-				}
-
-				return resultObj(...items);
-			}
-			else {
-				console.error('Missing opening parenthesis to function',
-					'\n',
-					iter.stack()
-				);
-
-				return;
-			}
-		}
-
-		return resultObj
 	}
+
+	// console.log(value)
 
 	return undefined;
 }
@@ -295,6 +310,8 @@ const oraGo = (settings = {}) => codeInput => {
 	const setOnPath = ({ value, path, data: obj }) => {
 		for (let subVar of path.slice(0, path.length - 1)){
 			if (typeof obj[subVar] !== 'object') obj[subVar] = { value: obj[subVar] };
+
+			if (obj[subVar].value == null) delete obj[subVar].value;
 
 			obj = obj[subVar];
 		}
@@ -327,7 +344,7 @@ const oraGo = (settings = {}) => codeInput => {
 				for (let i of iter)
 					continue;
 			},
-			SET ({ iter }) {
+			SET ({ iter, data }) {
 				const variableName = iter.next().value;
 				const path = [variableName];
 				
@@ -338,11 +355,11 @@ const oraGo = (settings = {}) => codeInput => {
 				
 				const nextSeq = iter.next();
 				
-				if (!isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO'){
+				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO'){
 					setOnPath({
-						data: oraGoData.variables,
+						data: data.variables,
 						path,
-						value: parseInput(iter, iter.next(), oraGoData)
+						value: parseInput(iter, iter.next(), data)
 					});
 				}
 
@@ -417,17 +434,24 @@ const oraGo = (settings = {}) => codeInput => {
 
 			LOG_VARIABLES ({ data }) {
 				console.log(`ORAGO LANG DATA:`);
-				console.table(data.variables);
+				console.log(data.variables);
 			},
 
 			FUNCTION ({ iter, data, handleItems }) {
 				const args = [];
+				const variablePath = [iter.next().value];
+				const items = [];
+
+				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+					variablePath.push(
+						iter.next().value
+					);
 
 				if (iter.disposeIf('(')){
 					let passes = 0;
 			
 					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+						if (iter.disposeIf(',') && iter.disposeIf(isA_0)) continue;
 	
 						args.push( iter.next().value );
 						
@@ -437,35 +461,52 @@ const oraGo = (settings = {}) => codeInput => {
 						}
 					}
 				}
+
 				
 
+				for (const item of iter)
+					items.push(item);
 
+				const generatedFunction = (...inputs) => {
+					const scopeData = {
+						variables: {}
+					};
 
-				// for (const item of iter)
-				// 	items.push(item);
+					for (let [key, value] of Object.entries(data.variables))
+						scopeData.variables[key] = value
 
-					// console.log(items)
-					// handleItems(
-					// 	betterIterable(items)
-					// );
+					for (let [i, value] of Object.entries(args))
+						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
+
+					handleItems(
+						betterIterable(items),
+						scopeData
+					);
+				}
+
+				setOnPath({
+					data: data.variables,
+					path: variablePath,
+					value: generatedFunction
+				});
 			},
 		}
 	}
 
 	const { functions, variables } = oraGoData;
 
-	function handleItems(iter) {
+	function handleItems(iter, data = oraGoData) {
 		itemsLoop: for (const method of iter) {
 			if (!functions.hasOwnProperty(method)){
 				if (variables.hasOwnProperty(method))
-					parseInput(iter, { value: method }, oraGoData);
+					parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
 
 			const response = functions[method]({
 				iter,
-				data: oraGoData,
+				data,
 				handleItems
 			});
 
@@ -517,11 +558,14 @@ PRINT "Result equals" & theMath;
 `;
 
 const test3 = `
-FUNCTION (recipient)
+SET eep TO 25;
+PRINT 5 + eep - 1 & 3 + 6 + 9;
+
+FUNCTION cool.stuff(recipient)
 	PRINT "hello" & recipient;
 
-COMMENT testObj.person.welcome ('thomas', 4 + 5);
-COMMENT LOG_VARIABLES;
+cool.stuff("Thomas");
+// LOG_VARIABLES;
 `
 
-run(test1);
+run(test3);
