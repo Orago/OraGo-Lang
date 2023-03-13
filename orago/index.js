@@ -197,19 +197,16 @@ const parseInputToVariable = (iter, input, data = {}) => {
 	const { variables = {} } = data;
 	const { value } = input;
 	const scaleTree = ({ property, source, i = 1 }) => {
-		if (iter.peek(i).value === '.' && isA_0(iter.peek(i + 1).value)){
+		if (iter.peek(i).value === '.' && isA_0(iter.peek(i + 1).value))
 			return scaleTree({
 				source: source[property],
 				property: iter.next(1).value,
 				i: i++
 			});
-		}
-		// console.log(isA_0(property) , source?.hasOwnProperty(property), source, property, value)
 		
 		if (isA_0(property) && source?.hasOwnProperty(property)){
-			if (source[property]?.hasOwnProperty('value')){
+			if (source[property]?.hasOwnProperty('value'))
 				return source[property].value;
-			}
 
 			return source[property];
 		}
@@ -254,7 +251,6 @@ const parseInputToVariable = (iter, input, data = {}) => {
 const parseInput = (iter, input, data = {}) => {
 	const { variables = {} } = data;
 	const { value } = input;
-	
 
 	if (value == 'true') return true;
 
@@ -262,9 +258,9 @@ const parseInput = (iter, input, data = {}) => {
 
 	else if (isString(value)) return parseString(value);
 
-	else if (!isNaN(value)) {
+	else if (!isNaN(value) || isA_0(value) && parseInputToVariable(iter.clone(), input, data) != null) {
 		const mathSymbols = ['+', '-', '*', '/', '^'];
-		let total = Number(value);
+		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data));
 		let index = 1;
 
 		while (
@@ -274,13 +270,9 @@ const parseInput = (iter, input, data = {}) => {
 			const symbol = iter.next().value;
 			const nn = iter.next().value;
 
-			// const num = iter.next().value;
-			let num = 0;
-
 			if (isNaN(nn) && !isA_0(nn)) continue;
-
-			if (!isNaN(nn)) num = nn;
-			else if (isA_0(nn)) num = parseInputToVariable(iter, { value: nn }, data);
+			
+			let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(parseInputToVariable(iter, { value: nn }, data));
 
 			total = evalMath(total + " " + symbol + " " + num);
 		}
@@ -290,9 +282,8 @@ const parseInput = (iter, input, data = {}) => {
 
 	else if (value === 'CURRENT_DATE') return Date.now();
 
-	else if (!isA_0(value) && variables.hasOwnProperty(value)){
-
-	}
+	else if (isA_0(value) && variables.hasOwnProperty(value))
+		return parseInputToVariable(iter, input, data);
 
 	// console.log(value)
 
@@ -432,6 +423,10 @@ const oraGo = (settings = {}) => codeInput => {
 					);
 			},
 
+			RETURN ({ iter, data }) {
+				return parseInput(iter, iter.next(), data);
+			},
+
 			LOG_VARIABLES ({ data }) {
 				console.log(`ORAGO LANG DATA:`);
 				console.log(data.variables);
@@ -451,7 +446,7 @@ const oraGo = (settings = {}) => codeInput => {
 					let passes = 0;
 			
 					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',') && iter.disposeIf(isA_0)) continue;
+						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 	
 						args.push( iter.next().value );
 						
@@ -462,8 +457,6 @@ const oraGo = (settings = {}) => codeInput => {
 					}
 				}
 
-				
-
 				for (const item of iter)
 					items.push(item);
 
@@ -473,12 +466,13 @@ const oraGo = (settings = {}) => codeInput => {
 					};
 
 					for (let [key, value] of Object.entries(data.variables))
-						scopeData.variables[key] = value
+						scopeData.variables[key] = value;
 
 					for (let [i, value] of Object.entries(args))
 						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
+					
 
-					handleItems(
+					return handleItems(
 						betterIterable(items),
 						scopeData
 					);
@@ -512,6 +506,10 @@ const oraGo = (settings = {}) => codeInput => {
 
 			if (response?.break == true)
 				break itemsLoop;
+
+			if (response) console.log(response)
+
+			return response;
 		}
 	}
 
@@ -529,6 +527,9 @@ const oraGo = (settings = {}) => codeInput => {
 const run = oraGo({
 	customFunctions: {}
 });
+// let cl = console.log;
+
+// console.log = (...a) => console.error(new Error('Tracker'), ...a)
 
 const test1 = `
 COMMENT this is a test;
@@ -561,10 +562,13 @@ const test3 = `
 SET eep TO 25;
 PRINT 5 + eep - 1 & 3 + 6 + 9;
 
+FUNCTION myAge (birthyear, currentyear)
+	PRINT currentyear - birthyear;
+
 FUNCTION cool.stuff(recipient)
 	PRINT "hello" & recipient;
 
-cool.stuff("Thomas");
+myAge(2004, 2023);
 // LOG_VARIABLES;
 `
 
