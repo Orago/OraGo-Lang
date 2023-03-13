@@ -165,6 +165,7 @@ const parseString = input => strReg.exec(input)?.[2];
 
 const parseInput = (iter, input, { variables = {} } = {}) => {
 	const { value } = input;
+	
 
 	if (value == 'true') return true;
 
@@ -212,10 +213,45 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 			}
 		}
 
-		return scaleTree({
+		const resultObj = scaleTree({
 			property: value,
 			source: variables
 		});
+
+		
+		if (typeof(resultObj) === 'function'){
+			if (iter.next().value != '('){
+				let items = [];
+				// let passes = 0;
+		
+				while (iter.peek(1).value != ')'){
+					if (iter.peek(1).value == ','){
+						iter.next();
+						continue;
+					}
+		
+					items.push(
+						parseInput(iter, iter.next(), data)
+					);
+				}
+		
+				iter.next();
+
+				console.log(items);
+
+			}
+			else {
+				console.error(
+					new Error('Missing opening parenthesis to function'),
+					'\n',
+					iter.stack()
+				);
+
+				return;
+			}
+		}
+
+		return resultObj
 	}
 
 	return undefined;
@@ -342,51 +378,27 @@ const oraGo = (settings = {}) => codeInput => {
 				console.table(data.variables);
 			},
 
-			RUN ({ iter, data }){
+			RUNa ({ iter, data }){
 				const func = parseInput(iter, iter.next(), data);
 
-				if (typeof(func) !== 'function'){
-					return console.error(
-						new Error('Command To Run Is Not A Function'),
-						'\n',
-						iter.stack()
-					);
-				}
 
-				if (iter.next().value != '('){
-					console.error(
-						new Error('Missing opening parenthesis to function'),
-						'\n',
-						iter.stack()
-					)
-				}
 
-				let items = [];
-
-				let passes = 0;
-
-				while (iter.peek(1).value != ')'){
-					if (iter.peek(1).value == ','){
-						iter.next();
-						continue;
-					}
-
-					items.push(
-						parseInput(iter, iter.next(), data)
-					);
-				}
-
-				iter.next();
-				
 			}
 		}
 	}
 
-	const { functions } = oraGoData;
+	const { functions, variables } = oraGoData;
 
 	function handleItems(iter) {
 		itemsLoop: for (const method of iter) {
-			if (!functions.hasOwnProperty(method)) continue;
+			if (!functions.hasOwnProperty(method)){
+				if (variables.hasOwnProperty(method)){
+					parseInput(iter, { value: method }, oraGoData);
+				}
+					
+				
+				continue;
+			}
 
 			const response = functions[method]({
 				iter,
@@ -442,7 +454,7 @@ PRINT "Result equals" & theMath;
 
 const test3 = `
 SET testo TO 'hehe';
-RUN testObj.person.welcome('thomas', 4 + 5);
+testObj.person.welcome('thomas', 4 + 5);
 LOG_VARIABLES;
 `
 
