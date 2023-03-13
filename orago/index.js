@@ -181,11 +181,30 @@ const parseInput = (iter, input, { variables = {} } = {}) => {
 
 	else if (value === 'CURRENT_DATE') return Date.now();
 
-	else {
-		const variableName = value;
+	else if (!isA_0(value) && variables.hasOwnProperty(value)){
+		const scaleTree = ({ property, source, i = 1 }) => {
+			if (iter.peek(i).value === '.' && !isA_0(iter.peek(i + 1).value)){
+				iter.next();
+				
+				return scaleTree({
+					source: source[property],
+					property: iter.next(i + 1).value,
+					i: i++
+				});
+			}
+			else if (!isA_0(property) && source?.hasOwnProperty(property)){
+				if (source[property]?.hasOwnProperty('value')){
+					return source[property].value;
+				}
 
-		if (!isA_0(variableName) && variables.hasOwnProperty(variableName))
-			return variables[variableName];
+				return source[property];
+			}
+		}
+
+		return scaleTree({
+			property: value,
+			source: variables
+		});
 	}
 
 	return undefined;
@@ -199,20 +218,41 @@ const oraGo = (settings = {}) => codeInput => {
 	const lexed = oraLexer(codeInput);
 	const chunks = chunkLexed(lexed);
 	const oraGoData = {
-		variables: {},
+		variables: {
+			testObj: {
+				cat: 'meow',
+				person: {
+					age: 18,
+					cool: true
+				}
+			}
+		},
 		functions: {
 			...forceType.forceObject(customFunctions),
 			SET({ iter }) {
 				const variableName = iter.next().value;
-				const nextSeq = iter.next();
-				let value;
+				const path = [variableName];
+				
+				while (iter.peek(1).value === '.' && !isA_0(iter.peek(2).value)){
+					iter.next();
+					path.push( iter.next().value );
+				}
 
-				if (!isA_0(variableName && !nextSeq.done && nextSeq.value === 'TO'))
-					value = parseInput(iter, iter.next(), oraGoData);
+				const nextSeq = iter.next();
+				
+				if (!isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO'){
+					let obj = oraGoData.variables;
+
+					for (let subVar of path.slice(0, path.length - 1)){
+						if (typeof obj[subVar] !== 'object') obj[subVar] = { value: obj[subVar] };
+
+						obj = obj[subVar];
+					}
+					
+					obj[path[path.length - 1]] = parseInput(iter, iter.next(), oraGoData);
+				}
 
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
-
-				oraGoData.variables[variableName] = value;
 			},
 			PRINT({ iter, data }) {
 				const input = iter.next();
@@ -317,6 +357,7 @@ const run = oraGo({
 const test1 = `
 COMMENT this is a test;
 SET cat TO "Meow lol";
+SET testObj.person.orago TO 'yeahhh';
 
 PRINT "HELLO WORLD" & cat;
 
@@ -329,6 +370,8 @@ IF canLoop
 
 	SET canLoop TO false
 ;
+
+PRINT testObj;
 `;
 
 const test2 = `
@@ -336,4 +379,4 @@ SET theMath to 5 + 2 - 3;
 PRINT "Result equals" & theMath;
 `;
 
-run(test2);
+run(test1);
