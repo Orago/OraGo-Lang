@@ -262,12 +262,14 @@ const parseInput = (iter, input, data = {}) => {
 	else if (isString(value))  return parseString(value);
 
 	let iterCache = iter.clone();
+	let result;
+
+	if (isA_0(value) && variables.hasOwnProperty(value))
+		result = parseInputToVariable(iter, { value }, data);
 
 
 	mathReset: {
 		mathBlock: {
-			const result = parseInputToVariable(iter, { value }, data);
-	
 			if (isNaN(value) && typeof result !== 'number')
 				break mathBlock;
 	
@@ -293,16 +295,11 @@ const parseInput = (iter, input, data = {}) => {
 		iter = iterCache;
 	}
 
-	if (isA_0(value) && variables.hasOwnProperty(value)){
-		return parseInputToVariable(iter, { value }, data);
-	}
-	
-
 	//isA_0(value) && parseInputToVariable(mathIter, input, data) != null
 
 	if (value === 'CURRENT_DATE') return Date.now();
 
-	return;
+	return result;
 }
 
 const oraGo = (settings = {}) => codeInput => {
@@ -583,10 +580,10 @@ FUNCTION myAge (birthyear, currentyear)
 
 myAge(2004, 2023);
 
-// FUNCTION reTm (a, b)
-// 	RETURN a + b;
+FUNCTION reTm (a, b)
+	RETURN a + b;
 
-// PRINT reTm(5, 4) + 54;
+PRINT reTm(5, 4) + 54 + reTm(6, 1);
 
 // LOG_VARIABLES;
 `;
