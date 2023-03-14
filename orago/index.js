@@ -196,6 +196,7 @@ const parseString = input => strReg.exec(input)?.[2];
 const parseInputToVariable = (iter, input, data = {}, callFunction = true) => {
 	const { variables = {} } = data;
 	const { value } = input;
+
 	const scaleTree = ({ property, source, i = 1 }) => {
 		if (iter.peek(i).value === '.' && isA_0(iter.peek(i + 1).value))
 			return scaleTree({
@@ -216,51 +217,66 @@ const parseInputToVariable = (iter, input, data = {}, callFunction = true) => {
 		property: value,
 		source: variables
 	});
-	
-	if (typeof(resultObj) === 'function' && callFunction){
-		if ( iter.next().value === '('){
-			const items = [];
-			let passes = 0;
-	
-			while (!iter.disposeIf(')')){
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-				items.push( iter.next().value );
-				
-				if (passes++ > 100){
-					console.error(new Error('Cannot run more than 100 args on a function'));
-					return;
-				}
-			}
-
-			return resultObj(...items);
-		}
-		else {
-			console.error('Missing opening parenthesis to function',
-				'\n',
-				iter.stack()
-			);
-
-			return;
-		}
-	}
 
 	return resultObj
 }
 
 const parseInput = (iter, input, data = {}) => {
 	const { variables = {} } = data;
-	const { value } = input;
+	let { value } = input;
+	const mathSymbols = ['+', '-', '*', '/', '^'];
 
-	if (value == 'true') return true;
 
+	if (value == 'true')       return true;
 	else if (value == 'false') return false;
+	else if (isString(value))  return parseString(value);
 
-	else if (isString(value)) return parseString(value);
+	let result;
 
-	else if (!isNaN(value) || isA_0(value) && parseInputToVariable(iter.clone(), input, data, false) != null) {
-		const mathSymbols = ['+', '-', '*', '/', '^'];
-		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data, false));
+	if (isA_0(value) && variables.hasOwnProperty(value)){
+		const resultObj = parseInputToVariable(iter, input, data);
+
+		if (typeof(resultObj) === 'function'){
+			if ( iter.next().value === '('){
+				const items = [];
+				let passes = 0;
+		
+				while (!iter.disposeIf(')')){
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+	
+					items.push( iter.next().value );
+					
+					if (passes++ > 100){
+						console.error(new Error('Cannot run more than 100 args on a function'));
+						return;
+					}
+				}
+	
+				result = resultObj(...items);
+			}
+			else {
+				console.error('Missing opening parenthesis to function',
+					'\n',
+					iter.stack()
+				);
+	
+				return;
+			}
+		}
+
+		return resultObj;
+	}
+
+	testMath: {
+		if (!isNaN(value)){
+			const testVar = parseInputToVariable(iter.clone(), input, data);
+			if (typeof testVar === 'number')
+				value = testVar;
+				
+			else break testMath;
+		}
+
+		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data));
 		let index = 1;
 
 		while (
@@ -277,13 +293,15 @@ const parseInput = (iter, input, data = {}) => {
 			total = evalMath(total + " " + symbol + " " + num);
 		}
 
+
 		return total;
 	}
 
-	else if (value === 'CURRENT_DATE') return Date.now();
 
-	else if (isA_0(value) && variables.hasOwnProperty(value))
-		return parseInputToVariable(iter, input, data);
+
+	//isA_0(value) && parseInputToVariable(mathIter, input, data) != null
+
+	if (value === 'CURRENT_DATE') return Date.now();
 
 	return undefined;
 }
@@ -435,7 +453,7 @@ const oraGo = (settings = {}) => codeInput => {
 				const variablePath = [iter.next().value];
 				const items = [];
 
-				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+				while (iter.disposeIf('.') && iter.peek().value)
 					variablePath.push(
 						iter.next().value
 					);
@@ -454,11 +472,11 @@ const oraGo = (settings = {}) => codeInput => {
 						}
 					}
 				}
-
+				
 				for (const item of iter)
 					items.push(item);
 
-				const generatedFunction = (...inputs) => {
+				const func = (...inputs) => {
 					const scopeData = {
 						variables: {}
 					};
@@ -468,6 +486,10 @@ const oraGo = (settings = {}) => codeInput => {
 
 					for (let [i, value] of Object.entries(args))
 						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
+					
+
+					console.log('RUNNING!', items, scopeData)
+
 
 					return handleItems(
 						betterIterable(items),
@@ -478,7 +500,7 @@ const oraGo = (settings = {}) => codeInput => {
 				setOnPath({
 					data: data.variables,
 					path: variablePath,
-					value: generatedFunction
+					value: func
 				});
 			},
 		}
@@ -489,8 +511,9 @@ const oraGo = (settings = {}) => codeInput => {
 	function handleItems(iter, data = oraGoData) {
 		itemsLoop: for (const method of iter) {
 			if (!functions.hasOwnProperty(method)){
-				if (variables.hasOwnProperty(method))
+				if (variables?.hasOwnProperty(method))
 					parseInput(iter, { value: method }, data);
+					
 				
 				continue;
 			}
@@ -561,7 +584,6 @@ FUNCTION myAge (birthyear, currentyear)
 	PRINT currentyear - birthyear;
 
 myAge(2004, 2023);
-// LOG_VARIABLES;
 `
 
 run(test3);
