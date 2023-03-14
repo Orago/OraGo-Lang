@@ -58,7 +58,7 @@ function betterIterable(itemsInput, settings = {}) {
 		disposeIf (check, n = 1) {
 			const status = this.test(check, n);
 
-			status && items.splice(n - 1, 1);
+			status && this.next(n - 1);
 
 			return status;
 		},
@@ -66,7 +66,7 @@ function betterIterable(itemsInput, settings = {}) {
 		disposeIfNot (check, n = 1){
 			const status = this.test(check, n);
 
-			!status && items.splice(n - 1, 1);
+			!status && this.next(n - 1);
 
 			return status;
 		},
@@ -193,16 +193,18 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-const parseInputToVariable = (iter, input, data = {}, callFunction = true) => {
-	const { variables = {} } = data;
+const parseInputToVariable = (iter, input, data = {}) => {
+	const { variables = {}, functions } = data;
 	const { value } = input;
+	let itemsPassed = 1;
+	// 
 
-	const scaleTree = ({ property, source, i = 1 }) => {
-		if (iter.peek(i).value === '.' && isA_0(iter.peek(i + 1).value))
+	const scaleTree = ({ property, source }) => {
+		if (iter.peek(itemsPassed).value === '.' && isA_0(iter.peek(itemsPassed + 1).value))
 			return scaleTree({
 				source: source[property],
 				property: iter.next(1).value,
-				i: i++
+				i: itemsPassed++
 			});
 		
 		if (isA_0(property) && source?.hasOwnProperty(property)){
@@ -218,6 +220,35 @@ const parseInputToVariable = (iter, input, data = {}, callFunction = true) => {
 		source: variables
 	});
 
+	if (typeof(resultObj) === 'function'){
+		const stat = iter.disposeIf('(');
+
+		if (stat){
+			const items = [];
+			let passes = 0;
+	
+			while (!iter.disposeIf(')')){
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0))
+					continue;
+
+				items.push( iter.next().value );
+				
+				if (passes++ > 100)
+					return console.error(new Error('Cannot run more than 100 args on a function'));
+			}
+
+			return resultObj(...items);
+		}
+		else {
+			console.error('Missing opening parenthesis to function',
+				'\n',
+				iter.stack()
+			);
+
+			return;
+		}
+	}
+
 	return resultObj
 }
 
@@ -226,84 +257,52 @@ const parseInput = (iter, input, data = {}) => {
 	let { value } = input;
 	const mathSymbols = ['+', '-', '*', '/', '^'];
 
-
 	if (value == 'true')       return true;
 	else if (value == 'false') return false;
 	else if (isString(value))  return parseString(value);
 
-	let result;
+	let iterCache = iter.clone();
+
+
+	mathReset: {
+		mathBlock: {
+			const result = parseInputToVariable(iter, { value }, data);
+	
+			if (isNaN(value) && typeof result !== 'number')
+				break mathBlock;
+	
+			let total = !isNaN(value) ? Number(value) : forceType.forceNumber(result);
+	
+			if (total == null) break mathBlock;
+			
+			while (mathSymbols.includes(iter.peek().value)) {
+				const symbol = iter.next().value;
+				const nn = iter.next().value;
+	
+				if (isNaN(nn) && !isA_0(nn)) continue;
+	
+				const test12 = parseInputToVariable(iter, { value: nn }, data);
+				let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(test12);
+	
+				total = evalMath(total + " " + symbol + " " + num);
+			}
+	
+			return total;
+		}
+
+		iter = iterCache;
+	}
 
 	if (isA_0(value) && variables.hasOwnProperty(value)){
-		const resultObj = parseInputToVariable(iter, input, data);
-
-		if (typeof(resultObj) === 'function'){
-			if ( iter.next().value === '('){
-				const items = [];
-				let passes = 0;
-		
-				while (!iter.disposeIf(')')){
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-	
-					items.push( iter.next().value );
-					
-					if (passes++ > 100){
-						console.error(new Error('Cannot run more than 100 args on a function'));
-						return;
-					}
-				}
-	
-				result = resultObj(...items);
-			}
-			else {
-				console.error('Missing opening parenthesis to function',
-					'\n',
-					iter.stack()
-				);
-	
-				return;
-			}
-		}
-
-		return resultObj;
+		return parseInputToVariable(iter, { value }, data);
 	}
-
-	testMath: {
-		if (!isNaN(value)){
-			const testVar = parseInputToVariable(iter.clone(), input, data);
-			if (typeof testVar === 'number')
-				value = testVar;
-				
-			else break testMath;
-		}
-
-		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(parseInputToVariable(iter, { value }, data));
-		let index = 1;
-
-		while (
-			// Next Item is a Mathematical Symbol
-			mathSymbols.includes(iter.peek(index).value)
-		) {
-			const symbol = iter.next().value;
-			const nn = iter.next().value;
-
-			if (isNaN(nn) && !isA_0(nn)) continue;
-			
-			let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(parseInputToVariable(iter, { value: nn }, data));
-
-			total = evalMath(total + " " + symbol + " " + num);
-		}
-
-
-		return total;
-	}
-
-
+	
 
 	//isA_0(value) && parseInputToVariable(mathIter, input, data) != null
 
 	if (value === 'CURRENT_DATE') return Date.now();
 
-	return undefined;
+	return;
 }
 
 const oraGo = (settings = {}) => codeInput => {
@@ -486,10 +485,6 @@ const oraGo = (settings = {}) => codeInput => {
 
 					for (let [i, value] of Object.entries(args))
 						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
-					
-
-					console.log('RUNNING!', items, scopeData)
-
 
 					return handleItems(
 						betterIterable(items),
@@ -497,12 +492,17 @@ const oraGo = (settings = {}) => codeInput => {
 					);
 				}
 
+
 				setOnPath({
 					data: data.variables,
 					path: variablePath,
 					value: func
 				});
-			},
+
+				return {
+					break: true
+				};
+			}
 		}
 	}
 
@@ -513,7 +513,6 @@ const oraGo = (settings = {}) => codeInput => {
 			if (!functions.hasOwnProperty(method)){
 				if (variables?.hasOwnProperty(method))
 					parseInput(iter, { value: method }, data);
-					
 				
 				continue;
 			}
@@ -527,19 +526,20 @@ const oraGo = (settings = {}) => codeInput => {
 			if (response?.break == true)
 				break itemsLoop;
 
-			if (response) console.log(response)
-
-			return response;
+			if (response)
+				return response;
 		}
 	}
 
-	for (const chunk of chunks)
+	for (const chunk of chunks){
+		// console.log('CHUNK -->', chunk);
 		handleItems(
 			betterIterable(
 				chunk[Symbol.iterator](),
 				{ tracking: true }
 			)
 		);
+	}
 
 	return oraGoData;
 }
@@ -547,9 +547,7 @@ const oraGo = (settings = {}) => codeInput => {
 const run = oraGo({
 	customFunctions: {}
 });
-// let cl = console.log;
 
-// console.log = (...a) => console.error(new Error('Tracker'), ...a)
 
 const test1 = `
 COMMENT this is a test;
@@ -584,6 +582,13 @@ FUNCTION myAge (birthyear, currentyear)
 	PRINT currentyear - birthyear;
 
 myAge(2004, 2023);
-`
+
+// FUNCTION reTm (a, b)
+// 	RETURN a + b;
+
+// PRINT reTm(5, 4) + 54;
+
+// LOG_VARIABLES;
+`;
 
 run(test3);
