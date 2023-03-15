@@ -165,7 +165,7 @@ function evalMath(mathString) {
 //#endregion //* UTIL *//
 
 function oraLexer(input) {
-	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"\\/.;:\[\]\s]/g;
+	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"'\\/.;:\[\]\s]/g;
 	const output = input.match(regex);
 
 	while (output.indexOf(' ') != -1)
@@ -581,7 +581,7 @@ myAge(2004, 2023);
 FUNCTION reTm (a, b)
 	RETURN a + b;
 
-PRINT reTm(25, 30) / 2;
+PRINT "Math" & 'is' & reTm(25, 30) / 2;
 
 // LOG_VARIABLES;
 `;
