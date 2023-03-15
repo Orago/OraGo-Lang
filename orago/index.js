@@ -267,33 +267,32 @@ const parseInput = (iter, input, data = {}) => {
 	if (isA_0(value) && variables.hasOwnProperty(value))
 		result = parseInputToVariable(iter, { value }, data);
 
+	mathBlock: {
+		if (isNaN(value) && typeof result !== 'number')
+			break mathBlock;
 
-	mathReset: {
-		mathBlock: {
-			if (isNaN(value) && typeof result !== 'number')
-				break mathBlock;
-	
-			let total = !isNaN(value) ? Number(value) : forceType.forceNumber(result);
-	
-			if (total == null) break mathBlock;
-			
-			while (mathSymbols.includes(iter.peek().value)) {
-				const symbol = iter.next().value;
-				const nn = iter.next().value;
-	
-				if (isNaN(nn) && !isA_0(nn)) continue;
-	
-				const test12 = parseInputToVariable(iter, { value: nn }, data);
-				let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(test12);
-	
-				total = evalMath(total + " " + symbol + " " + num);
-			}
-	
-			return total;
+		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(result);
+
+		if (total == null) break mathBlock;
+
+		let mathString = total + '';
+		
+		while (mathSymbols.includes(iter.peek().value)) {
+			const symbol = iter.next().value;
+			const nn = iter.next().value;
+
+			if (isNaN(nn) && !isA_0(nn)) continue;
+
+			const test12 = parseInputToVariable(iter, { value: nn }, data);
+			let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(test12);
+
+			mathString += ` ${symbol} ${num}`;
 		}
 
-		iter = iterCache;
+		return evalMath(mathString);
 	}
+
+	iter = iterCache;
 
 	//isA_0(value) && parseInputToVariable(mathIter, input, data) != null
 
@@ -545,7 +544,6 @@ const run = oraGo({
 	customFunctions: {}
 });
 
-
 const test1 = `
 COMMENT this is a test;
 SET cat TO "Meow lol";
@@ -583,7 +581,7 @@ myAge(2004, 2023);
 FUNCTION reTm (a, b)
 	RETURN a + b;
 
-PRINT reTm(5, 4) + 54 + reTm(6, 1);
+PRINT reTm(25, 30) / 2;
 
 // LOG_VARIABLES;
 `;
