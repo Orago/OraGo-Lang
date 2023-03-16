@@ -20,6 +20,7 @@ function betterIterable(itemsInput, settings = {}) {
 
 			if (tracking){
 				stack.push(items[0]);
+				
 				if (stack.length > maxStack) stack.shift();
 			}
 
@@ -304,7 +305,7 @@ const parseInput = (iter, input, data = {}) => {
 const oraGo = (settings = {}) => codeInput => {
 	if (typeof codeInput != 'string') return;
 
-	const { customFunctions, customClasses } = forceType.forceObject(settings);
+	const { customFunctions, customClasses, overrideFunctions } = forceType.forceObject(settings);
 
 	const lexed = oraLexer(codeInput);
 	const chunks = chunkLexed(lexed);
@@ -329,8 +330,8 @@ const oraGo = (settings = {}) => codeInput => {
 				cat: 'meow',
 				person: {
 					age: 18,
-					cool: true
-					// welcome: (name, num = 1) => console.log('hello, my name is', name, 'and I like the number', num)
+					cool: true,
+					welcome: (name, num = 1) => console.log('hello, my name is', name, 'and I like the number', num)
 				}
 			}
 		},
@@ -340,11 +341,10 @@ const oraGo = (settings = {}) => codeInput => {
 		functions: {
 			...forceType.forceObject(customFunctions),
 			['/'] (options){
-				return this.COMMENT.bind(this)(options);
+				return this.COMMENT(options);
 			},
-			COMMENT ({ iter }){
-				for (let i of iter)
-					continue;
+			COMMENT (){
+				return { break: true };
 			},
 			SET ({ iter, data }) {
 				const variableName = iter.next().value;
@@ -357,29 +357,25 @@ const oraGo = (settings = {}) => codeInput => {
 				
 				const nextSeq = iter.next();
 				
-				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO'){
+				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO')
 					setOnPath({
 						data: data.variables,
 						path,
 						value: parseInput(iter, iter.next(), data)
 					});
-				}
 
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
 			},
 			PRINT ({ iter, data }) {
-				const input = iter.next();
 				const results = [];
+				const input = iter.next();
 
-				if (input) {
-					results.push(parseInput(iter, input, data));
+				if (!input.value) return;
 
-					while (iter.peek().value == '&' && iter.peek(2).done == false) {
-						iter.next();
+				results.push(parseInput(iter, input, data));
 
-						results.push(parseInput(iter, iter.next(), data));
-					}
-				}
+				while (iter.peek().value == '&' && !iter.peek(2).done)
+					results.push(parseInput(iter, iter.next(), data));
 
 				results.length > 0 && console.log(...results);
 			},
@@ -395,7 +391,9 @@ const oraGo = (settings = {}) => codeInput => {
 
 					for (let i = 0; i < timesToRun; i++)
 						handleItems(
-							items[Symbol.iterator]()
+							betterIterable(
+								items
+							)
 						);
 				}
 				else throw 'Cannot Find Loop Status';
@@ -406,14 +404,11 @@ const oraGo = (settings = {}) => codeInput => {
 				const items = [];
 				let calls = 0;
 
-				for (let item of iter)
-					items.push(item);
+				for (const item of iter) items.push(item);
 
 				while (val = parseInput(iter, input, data) == true) {
-					if (calls++ >= maxCalls) {
-						console.log('Call Stack Exceeded Maximum Amount');
-						break;
-					}
+					if (calls++ >= maxCalls)
+						return console.log('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
 						betterIterable(items)
@@ -425,8 +420,7 @@ const oraGo = (settings = {}) => codeInput => {
 				const input = iter.next();
 				const items = [];
 
-				for (const item of iter)
-					items.push(item);
+				for (const item of iter) items.push(item);
 
 				if (parseInput(iter, input, data) == true)
 					handleItems(
@@ -444,9 +438,8 @@ const oraGo = (settings = {}) => codeInput => {
 			},
 
 			FUNCTION ({ iter, data, handleItems }) {
-				const args = [];
 				const variablePath = [iter.next().value];
-				const items = [];
+				const args = [], items = [];
 
 				while (iter.disposeIf('.') && iter.peek().value)
 					variablePath.push(
@@ -461,33 +454,27 @@ const oraGo = (settings = {}) => codeInput => {
 	
 						args.push( iter.next().value );
 						
-						if (passes++ > 100){
-							console.error(new Error('Cannot add more than 100 args on a function'));
-							return;
-						}
+						if (passes++ > 100)
+							return console.error(new Error('Cannot add more than 100 args on a function'));
 					}
 				}
 				
-				for (const item of iter)
-					items.push(item);
+				for (const item of iter) items.push(item);
 
 				const func = (...inputs) => {
-					const scopeData = {
-						variables: {}
-					};
+					const variables = {};
 
-					for (let [key, value] of Object.entries(data.variables))
-						scopeData.variables[key] = value;
+					for (const [key, value] of Object.entries(data.variables))
+						variables[key] = value;
 
-					for (let [i, value] of Object.entries(args))
-						scopeData.variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
+					for (const [i, value] of Object.entries(args))
+						variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
 
 					return handleItems(
 						betterIterable(items),
-						scopeData
+						{ variables }
 					);
 				}
-
 
 				setOnPath({
 					data: data.variables,
@@ -495,10 +482,10 @@ const oraGo = (settings = {}) => codeInput => {
 					value: func
 				});
 
-				return {
-					break: true
-				};
-			}
+				return { break: true };
+			},
+
+			...forceType.forceObject(overrideFunctions),
 		}
 	}
 
@@ -519,19 +506,15 @@ const oraGo = (settings = {}) => codeInput => {
 				handleItems
 			});
 
-			if (response?.break == true)
-				break itemsLoop;
-
-			if (response)
-				return response;
+			if (response?.break == true) break itemsLoop;
+			if (response) return response;
 		}
 	}
 
 	for (const chunk of chunks){
-		// console.log('CHUNK -->', chunk);
 		handleItems(
 			betterIterable(
-				chunk[Symbol.iterator](),
+				chunk,
 				{ tracking: true }
 			)
 		);
@@ -572,7 +555,6 @@ PRINT "Result equals" & theMath;
 `;
 
 const test3 = `
-
 FUNCTION myAge (birthyear, currentyear)
 	PRINT currentyear - birthyear;
 
@@ -586,4 +568,14 @@ PRINT "Math" & 'is' & reTm(25, 30) / 2;
 // LOG_VARIABLES;
 `;
 
-run(test3);
+const test4 = `
+SET start TO 5;
+
+LOOP 2
+	SET start TO start * 5
+;
+
+PRINT start;
+`;
+
+run(test4);
