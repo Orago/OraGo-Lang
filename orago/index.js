@@ -367,12 +367,10 @@ const oraGo = (settings = {}) => codeInput => {
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
 			},
 			PRINT ({ iter, data }) {
-				const results = [];
 				const input = iter.next();
-
 				if (!input.value) return;
 
-				results.push(parseInput(iter, input, data));
+				const results = [parseInput(iter, input, data)];
 
 				while (iter.peek().value == '&' && !iter.peek(2).done)
 					results.push(parseInput(iter, iter.next(), data));
@@ -382,12 +380,10 @@ const oraGo = (settings = {}) => codeInput => {
 
 			LOOP ({ iter, handleItems }) {
 				const input = iter.next().value;
-				const items = [];
+				const items = [...iter];
 
 				if (!isNaN(input)) {
 					const timesToRun = forceType.forceNumber(input);
-					for (const item of [...iter])
-						items.push(item);
 
 					for (let i = 0; i < timesToRun; i++)
 						handleItems(
@@ -401,14 +397,11 @@ const oraGo = (settings = {}) => codeInput => {
 
 			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
 				const input = iter.next();
-				const items = [];
+				const items = [...iter];
 				let calls = 0;
 
-				for (const item of iter) items.push(item);
-
 				while (val = parseInput(iter, input, data) == true) {
-					if (calls++ >= maxCalls)
-						return console.log('Call Stack Exceeded Maximum Amount');
+					if (calls++ >= maxCalls) return console.log('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
 						betterIterable(items)
