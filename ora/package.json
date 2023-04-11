@@ -1,0 +1,22 @@
+{
+  "name": "ora",
+  "version": "1.41.0",
+  "description": "A basic programming language",
+  "main": "oraLang.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Orago/OraGo-Lang.git"
+  },
+  "keywords": [
+    "language"
+  ],
+  "author": "Orago",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Orago/OraGo-Lang/issues"
+  },
+  "homepage": "https://github.com/Orago/OraGo-Lang#readme"
+}
