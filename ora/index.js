@@ -244,7 +244,9 @@ const parseInputToVariable = (iter, input, data = {}) => {
 	});
 
 	if (iter.disposeIf('(')){
-		if (typeof(resultObj) === 'function'){
+		const isClass = resultObj?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+
+		if (typeof(resultObj) === 'function' || isClass){
 			const items = [];
 			let passes = 0;
 	
@@ -261,7 +263,8 @@ const parseInputToVariable = (iter, input, data = {}) => {
 					);
 			}
 
-			return resultObj(...items);
+			if (isClass) return new resultObj(...items);
+			else         return resultObj(...items);
 		}
 		else {
 			console.error('Cannot call function on non-function', value,
