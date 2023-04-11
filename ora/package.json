@@ -1,6 +1,6 @@
 {
-  "name": "ora",
-  "version": "1.43.0",
+  "name": "ora-lang",
+  "version": "1.43.1",
   "description": "A basic programming language",
   "main": "index.js",
   "scripts": {
