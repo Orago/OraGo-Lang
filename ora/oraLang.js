@@ -345,6 +345,16 @@ class Ora {
 	#classes;
 	#functions;
 
+	utils = {
+		setOnPath,
+		parseInput,
+		chunkLexed,
+		isA_0,
+		isNum,
+		forceType,
+		evalMath
+	}
+
 	constructor (settings = {}) {
 		const { customFunctions, customClasses, overrideFunctions } = forceType.forceObject(settings);
 
