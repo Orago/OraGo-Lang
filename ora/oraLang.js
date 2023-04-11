@@ -449,11 +449,11 @@ class Ora {
 			},
 
 			LOG_VARIABLES ({ iter, data }) {
-				console.log('\n', `ORA LANG VARIABLES:`, data.variables, '\n');
+				console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n');
 			},
 
 			LOG_SCOPE ({ iter, data }) {
-				console.log('\n', `ORA LANG SCOPE:`, data, '\n');
+				console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n');
 			},
 
 			FUNCTION ({ iter, data, handleItems }) {
