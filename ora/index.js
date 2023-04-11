@@ -284,7 +284,8 @@ const parseInput = (iter, input, data = {}) => {
 	if (value == 'true')       return true;
 	else if (value == 'false') return false;
 	else if (isString(value))  return parseString(value);
-	else if (value == 'OBJECT')   return {};
+	else if (value == 'OBJECT') return {};
+	else if (value == 'ARRAY') return [];
 
 	let iterCache = iter.clone();
 	let result;
@@ -340,6 +341,27 @@ const setOnPath = ({ value, path, data: obj }) => {
 	else delete obj[path[i]];
 }
 
+const expectSetVar = ({ iter, data }) => {
+	const varData = forceType.forceArray(
+		parseInput(iter.clone(), iter.peek(1), data)
+	);
+
+	const name = iter.next().value;
+	const path = [name];
+
+	while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+		path.push( iter.next().value );
+
+	if (data.functions.hasOwnProperty(name))
+		throw `Cannot set variable to function name: ${name}`;
+
+	return {
+		name,
+		path,
+		data: varData
+	}
+}
+
 class Ora {
 	#variables;
 	#classes;
@@ -352,7 +374,8 @@ class Ora {
 		isA_0,
 		isNum,
 		forceType,
-		evalMath
+		evalMath,
+		expectSetVar
 	}
 
 	constructor (settings = {}) {
@@ -650,6 +673,44 @@ class Ora {
 						else throw 'IMPORT URL IS NOT A STRING';
 					}
 				}
+			},
+
+			PUSH ({ iter, data }) {
+				const items = [
+					parseInput(iter, iter.next(), data)
+				];
+
+				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
+					items.push(
+						parseInput(iter, iter.next(), data)
+					);
+
+				const nextSeq = iter.next();
+
+				if (!nextSeq.done && nextSeq.value === 'TO' && isA_0(iter.peek(1).value)){
+					const variable = expectSetVar({ iter, data });
+					let { variables } = data;
+
+					if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
+					setOnPath({
+						data: variables,
+						path: variable.path,
+						value: [...variable.data, ...items]
+					});
+				}
+			},
+
+			SHIFT ({ iter, data }) {
+				const variable = expectSetVar({ iter, data });
+
+				variable.data.shift();
+			},
+
+			POP ({ iter, data }) {
+				const variable = expectSetVar({ iter, data });
+
+				variable.data.pop();
 			},
 
 			...forceType.forceObject(overrideFunctions),

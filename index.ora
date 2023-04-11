@@ -15,4 +15,6 @@ IMPORT cat FROM "./cat.ora";
 // PRINT cat(3) & 'cat value';
 SET kitty TO cat(3);
 
-LOG_VARIABLES;
+SET catList TO ARRAY;
+
+PUSH 'calico', 'siamese', 'ginger' TO catList;
