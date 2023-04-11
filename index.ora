@@ -1,12 +1,22 @@
+FUNCTION createPerson (name, age) {
+	SET person         TO OBJECT;
+	SET person.name    TO "thobias";
+	SET person.age     TO 20;
+
+	RETURN person;
+}
+
+PRINT createPerson("tom", 2);
+
+//LOG_VARIABLES;
+
+
 FUNCTION createPerson (name, age)
 	SET person         TO OBJECT
 	SET person.name    TO "thobias"
 	SET person.age     TO 20
-	LOG_VARIABLES
 
 	RETURN person
 ;
 
 PRINT createPerson("tom", 2);
-
-LOG_VARIABLES;

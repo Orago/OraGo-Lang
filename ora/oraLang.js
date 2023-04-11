@@ -170,7 +170,7 @@ function evalMath(mathString) {
 //#endregion //* UTIL *//
 
 function oraLexer(input) {
-	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"'\\/.;:\[\]\s]/g);
+	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*{}()-_+"'\\/.;:\[\]\s]/g);
 
 	while (output.indexOf(' ') != -1) output.splice(output.indexOf(' '), 1);
 
@@ -181,13 +181,36 @@ function chunkLexed(lexed) {
 	const chunks = [];
 	let chunk = [];
 
-	for (const item of lexed)
-		if (item === ';') {
-			chunks.push(chunk);
-			chunk = [];
-		}
+	let scopeDepth = 0;
+	let openBrackets = 0;
+	let closedBrackets = 0;
 
-		else if (!['\n', '\t'].includes(item)) chunk.push(item);
+	for (const item of lexed)
+		if (item === '{'){
+			scopeDepth++;
+			openBrackets++;
+
+			chunk.push(item);
+		}
+		else if (item === '}'){
+			closedBrackets++;
+			scopeDepth--;
+
+			chunk.push(item);
+
+			if (scopeDepth == 0){
+				chunks.push(chunk);
+				chunk = [];
+			}
+		}
+		else if (item === ';') {
+			if (scopeDepth == 0){
+				chunks.push(chunk);
+				chunk = [];
+			}
+			else chunk.push(item)
+		}
+		else if (item != '\n' && item != '\t') chunk.push(item);
 
 	return chunks;
 }
@@ -383,10 +406,11 @@ class Ora {
 
 				const results = [parseInput(iter, input, data)];
 
-				while (iter.peek().value == '&' && !iter.peek(2).done)
+				while (iter.peek().value == '&' && !iter.peek(2).done){
 					results.push(
-						parseInput(iter, iter.next(), data)
+						parseInput(iter, iter.next(1), data)
 					);
+				}
 
 				results.length > 0 && console.log(...results);
 			},
@@ -479,8 +503,24 @@ class Ora {
 							return console.error(new Error('Cannot add more than 100 args on a function'));
 					}
 				}
+
+				if (!iter.disposeIf('{')){
+
+					const err = 'Missing \'{\' after parameters';
+
+					throw new Error(err);
+				}
 				
 				for (const item of iter) items.push(item);
+
+				if (items[items.length - 1] !== '}'){
+					const err = 'Missing Closing \'}\' at end of function';
+
+					throw new Error(err);
+				}
+				else items.pop();
+
+
 
 				const func = (...inputs) => {
 					const variables = {};
