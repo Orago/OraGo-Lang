@@ -98,6 +98,7 @@ const isA0 = (x) => x == undefined || /[a-z0-9]/i.test(x);
 const isA_0 = (x) => x == undefined || /[a-z0-9_]/i.test(x);
 
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
+
 function evalMath(mathString) {
 	try {
 		// using a stack and a postfix notation algorithm to evaluate the math string
@@ -195,10 +196,9 @@ const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
 const parseInputToVariable = (iter, input, data = {}) => {
-	const { variables = {}, functions } = data;
+	const { variables = {} } = data;
 	const { value } = input;
 	let itemsPassed = 1;
-	// 
 
 	const scaleTree = ({ property, source }) => {
 		if (iter.peek(itemsPassed).value === '.' && isA_0(iter.peek(itemsPassed + 1).value))
