@@ -14,9 +14,7 @@ function betterIterable(itemsInput, settings = {}) {
 		},
 
 		next(n = 0) {
-			if (typeof n === 'number')
-				for (let i = 0; i < n; i++)
-					items.shift();
+			if (typeof n === 'number') for (let i = 0; i < n; i++) items.shift();
 
 			if (tracking){
 				stack.push(items[0]);
@@ -94,13 +92,24 @@ const forceType = {
 	forceArray:   $ => Array.isArray($) ? $ : []
 }
 
-const isA0 = (x) => x == undefined || /[a-z0-9]/i.test(x);
+const isNum = (num) => !isNaN(num);
+
+const isA0  = (x) => x == undefined || /[a-z0-9]/i.test(x);
 const isA_0 = (x) => x == undefined || /[a-z0-9_]/i.test(x);
 
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 
 function evalMath(mathString) {
 	try {
+		let applyMath = (symbol, a, b) => {
+			switch (symbol) {
+				case '+': return b + a;
+				case '-': return b - a;
+				case '*': return b * a;
+				case '/': return b / a;
+				case '^': return Math.pow(b, a);
+			}
+		}
 		// using a stack and a postfix notation algorithm to evaluate the math string
 		const operators = ['+', '-', '*', '/', '^'];
 		const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
@@ -109,6 +118,7 @@ function evalMath(mathString) {
 
 		for (let i = 0; i < mathString.length; i++) {
 			let char = mathString[i];
+			
 			if (!isNaN(parseFloat(char)) || char === '.') {
 				let number = char;
 
@@ -123,8 +133,8 @@ function evalMath(mathString) {
 
 				stack.push(char);
 			}
-			else if (char === '(')
-				stack.push(char);
+
+			else if (char === '(') stack.push(char);
 
 			else if (char === ')') {
 				while (stack[stack.length - 1] !== '(')
@@ -137,25 +147,18 @@ function evalMath(mathString) {
 		while (stack.length)
 			postfix.push(stack.pop());
 
-		for (let i = 0; i < postfix.length; i++) {
-			if (typeof postfix[i] === 'number')
-				stack.push(postfix[i]);
-
-			else {
-				const [a, b] = [stack.pop(), stack.pop()]
-
-				let result;
-				switch (postfix[i]) {
-					case '+': result = b + a; break;
-					case '-': result = b - a; break;
-					case '*': result = b * a; break;
-					case '/': result = b / a; break;
-					case '^': result = Math.pow(b, a); break;
-				}
-
-				stack.push(result);
-			}
+		for (const symbol of postfix){
+			stack.push(
+				typeof symbol === 'number' ?
+				symbol :
+				applyMath(
+					symbol,
+					stack.pop(),
+					stack.pop()
+				)
+			);
 		}
+
 		return stack[0];
 	}
 	catch (error) {
@@ -167,11 +170,9 @@ function evalMath(mathString) {
 //#endregion //* UTIL *//
 
 function oraLexer(input) {
-	const regex = /(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"'\\/.;:\[\]\s]/g;
-	const output = input.match(regex);
+	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*()-_+"'\\/.;:\[\]\s]/g);
 
-	while (output.indexOf(' ') != -1)
-		output.splice(output.indexOf(' '), 1);
+	while (output.indexOf(' ') != -1) output.splice(output.indexOf(' '), 1);
 
 	return output;
 }
@@ -185,8 +186,8 @@ function chunkLexed(lexed) {
 			chunks.push(chunk);
 			chunk = [];
 		}
-		else if (!['\n', '\t'].includes(item))
-			chunk.push(item);
+
+		else if (!['\n', '\t'].includes(item)) chunk.push(item);
 
 	return chunks;
 }
@@ -200,20 +201,18 @@ const parseInputToVariable = (iter, input, data = {}) => {
 	const { value } = input;
 	let itemsPassed = 1;
 
-	const scaleTree = ({ property, source }) => {
+	const scaleTree = ({ source, property }) => {
 		if (iter.peek(itemsPassed).value === '.' && isA_0(iter.peek(itemsPassed + 1).value))
 			return scaleTree({
 				source: source[property],
 				property: iter.next(1).value,
 				i: itemsPassed++
 			});
-		
-		if (isA_0(property) && source?.hasOwnProperty(property)){
-			if (source[property]?.hasOwnProperty('value'))
-				return source[property].value;
 
-			return source[property];
-		}
+		const scopeV = source?.[property];
+		
+		if (isA_0(property) && scopeV != undefined)
+			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 	}
 
 	const resultObj = scaleTree({
@@ -229,13 +228,17 @@ const parseInputToVariable = (iter, input, data = {}) => {
 			let passes = 0;
 	
 			while (!iter.disposeIf(')')){
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0))
-					continue;
+				
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 
-				items.push( iter.next().value );
+				items.push(
+					iter.next().value
+				);
 				
 				if (passes++ > 100)
-					return console.error(new Error('Cannot run more than 100 args on a function'));
+					return console.error(
+						new Error('Cannot run more than 100 args on a function')
+					);
 			}
 
 			return resultObj(...items);
@@ -272,20 +275,19 @@ const parseInput = (iter, input, data = {}) => {
 		if (isNaN(value) && typeof result !== 'number')
 			break mathBlock;
 
-		let total = !isNaN(value) ? Number(value) : forceType.forceNumber(result);
-
+		const total = forceType.forceNumber(isNum(value) ? value : result);
 		if (total == null) break mathBlock;
 
 		let mathString = total + '';
 		
 		while (mathSymbols.includes(iter.peek().value)) {
 			const symbol = iter.next().value;
-			const nn = iter.next().value;
+			const nextItem = iter.next().value;
 
-			if (isNaN(nn) && !isA_0(nn)) continue;
+			if (isNaN(nextItem) && !isA_0(nextItem)) continue;
 
-			const test12 = parseInputToVariable(iter, { value: nn }, data);
-			let num = !isNaN(nn) ? Number(nn) : forceType.forceNumber(test12);
+			const variable = parseInputToVariable(iter, { value: nextItem }, data);
+			const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
 
 			mathString += ` ${symbol} ${num}`;
 		}
@@ -294,8 +296,6 @@ const parseInput = (iter, input, data = {}) => {
 	}
 
 	iter = iterCache;
-
-	//isA_0(value) && parseInputToVariable(mathIter, input, data) != null
 
 	if (value === 'CURRENT_DATE') return Date.now();
 
@@ -311,17 +311,17 @@ const oraGo = (settings = {}) => codeInput => {
 	const chunks = chunkLexed(lexed);
 
 	const setOnPath = ({ value, path, data: obj }) => {
-		for (let subVar of path.slice(0, path.length - 1)){
-			if (typeof obj[subVar] !== 'object') obj[subVar] = { value: obj[subVar] };
+		for (const sub of path.slice(0, path.length - 1)){
+			if (typeof obj[sub] !== 'object') obj[sub] = { value: obj[sub] };
 
-			if (obj[subVar].value == null) delete obj[subVar].value;
+			if (obj[sub].value == null) delete obj[sub].value;
 
-			obj = obj[subVar];
+			obj = obj[sub];
 		}
 
 		const i = path.length > 1 ? path.length - 1 : 0;
 		
-		obj[path[i]] = value
+		obj[path[i]] = value;
 	}
 
 	const oraGoData = {
@@ -373,7 +373,9 @@ const oraGo = (settings = {}) => codeInput => {
 				const results = [parseInput(iter, input, data)];
 
 				while (iter.peek().value == '&' && !iter.peek(2).done)
-					results.push(parseInput(iter, iter.next(), data));
+					results.push(
+						parseInput(iter, iter.next(), data)
+					);
 
 				results.length > 0 && console.log(...results);
 			},
@@ -445,7 +447,9 @@ const oraGo = (settings = {}) => codeInput => {
 					while (!iter.disposeIf(')')){
 						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 	
-						args.push( iter.next().value );
+						args.push(
+							iter.next().value
+						);
 						
 						if (passes++ > 100)
 							return console.error(new Error('Cannot add more than 100 args on a function'));
@@ -461,7 +465,11 @@ const oraGo = (settings = {}) => codeInput => {
 						variables[key] = value;
 
 					for (const [i, value] of Object.entries(args))
-						variables[value] = parseInput(betterIterable([]), { value: inputs[i] }, data);
+						variables[value] = parseInput(
+							betterIterable([]),
+							{ value: inputs[i] },
+							data
+						);
 
 					return handleItems(
 						betterIterable(items),
@@ -487,8 +495,9 @@ const oraGo = (settings = {}) => codeInput => {
 	function handleItems(iter, data = oraGoData) {
 		itemsLoop: for (const method of iter) {
 			if (!functions.hasOwnProperty(method)){
-				if (variables?.hasOwnProperty(method))
+				if (variables?.hasOwnProperty(method)){
 					parseInput(iter, { value: method }, data);
+				}
 				
 				continue;
 			}
@@ -500,18 +509,18 @@ const oraGo = (settings = {}) => codeInput => {
 			});
 
 			if (response?.break == true) break itemsLoop;
+
 			if (response) return response;
 		}
 	}
 
-	for (const chunk of chunks){
+	for (const chunk of chunks)
 		handleItems(
 			betterIterable(
 				chunk,
 				{ tracking: true }
 			)
 		);
-	}
 
 	return oraGoData;
 }
@@ -566,6 +575,7 @@ SET start TO 5;
 
 LOOP 2
 	SET start TO start * 5
+	PRINT 'meow hehe'
 ;
 
 PRINT start;
