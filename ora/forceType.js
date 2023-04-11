@@ -9,4 +9,5 @@ const forceType = {
   forceObject:  $ => typeEnforcer(Object, $),
   forceArray: $ => Array.isArray($) ? $ : []
 }
+
 module.exports = forceType;

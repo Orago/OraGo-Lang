@@ -1,0 +1,11 @@
+FUNCTION myAge (birthyear, currentyear)
+	PRINT currentyear - birthyear;
+
+myAge(2004, 2023);
+
+FUNCTION reTm (a, b)
+	RETURN a + b;
+
+PRINT "Math" & 'is' & reTm(25, 30) / 2;
+
+// LOG_VARIABLES;

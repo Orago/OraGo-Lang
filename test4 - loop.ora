@@ -6,3 +6,5 @@ LOOP 2
 ;
 
 PRINT start;
+
+ANSWER "hehe meow";

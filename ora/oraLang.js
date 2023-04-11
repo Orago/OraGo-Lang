@@ -302,53 +302,59 @@ const parseInput = (iter, input, data = {}) => {
 	return result;
 }
 
-const oraGo = (settings = {}) => codeInput => {
-	if (typeof codeInput != 'string') return;
+const setOnPath = ({ value, path, data: obj }) => {
+	for (const sub of path.slice(0, path.length - 1)){
+		if (typeof obj[sub] !== 'object') obj[sub] = { value: obj[sub] };
 
-	const { customFunctions, customClasses, overrideFunctions } = forceType.forceObject(settings);
+		if (obj[sub].value == null) delete obj[sub].value;
 
-	const lexed = oraLexer(codeInput);
-	const chunks = chunkLexed(lexed);
-
-	const setOnPath = ({ value, path, data: obj }) => {
-		for (const sub of path.slice(0, path.length - 1)){
-			if (typeof obj[sub] !== 'object') obj[sub] = { value: obj[sub] };
-
-			if (obj[sub].value == null) delete obj[sub].value;
-
-			obj = obj[sub];
-		}
-
-		const i = path.length > 1 ? path.length - 1 : 0;
-		
-		obj[path[i]] = value;
+		obj = obj[sub];
 	}
 
-	const oraGoData = {
-		variables: {
-			testObj: {
-				cat: 'meow',
-				person: {
-					age: 18,
-					cool: true,
-					welcome: (name, num = 1) => console.log('hello, my name is', name, 'and I like the number', num)
-				}
-			}
-		},
-		classes: {
-			...forceType.forceObject(customClasses)
-		},
-		functions: {
-			...forceType.forceObject(customFunctions),
-			['/'] (options){
-				return this.COMMENT(options);
+	const i = path.length > 1 ? path.length - 1 : 0;
+	
+	obj[path[i]] = value;
+}
+
+class Ora {
+	#variables;
+	#classes;
+	#functions;
+
+	constructor (settings = {}) {
+		const { customFunctions, customClasses, overrideFunctions } = forceType.forceObject(settings);
+
+		this.init({
+			functions: customFunctions,
+			classes: customClasses,
+			overrideFunctions
+		});
+	}
+
+	init ({ functions, classes, overrideFunctions }){
+		this.#variables = {};
+
+		this.#classes = {
+			...forceType.forceObject(classes)
+		};
+
+		this.#functions = {
+			...forceType.forceObject(functions),
+
+			['/'] (){
+				return this.COMMENT(...arguments);
 			},
+
 			COMMENT (){
 				return { break: true };
 			},
-			SET ({ iter, data }) {
+
+			SET: ({ iter, data }) => {
 				const variableName = iter.next().value;
 				const path = [variableName];
+				
+				if (this.#functions.hasOwnProperty(variableName))
+					throw `Cannot set variable to function name: ${variableName}`;
 				
 				while (iter.disposeIf('.') && !isA_0(iter.peek(1).value))
 					path.push(
@@ -366,6 +372,7 @@ const oraGo = (settings = {}) => codeInput => {
 
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
 			},
+
 			PRINT ({ iter, data }) {
 				const input = iter.next();
 				if (!input.value) return;
@@ -427,6 +434,16 @@ const oraGo = (settings = {}) => codeInput => {
 				return parseInput(iter, iter.next(), data);
 			},
 
+			CLASS ({ iter, data, handleItems }) {
+				const className = iter.next().value;
+				const items = [];
+
+				for (const item of iter) items.push(item);
+
+				if (isA_0(className))
+					data.classes[className] = { items, data };
+			},
+
 			LOG_VARIABLES ({ data }) {
 				console.log(`ORAGO LANG DATA:`);
 				console.log(data.variables);
@@ -486,18 +503,30 @@ const oraGo = (settings = {}) => codeInput => {
 				return { break: true };
 			},
 
+			EXIT ({ iter, data }) {
+				process.exit();
+			},
+
+			ANSWER ({ iter, data }) {
+				return {
+					exit: true,
+					value: parseInput(iter, iter.next(), data)
+				}
+			},
+
 			...forceType.forceObject(overrideFunctions),
 		}
+
+		delete this.init;
 	}
 
-	const { functions, variables } = oraGoData;
+	handleItems (iter, data = { variables: this.#variables, functions: this.#functions }){
+		const { functions, variables } = data;
 
-	function handleItems(iter, data = oraGoData) {
-		itemsLoop: for (const method of iter) {
+		for (const method of iter) {
 			if (!functions.hasOwnProperty(method)){
-				if (variables?.hasOwnProperty(method)){
+				if (variables?.hasOwnProperty(method))
 					parseInput(iter, { value: method }, data);
-				}
 				
 				continue;
 			}
@@ -505,80 +534,31 @@ const oraGo = (settings = {}) => codeInput => {
 			const response = functions[method]({
 				iter,
 				data,
-				handleItems
+				handleItems: this.handleItems.bind(this)
 			});
 
-			if (response?.break == true) break itemsLoop;
-
+			if (response?.break == true) break;
 			if (response) return response;
 		}
 	}
 
-	for (const chunk of chunks)
-		handleItems(
-			betterIterable(
-				chunk,
-				{ tracking: true }
-			)
-		);
+	run (codeInput){
+		const lexed = oraLexer(codeInput);
+		const chunks = chunkLexed(lexed);
 
-	return oraGoData;
+		for (const chunk of chunks){
+			const response = this.handleItems(
+				betterIterable(
+					chunk,
+					{ tracking: true }
+				)
+			);
+
+			if (response?.exit == true) return response?.value;
+		}
+
+		return this;
+	}
 }
 
-const run = oraGo({
-	customFunctions: {}
-});
-
-const test1 = `
-COMMENT this is a test;
-SET cat TO "Meow lol";
-SET testObj.person.orago TO 'yeahhh';
-SET testObj.person.orago.isCool TO true;
-
-PRINT "HELLO WORLD" & cat;
-
-PRINT CURRENT_DATE;
-
-SET canLoop TO true;
-
-IF canLoop
-	PRINT "hehe loop" & "meow"
-
-	SET canLoop TO false
-;
-
-PRINT testObj.person.orago;
-LOG_VARIABLES;
-`;
-
-const test2 = `
-SET theMath to 5 + 2 - 3;
-PRINT "Result equals" & theMath;
-`;
-
-const test3 = `
-FUNCTION myAge (birthyear, currentyear)
-	PRINT currentyear - birthyear;
-
-myAge(2004, 2023);
-
-FUNCTION reTm (a, b)
-	RETURN a + b;
-
-PRINT "Math" & 'is' & reTm(25, 30) / 2;
-
-// LOG_VARIABLES;
-`;
-
-const test4 = `
-SET start TO 5;
-
-LOOP 2
-	SET start TO start * 5
-	PRINT 'meow hehe'
-;
-
-PRINT start;
-`;
-
-run(test4);
+module.exports = Ora;

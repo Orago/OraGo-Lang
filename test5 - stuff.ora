@@ -1,0 +1,12 @@
+SET start TO 5;
+
+LOOP 2
+	SET start TO start * 5
+	PRINT 'meow hehe'
+;
+
+PRINT start;
+
+SET SET TO "huh";
+
+ANSWER "hehe meow";

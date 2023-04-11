@@ -1,0 +1,3 @@
+PRINT 'Welcome to Ora!!';
+
+RETURN 52;

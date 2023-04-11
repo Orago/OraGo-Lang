@@ -1,0 +1,2 @@
+SET theMath to 5 + 2 - 3;
+PRINT "Result equals" & theMath;
