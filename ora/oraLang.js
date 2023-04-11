@@ -513,11 +513,11 @@ class Ora {
 				return { break: true };
 			},
 
-			EXIT ({ iter, data }) {
+			EXIT () {
 				process.exit();
 			},
 
-			ANSWER ({ iter, data }) {
+			EXPORT ({ iter, data }) {
 				return {
 					exit: true,
 					value: parseInput(iter, iter.next(), data)
