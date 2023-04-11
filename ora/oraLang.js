@@ -251,7 +251,6 @@ const parseInputToVariable = (iter, input, data = {}) => {
 			let passes = 0;
 	
 			while (!iter.disposeIf(')')){
-				
 				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 
 				items.push(
@@ -337,7 +336,10 @@ const setOnPath = ({ value, path, data: obj }) => {
 
 	const i = path.length > 1 ? path.length - 1 : 0;
 	
-	obj[path[i]] = value;
+	if (value != undefined){
+		obj[path[i]] = value;
+	}
+	else delete obj[path[i]];
 }
 
 class Ora {
@@ -376,9 +378,9 @@ class Ora {
 			SET: ({ iter, data }) => {
 				const variableName = iter.next().value;
 				const path = [variableName];
-				let variables = data.variables;
+				let { variables } = data;
 				
-				if (this.#functions.hasOwnProperty(variableName))
+				if (data.functions.hasOwnProperty(variableName))
 					throw `Cannot set variable to function name: ${variableName}`;
 
 				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
@@ -392,9 +394,35 @@ class Ora {
 
 				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO')
 					setOnPath({
-						data: data.variables,
+						data: variables,
 						path,
 						value: parseInput(iter, iter.next(), data)
+					});
+
+				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
+			},
+
+			DELETE ({ iter, data }) {
+				const variableName = iter.next().value;
+				const path = [variableName];
+				let { variables } = data;
+				
+				if (data.functions.hasOwnProperty(variableName))
+					throw `Cannot set variable to function name: ${variableName}`;
+
+				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
+				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+					path.push(
+						iter.next().value
+					);
+				
+				const nextSeq = iter.next();
+
+				if (isA_0(variableName))
+					setOnPath({
+						data: variables,
+						path
 					});
 
 				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
@@ -490,6 +518,7 @@ class Ora {
 					variablePath.push(
 						iter.next().value
 					);
+					
 
 				if (iter.disposeIf('(')){
 					let passes = 0;
@@ -501,10 +530,10 @@ class Ora {
 							iter.next().value
 						);
 						
-						if (passes++ > 100)
-							return console.error(new Error('Cannot add more than 100 args on a function'));
+						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
 					}
 				}
+
 
 				if (!iter.disposeIf('{')){
 					const err = 'Missing \'{\' after parameters';
@@ -518,13 +547,11 @@ class Ora {
 				for (const item of iter){
 					if (item === '{') openBrackets++;
 					else if (item === '}') closedBrackets++;
+					if (item == '\r') continue;
 					
 					items.push(item);
 
-					if (openBrackets == closedBrackets && openBrackets > 0){
-						console.log('broke', items)
-						break;
-					}
+					if (openBrackets == closedBrackets && openBrackets > 0) break;
 				}
 
 				if (items[items.length - 1] !== '}'){
@@ -562,7 +589,7 @@ class Ora {
 					value: func
 				});
 
-				return { break: true };
+				// return { break: true };
 			},
 
 			EXIT () {
@@ -598,8 +625,9 @@ class Ora {
 				data,
 				handleItems: this.handleItems.bind(this)
 			});
-
+			
 			if (response?.break == true) break;
+
 			if (response) return response;
 		}
 	}

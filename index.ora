@@ -1,13 +1,19 @@
 FUNCTION createPerson (name, age) {
+	FUNCTION getAge (test, d) {
+		RETURN 5;
+	};
+
 	SET person         TO OBJECT;
 	SET person.name    TO name;
-	SET person.age     TO age;
-
-	PRINT "person";
+	SET person.age     TO getAge();
 
 	RETURN person;
 }
 
-PRINT createPerson("tom", 2);
+PRINT "guh";
+SET thomas TO createPerson("tom", 2);
+LOG_VARIABLES;
 
-//LOG_SCOPE;
+DELETE thomas;
+
+LOG_VARIABLES;
