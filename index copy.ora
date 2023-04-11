@@ -1,7 +1,11 @@
 FUNCTION createPerson (name, age) {
+	FUNCTION getAge (){
+		RETURN 15;
+	}
+
 	SET person         TO OBJECT;
-	SET person.name    TO name;
-	SET person.age     TO age;
+	SET person.name    TO "thobias";
+	SET person.age     TO getAge();
 
 	PRINT "person";
 

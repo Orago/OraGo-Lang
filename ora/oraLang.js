@@ -407,8 +407,10 @@ class Ora {
 				const results = [parseInput(iter, input, data)];
 
 				while (iter.peek().value == '&' && !iter.peek(2).done){
+					const res = parseInput(iter, iter.next(1), data);
+
 					results.push(
-						parseInput(iter, iter.next(1), data)
+						res
 					);
 				}
 
@@ -505,13 +507,25 @@ class Ora {
 				}
 
 				if (!iter.disposeIf('{')){
-
 					const err = 'Missing \'{\' after parameters';
 
 					throw new Error(err);
 				}
+
+				let openBrackets = 1;
+				let closedBrackets = 0;
 				
-				for (const item of iter) items.push(item);
+				for (const item of iter){
+					if (item === '{') openBrackets++;
+					else if (item === '}') closedBrackets++;
+					
+					items.push(item);
+
+					if (openBrackets == closedBrackets && openBrackets > 0){
+						console.log('broke', items)
+						break;
+					}
+				}
 
 				if (items[items.length - 1] !== '}'){
 					const err = 'Missing Closing \'}\' at end of function';
@@ -519,8 +533,6 @@ class Ora {
 					throw new Error(err);
 				}
 				else items.pop();
-
-
 
 				const func = (...inputs) => {
 					const variables = {};
