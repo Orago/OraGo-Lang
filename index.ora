@@ -10,10 +10,9 @@ FUNCTION createPerson (name, age) {
 	RETURN person;
 }
 
-PRINT "guh";
-SET thomas TO createPerson("tom", 2);
-LOG_VARIABLES;
+IMPORT cat FROM "./cat.ora";
 
-DELETE thomas;
+// PRINT cat(3) & 'cat value';
+SET kitty TO cat(3);
 
 LOG_VARIABLES;

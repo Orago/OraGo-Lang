@@ -14,4 +14,4 @@ FUNCTION createPerson (name, age) {
 
 PRINT createPerson("tom", 2);
 
-//LOG_SCOPE;
+LOG_SCOPE;

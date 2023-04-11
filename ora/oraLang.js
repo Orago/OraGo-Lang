@@ -243,10 +243,8 @@ const parseInputToVariable = (iter, input, data = {}) => {
 		source: variables
 	});
 
-	if (typeof(resultObj) === 'function'){
-		const stat = iter.disposeIf('(');
-
-		if (stat){
+	if (iter.disposeIf('(')){
+		if (typeof(resultObj) === 'function'){
 			const items = [];
 			let passes = 0;
 	
@@ -266,7 +264,7 @@ const parseInputToVariable = (iter, input, data = {}) => {
 			return resultObj(...items);
 		}
 		else {
-			console.error('Missing opening parenthesis to function',
+			console.error('Cannot call function on non-function', value,
 				'\n',
 				iter.stack()
 			);
@@ -386,9 +384,7 @@ class Ora {
 				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push(
-						iter.next().value
-					);
+					path.push( iter.next().value );
 				
 				const nextSeq = iter.next();
 
@@ -416,8 +412,6 @@ class Ora {
 					path.push(
 						iter.next().value
 					);
-				
-				const nextSeq = iter.next();
 
 				if (isA_0(variableName))
 					setOnPath({
@@ -425,7 +419,7 @@ class Ora {
 						path
 					});
 
-				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
+				else throw `Invalid Variable Name: (${variableName})`;
 			},
 
 			PRINT ({ iter, data }) {
@@ -511,14 +505,14 @@ class Ora {
 			},
 
 			FUNCTION ({ iter, data, handleItems }) {
-				const variablePath = [iter.next().value];
-				const args = [], items = [];
+				const variableName = iter.next().value;
+				const path = [variableName];
+				let { variables } = data;
 
-				while (iter.disposeIf('.') && iter.peek().value)
-					variablePath.push(
-						iter.next().value
-					);
-					
+				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+					path.push( iter.next().value );
+
+				const args = [], items = [];
 
 				if (iter.disposeIf('(')){
 					let passes = 0;
@@ -534,9 +528,8 @@ class Ora {
 					}
 				}
 
-
 				if (!iter.disposeIf('{')){
-					const err = 'Missing \'{\' after parameters';
+					const err = 'Missing Opening \'{\' after parameters';
 
 					throw new Error(err);
 				}
@@ -585,7 +578,7 @@ class Ora {
 
 				setOnPath({
 					data: data.variables,
-					path: variablePath,
+					path,
 					value: func
 				});
 
@@ -600,6 +593,38 @@ class Ora {
 				return {
 					exit: true,
 					value: parseInput(iter, iter.next(), data)
+				}
+			},
+
+			IMPORT ({ iter, data }){
+				const fs = require('fs');
+
+				const variableName = iter.next().value;
+				const path = [variableName];
+				let { variables } = data;
+				
+				if (data.functions.hasOwnProperty(variableName))
+					throw `Cannot set variable to function name: ${variableName}`;
+
+				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
+				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+					path.push( iter.next().value );
+
+				const nextSeq = iter.next();
+					
+				if (isA_0(variableName) ){
+					if (!nextSeq.done && nextSeq.value === 'FROM'){
+						const url = parseInput(iter, iter.next(), data);
+
+						setOnPath({
+							data: variables,
+							path,
+							value: new Ora().run(
+								fs.readFileSync(url, 'utf-8')
+							)
+						});
+					}
 				}
 			},
 
