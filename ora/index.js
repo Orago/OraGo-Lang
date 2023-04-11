@@ -8,67 +8,63 @@ const run = (code) => {
 	return oraInstance.run(code);
 }
 
-const main = async () => {
-	switch (args[0]) {
-		case '-info': {
-			const data = await fs.promises.readFile(__dirname + '/info.ora', 'utf8').catch((err) => { throw err; });
-			
-			run(data);
-		} break;
+const runPath = async (path) => {
+	const data = await fs.promises.readFile(path, 'utf8').catch((err) => { throw err; });
 
-		case '-file': {
-			const file = args[1];
+	return run(data);
+}
 
-			if (!file) {
-				const err = new Error('Invalid argument, Syntax: ora -file <file>');
+switch (args[0]) {
+	case '-info': {
+		runPath(__dirname + '/info.ora');
+	} break;
 
-				throw err;
-			}
-			else if (!file.endsWith('.ora')) {
-				const err = new Error('Invalid file type, Syntax: ora -file <file>');
+	case '-file': {
+		const file = args[1];
 
-				throw err;
-			}
-
-			const data = await fs.promises.readFile(file, 'utf8').catch((err) => { throw err; });
-			
-			const result = run(data);
-
-			result && console.log(result);
-		} break;
-
-		// case '-code': {
-		// 	const code = args.slice(1).join(' ');
-
-		// 	if (!code) {
-		// 		const err = new Error('Invalid argument, Syntax: ora -code <code>');
-
-		// 		throw err;
-		// 	}
-
-		// 	run(code);
-		// } break;
-
-		case 'start': {
-			const data = await fs.promises.readFile(file, 'utf8').catch((err) => { throw err; });
-			
-			const result = run(data);
-
-			result && console.log(result);
-			
-			fs.readFile(__dirname + '/info.ora', 'utf8', (err, data) => {
-				if (err) throw err;
-
-				run(data);
-			});
-		} break;
-
-		default: {
-			const err = new Error('Invalid argument, Syntax: ora -file <file> or ora -code <code>');
+		if (!file) {
+			const err = new Error('Invalid argument, Syntax: ora -file <file>');
 
 			throw err;
 		}
+		else if (!file.endsWith('.ora')) {
+			const err = new Error('Invalid file type, Syntax: ora -file <file>');
+
+			throw err;
+		}
+
+		runPath(file).then((result) => {
+			result && console.log(result);
+		});
+	} break;
+
+	// case '-code': {
+	// 	const code = args.slice(1).join(' ');
+
+	// 	if (!code) {
+	// 		const err = new Error('Invalid argument, Syntax: ora -code <code>');
+
+	// 		throw err;
+	// 	}
+
+	// 	run(code);
+	// } break;
+
+	case 'start': {
+		if (fs.existsSync('./index.ora')) {
+			runPath('./index.ora');
+		}
+		else {
+			const err = new Error('No index.ora file found.');
+
+			throw err;
+		}
+
+	} break;
+
+	default: {
+		const err = new Error('Invalid argument, Syntax: ora -file <file> or ora -code <code>');
+
+		throw err;
 	}
 }
-
-main();

@@ -1,0 +1,13 @@
+FUNCTION createPerson (name, age)
+	SET person         TO OBJECT
+	SET person.isSlave TO true
+	SET person.name    TO "thobias"
+	SET person.age     TO 20
+	LOG_SCOPE;
+
+	RETURN person
+;
+
+PRINT createPerson("tom", 2);
+
+LOG_SCOPE;

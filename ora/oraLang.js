@@ -264,6 +264,7 @@ const parseInput = (iter, input, data = {}) => {
 	if (value == 'true')       return true;
 	else if (value == 'false') return false;
 	else if (isString(value))  return parseString(value);
+	else if (value == 'OBJECT')   return {};
 
 	let iterCache = iter.clone();
 	let result;
@@ -352,17 +353,20 @@ class Ora {
 			SET: ({ iter, data }) => {
 				const variableName = iter.next().value;
 				const path = [variableName];
+				let variables = data.variables;
 				
 				if (this.#functions.hasOwnProperty(variableName))
 					throw `Cannot set variable to function name: ${variableName}`;
-				
-				while (iter.disposeIf('.') && !isA_0(iter.peek(1).value))
+
+				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
+				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push(
 						iter.next().value
 					);
 				
 				const nextSeq = iter.next();
-				
+
 				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO')
 					setOnPath({
 						data: data.variables,
@@ -444,9 +448,12 @@ class Ora {
 					data.classes[className] = { items, data };
 			},
 
-			LOG_VARIABLES ({ data }) {
-				console.log(`ORAGO LANG DATA:`);
-				console.log(data.variables);
+			LOG_VARIABLES ({ iter, data }) {
+				console.log('\n', `ORA LANG VARIABLES:`, data.variables, '\n');
+			},
+
+			LOG_SCOPE ({ iter, data }) {
+				console.log('\n', `ORA LANG SCOPE:`, data, '\n');
 			},
 
 			FUNCTION ({ iter, data, handleItems }) {
@@ -490,7 +497,10 @@ class Ora {
 
 					return handleItems(
 						betterIterable(items),
-						{ variables }
+						{
+							functions: data.functions,
+							variables
+						}
 					);
 				}
 
