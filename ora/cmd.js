@@ -1,6 +1,5 @@
 const fs = require('fs');
 const ora = require('./index.js');
-const args = process.argv.slice(2);
 
 const run = (code) => {
 	const oraInstance = new ora();
@@ -13,6 +12,8 @@ const runPath = async (path) => {
 
 	return run(data);
 }
+
+const args = process.argv.slice(2);
 
 switch (args[0]) {
 	case '-info': {

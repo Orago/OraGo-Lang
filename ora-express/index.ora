@@ -1,0 +1,4 @@
+IMPORT express FROM 'express.npm';
+IMPORT expressRoute FROM './route.js';
+
+PRINT expressRoute.cat().speak;

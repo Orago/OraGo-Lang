@@ -1,3 +1,4 @@
+
 //#region //* UTIL *//
 function betterIterable(itemsInput, settings = {}) {
 	const { tracking = false, maxStack = 10 } = settings;
@@ -76,6 +77,10 @@ function betterIterable(itemsInput, settings = {}) {
 		
 		stack (){
 			return stack;
+		},
+
+		last (n = 0){
+			return stack[stack.length - 1 - n]
 		}
 	};
 }
@@ -172,6 +177,8 @@ function evalMath(mathString) {
 function oraLexer(input) {
 	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*{}()-_+"'\\/.;:\[\]\s]/g);
 
+	if (output == null) throw 'This is a blank file!';
+
 	while (output.indexOf(' ') != -1) output.splice(output.indexOf(' '), 1);
 
 	return output;
@@ -224,77 +231,105 @@ const parseInputToVariable = (iter, input, data = {}) => {
 	const { value } = input;
 	let itemsPassed = 1;
 
-	const scaleTree = ({ source, property }) => {
-		if (iter.peek(itemsPassed).value === '.' && isA_0(iter.peek(itemsPassed + 1).value))
+	const scaleTree = ({ source, property, canReturnSelf = false }) => {
+		
+		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
 				source: source[property],
-				property: iter.next(1).value,
-				i: itemsPassed++
+				property: iter.last()
 			});
 
 		const scopeV = source?.[property];
 		
 		if (isA_0(property) && scopeV != undefined)
 			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
+
+		else if (canReturnSelf) return source;
 	}
 
 	const resultObj = scaleTree({
 		property: value,
 		source: variables
 	});
-
-	if (iter.disposeIf('(')){
-		const isClass = resultObj?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
-
-		if (typeof(resultObj) === 'function' || isClass){
-			const items = [];
-			let passes = 0;
 	
-			while (!iter.disposeIf(')')){
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+	const tryFunction = ({ source }) => {
+		if (iter.disposeIf('(')){
+			const isClass = source?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
-				items.push(
-					iter.next().value
-				);
-				
-				if (passes++ > 100)
-					return console.error(
-						new Error('Cannot run more than 100 args on a function')
+			if (typeof(source) === 'function' || isClass){
+				const items = [];
+				let passes = 0;
+		
+				while (!iter.disposeIf(')')){
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+					items.push(
+						parseInput(iter, iter.next(), data)
 					);
+					
+					if (passes++ > 100)
+						return console.error(
+							new Error('Cannot run more than 100 args on a function')
+						);
+				}
+
+				const called = isClass ? new source(...items) : source(...items);
+
+				console.log(
+					scaleTree({
+						source: called,
+						canReturnSelf: true
+					})
+				)
+
+				return called;
 			}
+			else {
+				console.error('Cannot call function on non-function', value,
+					'\n',
+					iter.stack()
+				);
 
-			if (isClass) return new resultObj(...items);
-			else         return resultObj(...items);
+				return;
+			}
 		}
-		else {
-			console.error('Cannot call function on non-function', value,
-				'\n',
-				iter.stack()
-			);
 
-			return;
-		}
+		return source;
 	}
 
-	return resultObj
+	
+
+	return tryFunction({
+		source: resultObj
+	});
 }
 
-const parseInput = (iter, input, data = {}) => {
+function parseInput (iter, input, data = {}) {
 	const { variables = {} } = data;
 	let { value } = input;
 	const mathSymbols = ['+', '-', '*', '/', '^'];
 
 	if (value == 'true')       return true;
 	else if (value == 'false') return false;
-	else if (isString(value))  return parseString(value);
 	else if (value == 'OBJECT') return {};
 	else if (value == 'ARRAY') return [];
+	else if (isString(value)){
+		let stringResult = parseString(value);
+
+		while (iter.disposeIf('+') && iter.peek(1).value != null)
+			stringResult = stringResult.concat(
+				parseInput(iter, iter.next(), data)
+			);
+		
+		return stringResult;
+	}
 
 	let iterCache = iter.clone();
 	let result;
 
-	if (isA_0(value) && variables.hasOwnProperty(value))
+	if (isA_0(value) && variables.hasOwnProperty(value)){
 		result = parseInputToVariable(iter, { value }, data);
+	}
 
 	mathBlock: {
 		if (isNaN(value) && typeof result !== 'number')
@@ -590,7 +625,7 @@ class Ora {
 				}
 				else items.pop();
 
-				const func = (...inputs) => {
+				const func = function (...inputs) {
 					const variables = {};
 
 					for (const [key, value] of Object.entries(data.variables))
@@ -602,6 +637,7 @@ class Ora {
 							{ value: inputs[i] },
 							data
 						);
+
 
 					return handleItems(
 						betterIterable(items),
@@ -634,6 +670,8 @@ class Ora {
 
 			IMPORT ({ iter, data }){
 				const fs = require('fs');
+				const pathModule = require('path');
+				// process.argv
 
 				const variableName = iter.next().value;
 				const path = [variableName];
@@ -651,7 +689,9 @@ class Ora {
 					
 				if (isA_0(variableName) ){
 					if (!nextSeq.done && nextSeq.value === 'FROM'){
-						const url = parseInput(iter, iter.next(), data);
+						const importUrl = parseInput(iter, iter.next(), data);
+
+						let url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? pathModule.join(process.argv[1], '../'+importUrl) : importUrl;
 
 						if (typeof url === 'string'){
 							if (url.endsWith('.ora')){
@@ -663,7 +703,10 @@ class Ora {
 									)
 								});
 							}
-							else if (url.endsWith('.js')){
+							else if (url.endsWith('.js') || url.endsWith('.npm')){
+								if (url.endsWith('.npm')) url = pathModule.join(process.argv[1], '../node_modules/' + url.slice(0, url.length - 4) + '/');
+
+								
 								setOnPath({
 									data: variables,
 									path,

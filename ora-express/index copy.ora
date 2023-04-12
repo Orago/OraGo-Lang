@@ -1,0 +1,14 @@
+IMPORT express FROM 'express.npm';
+IMPORT expressRoute FROM './route.js';
+
+SET app TO express();
+SET route TO expressRoute(express)('lol');
+
+//FUNCTION onSlash (req, res){
+//	res.send('Hello World');
+//}
+
+//app.get('/', onSlash);
+
+//
+app.listen(3000);
