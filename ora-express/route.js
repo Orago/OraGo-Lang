@@ -1,10 +1,12 @@
 
 
-module.exports = (expressApp) => (path, func) => {
-	setTimeout(() => expressApp.listen(3000), 2000);
+module.exports = (expressApp) => {
+	// setTimeout(() => expressApp.listen(3000), 6000);
+	return (path, func) => {
+		
 
-	return expressApp.get(path, function (req, res){
-		// res.send = res.send.bind(res);
-		func(req, res);
-	});
+		return expressApp.get(path, function (req, res){
+			func(req, res);
+		});
+	}
 }

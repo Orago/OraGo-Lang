@@ -235,17 +235,17 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 
 		if (iter.disposeIf('BIND')){
 			if (typeof scopeV == 'function'){
-				const bindItems = [parseInputToVariable(iter, iter.next(), data, false)];
-
-				while (iter.disposeIf(',') && isA_0(iter.peek().value)){
-					bindItems.push(
-						parseInputToVariable(iter, iter.next(), data, false)
-					);
-				}
+				const toBind = parseInputToVariable(iter, iter.next(), data, false);
+				scopeV = scopeV.bind(toBind);
+			}
+			else if (typeof scopeV == 'object'){
+				const toBind = parseInputToVariable(iter, iter.next(), data, false);
 				
-				scopeV = scopeV.bind(...bindItems)
+				scopeV = Object.assign(scopeV, toBind);
 			}
 		}
+		
+
 
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
@@ -253,8 +253,11 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 				property: iter.last()
 			});
 
-		if (iter.disposeIf('(') && functions){
+
+
+		if (functions && iter.disposeIf('(')){
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+				// console.log(scopeV)
 			
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];

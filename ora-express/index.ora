@@ -2,14 +2,14 @@ IMPORT express FROM 'express.npm';
 IMPORT expressRoute FROM './route.js';
 
 SET app TO express();
-SET route TO expressRoute(app);
-
 
 FUNCTION onSlash (req, res){
-	PRINT 'running?';
-	res.send BIND res ('Hello World');
+	RETURN res.send BIND res ('Hello World');
 }
 
-route('/', onSlash);
+SET onGet TO app.get BIND app;
 
 
+onGet ('/', onSlash);
+
+app.listen BIND app (3000);
