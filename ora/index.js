@@ -232,31 +232,18 @@ const parseInputToVariable = (iter, input, data = {}) => {
 	let itemsPassed = 1;
 
 	const scaleTree = ({ source, property, canReturnSelf = false }) => {
-		
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
-				source: source[property],
+				source: property != null ? source[property] : source,
 				property: iter.last()
 			});
 
 		const scopeV = source?.[property];
-		
-		if (isA_0(property) && scopeV != undefined)
-			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 
-		else if (canReturnSelf) return source;
-	}
-
-	const resultObj = scaleTree({
-		property: value,
-		source: variables
-	});
-	
-	const tryFunction = ({ source }) => {
 		if (iter.disposeIf('(')){
-			const isClass = source?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
-			if (typeof(source) === 'function' || isClass){
+			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];
 				let passes = 0;
 		
@@ -272,20 +259,15 @@ const parseInputToVariable = (iter, input, data = {}) => {
 							new Error('Cannot run more than 100 args on a function')
 						);
 				}
+				
+				const called = isClass ? new scopeV(...items) : scopeV(...items);
 
-				const called = isClass ? new source(...items) : source(...items);
-
-				console.log(
-					scaleTree({
-						source: called,
-						canReturnSelf: true
-					})
-				)
-
-				return called;
+				return scaleTree({
+					source: called
+				});
 			}
 			else {
-				console.error('Cannot call function on non-function', value,
+				console.error('Cannot call function on non-function', property,
 					'\n',
 					iter.stack()
 				);
@@ -293,14 +275,16 @@ const parseInputToVariable = (iter, input, data = {}) => {
 				return;
 			}
 		}
+		
+		else if (isA_0(property) && scopeV != undefined)
+			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 
-		return source;
+		else if (canReturnSelf) return source;
 	}
-
 	
-
-	return tryFunction({
-		source: resultObj
+	return scaleTree({
+		property: value,
+		source: variables
 	});
 }
 
