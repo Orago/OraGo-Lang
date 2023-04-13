@@ -1,10 +1,12 @@
 IMPORT express FROM 'express.npm';
 IMPORT expressRoute FROM './route.js';
 
-SET app TO express();
+LET app = express();
+LET runs = 0;
 
 FUNCTION onSlash (req, res){
-	RETURN res.send BIND res ('Hello World');
+	LET GLOBAL runs = runs + 1;
+	RETURN res.send BIND res ('Hello World ' + runs);
 }
 
 SET onGet TO app.get BIND app;

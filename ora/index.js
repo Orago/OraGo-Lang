@@ -442,22 +442,26 @@ class Ora {
 				return { break: true };
 			},
 
+			LET (){
+				return this.SET(...arguments);
+			},
+
 			SET: ({ iter, data }) => {
+				let { variables } = data;
+				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
 				const variableName = iter.next().value;
 				const path = [variableName];
-				let { variables } = data;
 				
 				if (data.functions.hasOwnProperty(variableName))
 					throw `Cannot set variable to function name: ${variableName}`;
-
-				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
 				
 				const nextSeq = iter.next();
 
-				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO')
+				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO' || nextSeq.value === '=')
 					setOnPath({
 						data: variables,
 						path,
@@ -468,14 +472,15 @@ class Ora {
 			},
 
 			DELETE ({ iter, data }) {
+				let { variables } = data;
+
+				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+
 				const variableName = iter.next().value;
 				const path = [variableName];
-				let { variables } = data;
 				
 				if (data.functions.hasOwnProperty(variableName))
 					throw `Cannot set variable to function name: ${variableName}`;
-
-				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push(
