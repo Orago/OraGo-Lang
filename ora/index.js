@@ -447,9 +447,7 @@ class Ora {
 			},
 
 			SET: ({ iter, data }) => {
-				let { variables } = data;
-				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
-
+				const variables = iter.disposeIf('GLOBAL') ? this.#variables : data.variables;
 				const variableName = iter.next().value;
 				const path = [variableName];
 				
@@ -472,9 +470,7 @@ class Ora {
 			},
 
 			DELETE ({ iter, data }) {
-				let { variables } = data;
-
-				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+				const variables = iter.disposeIf('GLOBAL') ? this.#variables : data.variables;
 
 				const variableName = iter.next().value;
 				const path = [variableName];

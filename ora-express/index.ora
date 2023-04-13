@@ -6,11 +6,11 @@ LET runs = 0;
 
 FUNCTION onSlash (req, res){
 	LET GLOBAL runs = runs + 1;
+	
 	RETURN res.send BIND res ('Hello World ' + runs);
 }
 
-SET onGet TO app.get BIND app;
-
+LET onGet = app.get BIND app;
 
 onGet ('/', onSlash);
 
