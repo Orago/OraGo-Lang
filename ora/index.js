@@ -20,7 +20,7 @@ function betterIterable(itemsInput, settings = {}) {
 			if (tracking){
 				stack.push(items[0]);
 				
-				if (stack.length > maxStack) stack.shift();
+				stack.length > maxStack && stack.shift();
 			}
 
 			return {
@@ -122,7 +122,7 @@ function evalMath(mathString) {
 		let postfix = [];
 
 		for (let i = 0; i < mathString.length; i++) {
-			let char = mathString[i];
+			const char = mathString[i];
 			
 			if (!isNaN(parseFloat(char)) || char === '.') {
 				let number = char;
@@ -152,7 +152,7 @@ function evalMath(mathString) {
 		while (stack.length)
 			postfix.push(stack.pop());
 
-		for (const symbol of postfix){
+		for (const symbol of postfix)
 			stack.push(
 				typeof symbol === 'number' ?
 				symbol :
@@ -162,7 +162,6 @@ function evalMath(mathString) {
 					stack.pop()
 				)
 			);
-		}
 
 		return stack[0];
 	}
@@ -189,18 +188,14 @@ function chunkLexed(lexed) {
 	let chunk = [];
 
 	let scopeDepth = 0;
-	let openBrackets = 0;
-	let closedBrackets = 0;
 
 	for (const item of lexed)
 		if (item === '{'){
 			scopeDepth++;
-			openBrackets++;
 
 			chunk.push(item);
 		}
 		else if (item === '}'){
-			closedBrackets++;
 			scopeDepth--;
 
 			chunk.push(item);
@@ -239,25 +234,43 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 				scopeV = scopeV.bind(toBind);
 			}
 			else if (typeof scopeV == 'object'){
-				const toBind = parseInputToVariable(iter, iter.next(), data, false);
-				
-				scopeV = Object.assign(scopeV, toBind);
+				if (iter.disposeIf('(')){
+					const toBind = [parseInputToVariable(iter, iter.next(), data, true)];
+
+					while (iter.disposeIf(',') && isA_0(iter.peek().value))
+						toBind.push( parseInputToVariable(iter, iter.next(), data, true) );
+
+					scopeV = Object.assign(scopeV, ...toBind);
+
+					if (!iter.disposeIf(')'))
+						throw new Error('Expected ")" to close BIND statement!');
+				}
+				else {
+					const toBind = parseInputToVariable(iter, iter.next(), data, false);
+
+					scopeV = Object.assign(scopeV, toBind);
+				}
 			}
 		}
 		
-
-
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
 				source: scopeV,
 				property: iter.last()
 			});
 
-
+		if (iter.disposeIf('=')){
+			const toSet = parseInputToVariable(iter, iter.next(), data);
+			console.log(toSet)
+			if (property != undefined)
+				source[property] = toSet;
+			else throw 'Cannot mod a raw variable to a value!'
+				
+			return source;
+		}
 
 		if (functions && iter.disposeIf('(')){
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
-				// console.log(scopeV)
 			
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];

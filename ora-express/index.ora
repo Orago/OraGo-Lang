@@ -1,17 +1,15 @@
-IMPORT express FROM 'express.npm';
-IMPORT expressRoute FROM './route.js';
+LET cat = OBJECT;
 
-LET app = express();
-LET runs = 0;
+LET cat.isCool = 'yeah';
 
-FUNCTION onSlash (req, res){
-	LET GLOBAL runs = runs + 1;
-	
-	RETURN res.send BIND res ('Hello World ' + runs);
-}
+LET animal = OBJECT;
 
-LET onGet = app.get BIND app;
+SET animal.alive TO 'fosho';
 
-onGet ('/', onSlash);
+LET gus = OBJECT;
 
-app.listen BIND app (3000);
+gus.hehe = 'yea';
+
+
+
+PRINT cat BIND (animal, gus);
