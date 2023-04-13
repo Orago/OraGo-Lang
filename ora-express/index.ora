@@ -1,4 +1,15 @@
-//IMPORT express FROM 'express.npm';
+IMPORT express FROM 'express.npm';
 IMPORT expressRoute FROM './route.js';
 
-PRINT expressRoute.cat().speak;
+SET app TO express();
+SET route TO expressRoute(app);
+
+
+FUNCTION onSlash (req, res){
+	PRINT 'running?';
+	res.send BIND res ('Hello World');
+}
+
+route('/', onSlash);
+
+

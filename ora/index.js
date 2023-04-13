@@ -226,23 +226,36 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-const parseInputToVariable = (iter, input, data = {}) => {
+const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 	const { variables = {} } = data;
 	const { value } = input;
-	let itemsPassed = 1;
 
-	const scaleTree = ({ source, property, canReturnSelf = false }) => {
+	const scaleTree = ({ source, property }) => {
+		let scopeV = property != undefined ? source[property] : source;
+
+		if (iter.disposeIf('BIND')){
+			if (typeof scopeV == 'function'){
+				const bindItems = [parseInputToVariable(iter, iter.next(), data, false)];
+
+				while (iter.disposeIf(',') && isA_0(iter.peek().value)){
+					bindItems.push(
+						parseInputToVariable(iter, iter.next(), data, false)
+					);
+				}
+				
+				scopeV = scopeV.bind(...bindItems)
+			}
+		}
+
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
-				source: property != null ? source[property] : source,
+				source: scopeV,
 				property: iter.last()
 			});
 
-		const scopeV = source?.[property];
-
-		if (iter.disposeIf('(')){
+		if (iter.disposeIf('(') && functions){
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
-
+			
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];
 				let passes = 0;
@@ -276,10 +289,8 @@ const parseInputToVariable = (iter, input, data = {}) => {
 			}
 		}
 		
-		else if (isA_0(property) && scopeV != undefined)
+		else if (scopeV != undefined)
 			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
-
-		else if (canReturnSelf) return source;
 	}
 	
 	return scaleTree({
@@ -311,13 +322,13 @@ function parseInput (iter, input, data = {}) {
 	let iterCache = iter.clone();
 	let result;
 
+
 	if (isA_0(value) && variables.hasOwnProperty(value)){
 		result = parseInputToVariable(iter, { value }, data);
 	}
 
 	mathBlock: {
-		if (isNaN(value) && typeof result !== 'number')
-			break mathBlock;
+		if (isNaN(value) && typeof result !== 'number') break mathBlock;
 
 		const total = forceType.forceNumber(isNum(value) ? value : result);
 		if (total == null) break mathBlock;
@@ -504,7 +515,8 @@ class Ora {
 					for (let i = 0; i < timesToRun; i++)
 						handleItems(
 							betterIterable(
-								items
+								items,
+								{ tracking: true }
 							)
 						);
 				}
@@ -609,22 +621,28 @@ class Ora {
 				}
 				else items.pop();
 
-				const func = function (...inputs) {
+				const func = (...inputs) => {
 					const variables = {};
 
 					for (const [key, value] of Object.entries(data.variables))
 						variables[key] = value;
 
-					for (const [i, value] of Object.entries(args))
-						variables[value] = parseInput(
-							betterIterable([]),
-							{ value: inputs[i] },
-							data
-						);
 
+					for (const [i, value] of Object.entries(args)){
+						if (typeof inputs[i] == 'object' || typeof inputs[i] == 'function'){
+							variables[value] = inputs[i]
+						}
+						else {
+							variables[value] = parseInput(
+								betterIterable([], { tracking: true }),
+								{ value: inputs[i] },
+								data
+							);
+						}
+					}
 
 					return handleItems(
-						betterIterable(items),
+						betterIterable(items, { tracking: true }),
 						{
 							functions: data.functions,
 							variables
