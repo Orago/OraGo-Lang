@@ -1,8 +1,4 @@
-// IMPORT startBot FROM './startBot.js';
-
-// PRINT 'heheeeee';
-
-LET djs = require('discord.js');
+IMPORT djs FROM 'discord.js.npm';
 LET Routes = djs.Routes;
 LET Rest = djs.REST;
 
@@ -13,14 +9,16 @@ LET commands = [
   },
 ];
 
-LET rest = Rest({ version: '10' }).setToken('NTc4MzE5NTAwNDc1MTA1MzQx.GoiK-M.92mLeyDjbAL6Z5n8VfcNnoogLCTudtbpsdTB8g');
+SET rest TO Rest({ version: '10' }).setToken('NTc4MzE5NTAwNDc1MTA1MzQx.GoiK-M.92mLeyDjbAL6Z5n8VfcNnoogLCTudtbpsdTB8g');
 
 FUNCTION loadCommands (){
 	PRINT 'Started refreshing application (/) commands.';
 
-	rest.put(Routes.applicationCommands('578319500475105341'), { body: commands });
+	AWAIT rest.put BIND rest (Routes.applicationCommands BIND Routes ('578319500475105341'), { body: commands });
 
 	PRINT 'Successfully reloaded application (/) commands.';
 }
 
 loadCommands();
+
+PRINT "ha";

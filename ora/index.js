@@ -266,15 +266,18 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 			return source;
 		}
 
+		console.log(property, '<- prop')
+
 		if (functions && iter.disposeIf('(')){
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 			
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];
 				let passes = 0;
+
 		
 				while (!iter.disposeIf(')')){
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+					if (iter.disposeIf(',')) continue;
 
 					items.push(
 						parseInput(iter, iter.next(), data)
@@ -284,7 +287,13 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 						return console.error(
 							new Error('Cannot run more than 100 args on a function')
 						);
+						
+					if (iter.peek(1).value == undefined)
+						break;
+					
 				}
+
+				console.log('items', items)
 				
 				const called = isClass ? new scopeV(...items) : scopeV(...items);
 
@@ -631,6 +640,14 @@ class Ora {
 				console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n');
 			},
 
+			async AWAIT ({ iter, data }) {
+				const ep = parseInput(iter, iter.next(), data);
+
+				console.log(ep)
+
+				return await ep;
+			},
+				
 			FUNCTION ({ iter, data, handleItems }) {
 				const variableName = iter.next().value;
 				const path = [variableName];
@@ -680,7 +697,7 @@ class Ora {
 				}
 				else items.pop();
 
-				const func = (...inputs) => {
+				const func = async (...inputs) => {
 					const variables = {};
 
 					for (const [key, value] of Object.entries(data.variables))
@@ -700,7 +717,7 @@ class Ora {
 						}
 					}
 
-					return handleItems(
+					return await handleItems(
 						betterIterable(items, { tracking: true }),
 						{
 							functions: data.functions,
@@ -826,18 +843,18 @@ class Ora {
 		delete this.init;
 	}
 
-	handleItems (iter, data = { variables: this.#variables, functions: this.#functions }){
+	async handleItems (iter, data = { variables: this.#variables, functions: this.#functions }){
 		const { functions, variables } = data;
 
 		for (const method of iter) {
 			if (!functions.hasOwnProperty(method)){
 				if (variables?.hasOwnProperty(method))
-					parseInput(iter, { value: method }, data);
+					await parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
 
-			const response = functions[method]({
+			const response = await functions[method]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
@@ -849,12 +866,12 @@ class Ora {
 		}
 	}
 
-	run (codeInput){
+	async run (codeInput){
 		const lexed = oraLexer(codeInput);
 		const chunks = chunkLexed(lexed);
 
 		for (const chunk of chunks){
-			const response = this.handleItems(
+			const response = await this.handleItems(
 				betterIterable(
 					chunk,
 					{ tracking: true }

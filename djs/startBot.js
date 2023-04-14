@@ -7,7 +7,6 @@ const commands = [
   },
 ];
 
-const rest = new REST({ version: '10' }).setToken('NTc4MzE5NTAwNDc1MTA1MzQx.GoiK-M.92mLeyDjbAL6Z5n8VfcNnoogLCTudtbpsdTB8g');
 
 (async () => {
   try {
@@ -21,4 +20,28 @@ const rest = new REST({ version: '10' }).setToken('NTc4MzE5NTAwNDc1MTA1MzQx.GoiK
   }
 })();
 
-module.exports = {}
+class bot {
+	token;
+	rest;
+
+	constructor(token) {
+		this.token = token;
+		this.rest = new REST({ version: '10' }).setToken(token);
+	}
+
+	async refreshCommands (thenRun){
+		try {
+			console.log('Started refreshing application (/) commands.');
+
+			await this.rest.put(Routes.applicationCommands('578319500475105341'), { body: commands });
+
+			console.log('Successfully reloaded application (/) commands.');
+
+			if (typeof thenRun === 'function') thenRun(this);
+		} catch (error) {
+			console.error(error);
+		}
+	}
+}
+
+module.exports = bot;
