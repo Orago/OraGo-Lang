@@ -92,7 +92,3 @@ function commonOra (data) {
 }
 
 module.exports = commonOra;
-
-/*
-
-*/

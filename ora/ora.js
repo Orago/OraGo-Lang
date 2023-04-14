@@ -356,8 +356,6 @@ function parseInput (iter, input, data = {}) {
 			case 'NEGATIVE_INFINITY': return -Infinity;
 		}
 		
-		
-		
 		if (value == '{'){
 			const object = {};
 
@@ -390,9 +388,7 @@ function parseInput (iter, input, data = {}) {
 
 				if (nextItem.value == undefined) break;
 
-				array.push(
-					wrapped(nextItem.value)
-				);
+				array.push( wrapped(nextItem.value) );
 			}
 
 			return array;
@@ -476,7 +472,6 @@ function parseInput (iter, input, data = {}) {
 const setOnPath = ({ value, path, data: obj }) => {
 	for (const sub of path.slice(0, path.length - 1)){
 		if (typeof obj[sub] !== 'object') obj[sub] = { value: obj[sub] };
-
 		if (obj[sub].value == null) delete obj[sub].value;
 
 		obj = obj[sub];
@@ -511,14 +506,11 @@ function expectSetVar({ iter, data }) {
 	}
 }
 
-const parseBlock = ({ iter, data }) => {
+const parseBlock = ({ iter }) => {
 	const items = [];
 
-	if (!iter.disposeIf('{')){
-		const err = 'Missing Opening \'{\' after parameters';
-
-		throw new Error(err);
-	}
+	if (!iter.disposeIf('{'))
+		throw new Error('Missing Opening \'{\' after parameters');
 
 	let openBrackets = 1;
 	let closedBrackets = 0;
@@ -526,6 +518,7 @@ const parseBlock = ({ iter, data }) => {
 	for (const item of iter){
 		if (item === '{') openBrackets++;
 		else if (item === '}') closedBrackets++;
+
 		if (item == '\r') continue;
 		
 		items.push(item);
@@ -533,36 +526,11 @@ const parseBlock = ({ iter, data }) => {
 		if (openBrackets == closedBrackets && openBrackets > 0) break;
 	}
 
-	if (items[items.length - 1] !== '}'){
-		const err = 'Missing Closing \'}\' at end of function';
-
-		throw new Error(err);
-	}
+	if (items[items.length - 1] !== '}')
+		throw new Error('Missing Closing \'}\' at end of function');
 	else items.pop();
 
 	return items;
-}
-
-function joinPath(...args) {
-  let path = '';
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-
-    if (arg.length > 0) {
-      if (path.length > 0 && path[path.length - 1] !== '/') {
-        path += '/';
-      }
-
-      if (arg[0] === '/') {
-        arg = arg.substring(1);
-      }
-
-      path += arg;
-    }
-  }
-
-  return path;
 }
 
 class Ora {
@@ -605,58 +573,54 @@ class Ora {
 				return this.COMMENT(...arguments);
 			},
 
-			COMMENT (){
-				return { break: true };
-			},
+			COMMENT: () => ({ break: true }),
+
 
 			LET (){
 				return this.SET(...arguments);
 			},
 
 			SET: ({ iter, data }) => {
-				const variables = iter.disposeIf('GLOBAL') ? this.variables : data.variables;
-				const variableName = iter.next().value;
-				const path = [variableName];
+				const { variables } = (iter.disposeIf('GLOBAL') ? this : data);
+				const path = [iter.next().value];
 				
-				if (data.functions.hasOwnProperty(variableName))
-					throw `Cannot set variable to function name: ${variableName}`;
+				if (data.functions.hasOwnProperty(path[0]))
+					throw `Cannot set variable to function name: ${path[0]}`;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
 				
 				const nextSeq = iter.next();
 
-				if (isA_0(variableName) && !nextSeq.done && nextSeq.value === 'TO' || nextSeq.value === '=')
+				if (isA_0(path[0]) && !nextSeq.done && nextSeq.value === 'TO' || nextSeq.value === '=')
 					setOnPath({
 						data: variables,
 						path,
 						value: parseInput(iter, iter.next(), data)
 					});
 
-				else throw `Invalid Variable Name: (${variableName}), or next sequence (${nextSeq.value})`;
+				else throw `Invalid Variable Name: (${path[0]}), or next sequence (${nextSeq.value})`;
 			},
 
 			DELETE ({ iter, data }) {
 				const variables = iter.disposeIf('GLOBAL') ? this.variables : data.variables;
-
-				const variableName = iter.next().value;
-				const path = [variableName];
+				const path = [iter.next().value];
 				
-				if (data.functions.hasOwnProperty(variableName))
-					throw `Cannot set variable to function name: ${variableName}`;
+				if (data.functions.hasOwnProperty(path[0]))
+					throw `Cannot set variable to function name: ${path[0]}`;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push(
 						iter.next().value
 					);
 
-				if (isA_0(variableName))
+				if (isA_0(path[0]))
 					setOnPath({
 						data: variables,
 						path
 					});
 
-				else throw `Invalid Variable Name: (${variableName})`;
+				else throw `Invalid Variable Name: (${path[0]})`;
 			},
 
 			PRINT ({ iter, data }) {
@@ -675,8 +639,8 @@ class Ora {
 			},
 
 			LOOP ({ iter, handleItems }) {
-				const input = iter.next().value;
-				const items = [...iter];
+				const input = iter.next().value, 
+							items = [...iter];
 
 				if (!isNaN(input)) {
 					const timesToRun = forceType.forceNumber(input);
@@ -713,26 +677,25 @@ class Ora {
 					while (iter.disposeIf('AND') && isA_0(iter.peek().value))
 						toCheck.push( parseInput(iter, iter.next(), data, true) );
 
-					if (!iter.disposeIf(')'))
-						throw new Error('Expected ")" to close BIND statement!');
-					
+					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 					if (toCheck.some(val => val != true)) return;
 				}
 					
-
 				const items = parseBlock({ iter, data });
 
 				await handleItems(
-					betterIterable(items, { tracking: true }),
+					betterIterable(
+						items,
+						{ tracking: true }
+					),
 					data
 				);
 			},
 
-			RETURN ({ iter, data }) {
-				return parseInput(iter, iter.next(), data);
-			},
+			RETURN: ({ iter: i, data }) => parseInput(i, i.next(), data),
 
-			CLASS ({ iter, data, handleItems }) {
+
+			CLASS ({ iter, data }) {
 				const className = iter.next().value;
 				const items = [];
 
@@ -742,13 +705,9 @@ class Ora {
 					data.classes[className] = { items, data };
 			},
 
-			LOG_VARIABLES ({ iter, data }) {
-				console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n');
-			},
+			LOG_VARIABLES: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
 
-			LOG_SCOPE ({ iter, data }) {
-				console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n');
-			},
+			LOG_SCOPE: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
 				
 			FUNCTION ({ iter, data, handleItems }) {
 				const variableName = iter.next().value;
@@ -765,9 +724,7 @@ class Ora {
 					while (!iter.disposeIf(')')){
 						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 	
-						args.push(
-							iter.next().value
-						);
+						args.push(iter.next().value);
 						
 						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
 					}
@@ -781,11 +738,8 @@ class Ora {
 					for (const [key, value] of Object.entries(data.variables))
 						variables[key] = value;
 
-
 					for (const [i, value] of Object.entries(args)){
-						if (typeof inputs[i] == 'object' || typeof inputs[i] == 'function'){
-							variables[value] = inputs[i]
-						}
+						if (['object', 'function'].includes(typeof inputs[i])) variables[value] = inputs[i];
 						else {
 							variables[value] = parseInput(
 								betterIterable([], { tracking: true }),
@@ -809,18 +763,12 @@ class Ora {
 					path,
 					value: func
 				});
-
-				// return { break: true };
 			},
 
-			EXIT () {
-				process.exit();
-			},
+			EXIT: () => process.exit(),
 
 			PUSH ({ iter, data }) {
-				const items = [
-					parseInput(iter, iter.next(), data)
-				];
+				const items = [parseInput(iter, iter.next(), data)];
 
 				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
 					items.push(
@@ -831,9 +779,7 @@ class Ora {
 
 				if (!nextSeq.done && nextSeq.value === 'TO' && isA_0(iter.peek(1).value)){
 					const variable = expectSetVar({ iter, data });
-					let { variables } = data;
-
-					if (iter.disposeIf('GLOBAL')) variables = this.variables;
+					const { variables } = (iter.disposeIf('GLOBAL') ? this : data);
 
 					setOnPath({
 						data: variables,
@@ -855,11 +801,7 @@ class Ora {
 				variable.data.pop();
 			},
 
-			async AWAIT ({ iter, data }) {
-				const ep = parseInput(iter, iter.next(), data);
-
-				return await ep;
-			},
+			AWAIT: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
 
 			async SLEEP ({ iter, data }) {
 				const time = parseInput(iter, iter.next(), data);
