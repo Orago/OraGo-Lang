@@ -62,14 +62,14 @@ function commonOra (data) {
 				
 			if (data.utils.isA_0(variableName) ){
 				if (!nextSeq.done && nextSeq.value === 'FROM'){
-					const importUrl = parseInput(iter, iter.next(), data);
+					const importUrl = data.utils.parseInput(iter, iter.next(), data);
 					const url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? pathModule.join(process.argv[1], '../'+importUrl) : importUrl;
 
 					if (typeof url === 'string' && url.endsWith('.ora')){
 						data.utils.setOnPath({
 							data: variables,
 							path,
-							value: new Ora().run(
+							value: new commonOra().run(
 								fs.readFileSync(url, 'utf-8')
 							)
 						});
