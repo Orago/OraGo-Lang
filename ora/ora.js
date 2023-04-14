@@ -1,4 +1,3 @@
-'use strict';
 
 //#region //* UTIL *//
 function betterIterable(itemsInput, settings = {}) {
@@ -96,13 +95,17 @@ const forceType = {
 	forceString:  $ => typeEnforcer(String, $),
 	forceObject:  $ => typeEnforcer(Object, $),
 	forceArray:   $ => Array.isArray($) ? $ : []
-};
+}
 
 const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
 
 
 const isNum = (num) => !isNaN(num);
+
+const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
 const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
+
+const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 
 function evalMath(mathString) {
 	try {
@@ -114,7 +117,7 @@ function evalMath(mathString) {
 				case '/': return b / a;
 				case '^': return Math.pow(b, a);
 			}
-		};
+		}
 		// using a stack and a postfix notation algorithm to evaluate the math string
 		const operators = ['+', '-', '*', '/', '^'];
 		const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
@@ -210,7 +213,7 @@ function chunkLexed(lexed) {
 				chunks.push(chunk);
 				chunk = [];
 			}
-			else chunk.push(item);
+			else chunk.push(item)
 		}
 		else if (item !== '\n' && item !== '\t' && item !== '\r') chunk.push(item);
 	}
@@ -238,7 +241,7 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 		if (iter.disposeIf('BIND')){
 			if (typeof scopeV == 'function' && !isClass){
 				const toBind = forceType.forceObject(
-					parseInput(iter, iter.next(), data)
+					parseInput(iter, iter.next(), data, false)
 				);
 				
 				scopeV = scopeV.bind(toBind);
@@ -267,7 +270,7 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 				}
 				else {
 					const toBind = forceType.forceObject(
-						parseInput(iter, iter.next(), data)
+						parseInput(iter, iter.next(), data, false)
 					);
 
 					scopeV = Object.assign(scopeV, toBind);
@@ -327,13 +330,13 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 		
 		else if (scopeV != undefined)
 			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
-	};
+	}
 	
 	return scaleTree({
 		property: value,
 		source: variables
 	});
-};
+}
 
 function parseInput (iter, input, data = {}) {
 	const { variables = {} } = data;
@@ -459,7 +462,7 @@ function parseInput (iter, input, data = {}) {
 		if (value === 'CURRENT_DATE') return Date.now();
 
 		return result;
-	};
+	}
 
 	const result = wrapped(input.value);
 
@@ -485,7 +488,7 @@ const setOnPath = ({ value, path, data: obj }) => {
 		obj[path[i]] = value;
 	}
 	else delete obj[path[i]];
-};
+}
 
 function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
@@ -538,7 +541,7 @@ const parseBlock = ({ iter, data }) => {
 	else items.pop();
 
 	return items;
-};
+}
 
 class Ora {
 	#variables;
@@ -683,10 +686,10 @@ class Ora {
 
 			async IF ({ iter, data, handleItems }) {
 				if (iter.disposeIf('(')){
-					const toCheck = [parseInput(iter, iter.next(), data)];
+					const toCheck = [parseInput(iter, iter.next(), data, true)];
 
 					while (iter.disposeIf('AND') && isA_0(iter.peek().value))
-						toCheck.push( parseInput(iter, iter.next(), data) );
+						toCheck.push( parseInput(iter, iter.next(), data, true) );
 
 					if (!iter.disposeIf(')'))
 						throw new Error('Expected ")" to close BIND statement!');
@@ -759,7 +762,7 @@ class Ora {
 
 					for (const [i, value] of Object.entries(args)){
 						if (typeof inputs[i] == 'object' || typeof inputs[i] == 'function'){
-							variables[value] = inputs[i];
+							variables[value] = inputs[i]
 						}
 						else {
 							variables[value] = parseInput(
@@ -777,7 +780,7 @@ class Ora {
 							variables
 						}
 					);
-				};
+				}
 
 				setOnPath({
 					data: data.variables,
@@ -801,7 +804,8 @@ class Ora {
 
 			async IMPORT ({ iter, data }){
 				const fs = await import('fs');
-				const pathModule = await import('path');
+				const pathModule = await import('path')
+				const resolveFrom = await import('resolve-from');
 
 				const variableName = iter.next().value;
 				const path = [variableName];
@@ -900,7 +904,7 @@ class Ora {
 			},
 
 			...forceType.forceObject(overrideFunctions),
-		};
+		}
 
 		delete this.init;
 	}

@@ -11,4 +11,8 @@ FUNCTION onSlash (req, res){
 
 app.get('/', onSlash);
 
-app.listen (3000);
+LET port = 3000;
+
+app.listen (port);
+
+PRINT "Listening on port" & port; 

@@ -1,7 +1,18 @@
-PRINT 'Welcome to Ora!!';
+IMPORT express FROM 'express.npm';
 
-PRINT 'This is a test of the Ora system';
+LET app = express();
+LET runs = 0;
 
-PRINT 'This was created by Orago!!!!';
+FUNCTION onSlash (req, res){
+	LET GLOBAL runs = runs + 1;
+	
+	RETURN res.send ('Hello World ' + runs);
+}
 
-EXPORT ":>";
+app.get('/', onSlash);
+
+LET port = 3000;
+
+app.listen (port);
+
+PRINT "Listening on port" & port; 
