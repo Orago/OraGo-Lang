@@ -403,7 +403,6 @@ function parseInput (iter, input, data = {}) {
 			
 			return stringResult;
 		}
-
 		else if (value == 'ENUM'){
 			if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
 
@@ -423,7 +422,6 @@ function parseInput (iter, input, data = {}) {
 			}
 
 			return Enum(...enumObject);
-			
 		}
 
 		let result;
@@ -534,6 +532,7 @@ const parseBlock = ({ iter }) => {
 }
 
 class Ora {
+	//#region //* Attributes *//
 	variables;
 	classes;
 	functions;
@@ -548,18 +547,34 @@ class Ora {
 		evalMath,
 		expectSetVar
 	}
+	//#endregion //* Attributes *//
 
 	constructor (settings = {}) {
-		const { customFunctions, customClasses, overrideFunctions } = forceType.forceObject(settings);
+		const {
+			customFunctions,
+			customClasses,
+			overrideFunctions,
+			overrideDictionary
+		} = forceType.forceObject(settings);
 
 		this.init({
 			functions: customFunctions,
 			classes: customClasses,
-			overrideFunctions
+			overrideFunctions,
+			overrideDictionary
 		});
 	}
 
-	init ({ functions, classes, overrideFunctions }){
+	init ({ functions, classes, overrideFunctions, overrideDictionary }){
+		let dictionaryToParse = {
+			comment: ['COMMENT'],
+			set: ['SET', 'LET'],
+		};
+
+		const dictEnum = Enum(...Object.keys(dictionaryToParse));
+//Object.entries(dictionaryToParse).map($ => [$[1], $[0]])
+		console.log(dictEnum)
+
 		this.variables = {};
 
 		this.classes = {
@@ -813,6 +828,10 @@ class Ora {
 		}
 
 		delete this.init;
+	}
+
+	includesFunction (name){
+		return this.dictionary.find($ => $[0].includes(name)) != null;
 	}
 
 	async handleItems (iter, data = this){
