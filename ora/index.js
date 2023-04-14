@@ -97,6 +97,9 @@ const forceType = {
 	forceArray:   $ => Array.isArray($) ? $ : []
 }
 
+const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
+
+
 const isNum = (num) => !isNaN(num);
 
 const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
@@ -212,7 +215,7 @@ function chunkLexed(lexed) {
 			}
 			else chunk.push(item)
 		}
-		else if (item != '\n' && item != '\t' && item != '\r') chunk.push(item);
+		else if (item !== '\n' && item !== '\t' && item !== '\r') chunk.push(item);
 	}
 
 
@@ -340,21 +343,25 @@ function parseInput (iter, input, data = {}) {
 	const mathSymbols = ['+', '-', '*', '/', '^'];
 
 	const wrapped = (value) => {
-		if (value == 'true')       return true;
-		else if (value == 'false') return false;
-		else if (value == 'OBJECT') return {};
-		else if (value == 'ARRAY') return [];
 
-		else if (value == 'NULL') return null;
-		else if (value == 'UNDEFINED') return undefined;
-		else if (value == 'NAN') return NaN;
-		else if (value == 'INFINITY') return Infinity;
-		else if (value == 'NEGATIVE_INFINITY') return -Infinity;
-		else if (value == '{'){
+		switch(value) {
+			case 'true':              return true;
+			case 'false':             return false;
+			case 'OBJECT':            return {};
+			case 'ARRAY':             return [];
+			case 'NULL':              return null;
+			case 'UNDEFINED':         return undefined;
+			case 'NAN':               return NaN;
+			case 'INFINITY':          return Infinity;
+			case 'NEGATIVE_INFINITY': return -Infinity;
+		}
+		
+		
+		
+		if (value == '{'){
 			const object = {};
 
 			let tries = 0;
-
 
 			while (!iter.disposeIf('}')){
 				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
@@ -401,6 +408,28 @@ function parseInput (iter, input, data = {}) {
 			return stringResult;
 		}
 
+		else if (value == 'ENUM'){
+			if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
+
+			const enumObject = [];
+
+			let tries = 0;
+
+			while (!iter.disposeIf('}')){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
+
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+				const key = iter.next();
+				if (key.value == undefined) break;
+
+				enumObject.push(wrapped(key.value));
+			}
+
+			return Enum(...enumObject);
+			
+		}
+
 		let result;
 
 		if (isA_0(value) && variables.hasOwnProperty(value)){
@@ -437,11 +466,11 @@ function parseInput (iter, input, data = {}) {
 
 	const result = wrapped(input.value);
 
-	if (iter.disposeIf('EQUALS')){
-		return result == parseInput(iter, iter.next(), data);
-	}
+	if (iter.disposeIf('EQUALS')) 
+		return result == wrapped(iter.next.value);
 
-	return result;
+	else 
+		return result;
 }
 
 const setOnPath = ({ value, path, data: obj }) => {
@@ -461,7 +490,7 @@ const setOnPath = ({ value, path, data: obj }) => {
 	else delete obj[path[i]];
 }
 
-const expectSetVar = ({ iter, data }) => {
+function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
 		parseInput(iter.clone(), iter.peek(1), data)
 	);

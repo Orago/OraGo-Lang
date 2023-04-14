@@ -12,13 +12,3 @@ FUNCTION onSlash (req, res){
 app.get('/', onSlash);
 
 app.listen (3000);
-
-PRINT "Server Started";
-
-SLEEP 1000;
-
-PRINT "slept 1";
-
-SLEEP 1000;
-
-PRINT "slept 2";
