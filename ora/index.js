@@ -99,8 +99,8 @@ const forceType = {
 
 const isNum = (num) => !isNaN(num);
 
-const isA0  = (x) => x == undefined || /[a-z0-9]/i.test(x);
-const isA_0 = (x) => x == undefined || /[a-z0-9_]/i.test(x);
+const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
+const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
 
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 
@@ -212,7 +212,7 @@ function chunkLexed(lexed) {
 			}
 			else chunk.push(item)
 		}
-		else if (item != '\n' && item != '\t') chunk.push(item);
+		else if (item != '\n' && item != '\t' && item != '\r') chunk.push(item);
 
 	return chunks;
 }
@@ -260,10 +260,7 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 			});
 
 		if (iter.disposeIf('=')){
-			const toSet = parseInputToVariable(iter, iter.next(), data);
-			console.log(toSet)
-			if (property != undefined)
-				source[property] = toSet;
+			if (property != undefined) source[property] = parseInput(iter, iter.next(), data);
 			else throw 'Cannot mod a raw variable to a value!'
 				
 			return source;
@@ -324,6 +321,51 @@ function parseInput (iter, input, data = {}) {
 	else if (value == 'false') return false;
 	else if (value == 'OBJECT') return {};
 	else if (value == 'ARRAY') return [];
+
+	else if (value == 'NULL') return null;
+	else if (value == 'UNDEFINED') return undefined;
+	else if (value == 'NAN') return NaN;
+	else if (value == 'INFINITY') return Infinity;
+	else if (value == 'NEGATIVE_INFINITY') return -Infinity;
+	else if (value == '{'){
+		const object = {};
+
+		let tries = 0;
+
+		while (!iter.disposeIf('}')){
+			if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
+
+			if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+			const key = iter.next();
+			if (key.value == undefined) break;
+
+			if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
+
+			object[key.value] = parseInput(iter, iter.next(), data);
+		}
+
+		return object;
+	}
+	else if (value == '['){
+		const array = [];
+		let tries = 0;
+
+		while (!iter.disposeIf(']')){
+			if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
+			if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+			const nextItem = iter.next();
+
+			if (nextItem.value == undefined) break;
+
+			array.push(
+				parseInput(iter, nextItem, data)
+			);
+		}
+
+		return array;
+	}
 	else if (isString(value)){
 		let stringResult = parseString(value);
 
@@ -334,6 +376,7 @@ function parseInput (iter, input, data = {}) {
 		
 		return stringResult;
 	}
+
 
 	let iterCache = iter.clone();
 	let result;
@@ -591,7 +634,6 @@ class Ora {
 			FUNCTION ({ iter, data, handleItems }) {
 				const variableName = iter.next().value;
 				const path = [variableName];
-				let { variables } = data;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
