@@ -1,3 +1,7 @@
 PRINT 'Welcome to Ora!!';
 
-RETURN ":>";
+PRINT 'This is a test of the Ora system';
+
+PRINT 'This was created by Orago!!!!';
+
+EXPORT ":>";

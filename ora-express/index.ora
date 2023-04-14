@@ -1,19 +1,7 @@
-IMPORT express FROM 'express.npm';
-IMPORT expressRoute FROM './route.js';
+SET animals TO { cat: 'meow' }
+	BIND (
+		{ dog: 'woof' },
+		{ lion: 'roar' }
+	);
 
-LET app = express();
-LET runs = 0;
-
-FUNCTION onSlash (req, res){
-	LET GLOBAL runs = runs + 1;
-	
-	RETURN res.send BIND res ('Hello World ' + runs);
-}
-
-LET onGet = app.get BIND app;
-
-onGet ('/', onSlash);
-
-app.listen BIND app (3000);
-
-PRINT "Server Started";
+PRINT "animals object" & animals;

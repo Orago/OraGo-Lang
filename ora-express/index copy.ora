@@ -1,5 +1,4 @@
 IMPORT express FROM 'express.npm';
-IMPORT expressRoute FROM './route.js';
 
 LET app = express();
 LET runs = 0;
@@ -7,13 +6,19 @@ LET runs = 0;
 FUNCTION onSlash (req, res){
 	LET GLOBAL runs = runs + 1;
 	
-	RETURN res.send BIND res ('Hello World ' + runs);
+	RETURN res.send ('Hello World ' + runs);
 }
 
-LET onGet = app.get BIND app;
+app.get('/', onSlash);
 
-onGet ('/', onSlash);
-
-app.listen BIND app (3000);
+app.listen (3000);
 
 PRINT "Server Started";
+
+SLEEP 1000;
+
+PRINT "slept 1";
+
+SLEEP 1000;
+
+PRINT "slept 2";

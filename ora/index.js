@@ -189,23 +189,23 @@ function chunkLexed(lexed) {
 
 	let scopeDepth = 0;
 
-	for (const item of lexed)
+	for (const item of lexed){
 		if (item === '{'){
 			scopeDepth++;
 
 			chunk.push(item);
+
+			continue
 		}
 		else if (item === '}'){
 			scopeDepth--;
 
 			chunk.push(item);
 
-			if (scopeDepth == 0){
-				chunks.push(chunk);
-				chunk = [];
-			}
+			continue;
 		}
-		else if (item === ';') {
+
+		if (item === ';') {
 			if (scopeDepth == 0){
 				chunks.push(chunk);
 				chunk = [];
@@ -213,6 +213,8 @@ function chunkLexed(lexed) {
 			else chunk.push(item)
 		}
 		else if (item != '\n' && item != '\t' && item != '\r') chunk.push(item);
+	}
+
 
 	return chunks;
 }
@@ -227,26 +229,46 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 
 	const scaleTree = ({ source, property }) => {
 		let scopeV = (property != undefined ? source[property] : source);
+		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+
+		if (!isClass && typeof scopeV == 'function'){
+			scopeV = scopeV.bind(source);
+		}
 
 		if (iter.disposeIf('BIND')){
-			if (typeof scopeV == 'function'){
-				const toBind = parseInputToVariable(iter, iter.next(), data, false);
+			if (typeof scopeV == 'function' && !isClass){
+				const toBind = forceType.forceObject(
+					parseInput(iter, iter.next(), data, false)
+				);
+				
 				scopeV = scopeV.bind(toBind);
 			}
 			else if (typeof scopeV == 'object'){
 				if (iter.disposeIf('(')){
-					const toBind = [parseInputToVariable(iter, iter.next(), data, true)];
+					const toBind = [];
+					let passes = 0;
 
-					while (iter.disposeIf(',') && isA_0(iter.peek().value))
-						toBind.push( parseInputToVariable(iter, iter.next(), data, true) );
+					while (!iter.disposeIf(')')){
+						if (iter.disposeIf(',')) continue;
+
+						toBind.push(
+							parseInput(iter, iter.next(), data)
+						);
+						
+						if (passes++ > 100)
+							return console.error(
+								new Error('Cannot run more than 100 args on a function')
+							);
+							
+						if (iter.peek(1).value == undefined) break;
+					}
 
 					scopeV = Object.assign(scopeV, ...toBind);
-
-					if (!iter.disposeIf(')'))
-						throw new Error('Expected ")" to close BIND statement!');
 				}
 				else {
-					const toBind = parseInputToVariable(iter, iter.next(), data, false);
+					const toBind = forceType.forceObject(
+						parseInput(iter, iter.next(), data, false)
+					);
 
 					scopeV = Object.assign(scopeV, toBind);
 				}
@@ -267,12 +289,9 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 		}
 
 		if (functions && iter.disposeIf('(')){
-			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
-			
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];
 				let passes = 0;
-
 		
 				while (!iter.disposeIf(')')){
 					if (iter.disposeIf(',')) continue;
@@ -290,10 +309,6 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 						break;
 				}
 
-				if (property && !isClass && typeof scopeV == 'function')
-					scopeV = scopeV.bind(source);
-
-				
 				const called = isClass ? new scopeV(...items) : scopeV(...items);
 
 				return scaleTree({
@@ -340,6 +355,7 @@ function parseInput (iter, input, data = {}) {
 
 			let tries = 0;
 
+
 			while (!iter.disposeIf('}')){
 				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
 
@@ -353,7 +369,7 @@ function parseInput (iter, input, data = {}) {
 				object[key.value] = wrapped(iter.next().value);
 			}
 
-			return object;
+			return parseInputToVariable(iter, { }, { variables: object });
 		}
 		else if (value == '['){
 			const array = [];
@@ -598,12 +614,10 @@ class Ora {
 
 				const results = [parseInput(iter, input, data)];
 
-				while (iter.peek().value == '&' && !iter.peek(2).done){
+				while ((iter.peek().value == '&' || iter.peek().value == 'AND') && !iter.peek(2).done){
 					const res = parseInput(iter, iter.next(1), data);
 
-					results.push(
-						res
-					);
+					results.push(res);
 				}
 
 				results.length > 0 && console.log(...results);
@@ -683,12 +697,6 @@ class Ora {
 
 			LOG_SCOPE ({ iter, data }) {
 				console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n');
-			},
-
-			async AWAIT ({ iter, data }) {
-				const ep = parseInput(iter, iter.next(), data);
-
-				return await ep;
 			},
 				
 			FUNCTION ({ iter, data, handleItems }) {
@@ -854,6 +862,18 @@ class Ora {
 				const variable = expectSetVar({ iter, data });
 
 				variable.data.pop();
+			},
+
+			async AWAIT ({ iter, data }) {
+				const ep = parseInput(iter, iter.next(), data);
+
+				return await ep;
+			},
+
+			async SLEEP ({ iter, data }) {
+				const time = parseInput(iter, iter.next(), data);
+
+				return new Promise(resolve => setTimeout(resolve, time));
 			},
 
 			...forceType.forceObject(overrideFunctions),
