@@ -226,7 +226,7 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 	const { value } = input;
 
 	const scaleTree = ({ source, property }) => {
-		let scopeV = property != undefined ? source[property] : source;
+		let scopeV = (property != undefined ? source[property] : source);
 
 		if (iter.disposeIf('BIND')){
 			if (typeof scopeV == 'function'){
@@ -266,8 +266,6 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 			return source;
 		}
 
-		console.log(property, '<- prop')
-
 		if (functions && iter.disposeIf('(')){
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 			
@@ -290,10 +288,11 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 						
 					if (iter.peek(1).value == undefined)
 						break;
-					
 				}
 
-				console.log('items', items)
+				if (property && !isClass && typeof scopeV == 'function')
+					scopeV = scopeV.bind(source);
+
 				
 				const called = isClass ? new scopeV(...items) : scopeV(...items);
 
@@ -323,104 +322,108 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 
 function parseInput (iter, input, data = {}) {
 	const { variables = {} } = data;
-	let { value } = input;
 	const mathSymbols = ['+', '-', '*', '/', '^'];
 
-	if (value == 'true')       return true;
-	else if (value == 'false') return false;
-	else if (value == 'OBJECT') return {};
-	else if (value == 'ARRAY') return [];
+	const wrapped = (value) => {
+		if (value == 'true')       return true;
+		else if (value == 'false') return false;
+		else if (value == 'OBJECT') return {};
+		else if (value == 'ARRAY') return [];
 
-	else if (value == 'NULL') return null;
-	else if (value == 'UNDEFINED') return undefined;
-	else if (value == 'NAN') return NaN;
-	else if (value == 'INFINITY') return Infinity;
-	else if (value == 'NEGATIVE_INFINITY') return -Infinity;
-	else if (value == '{'){
-		const object = {};
+		else if (value == 'NULL') return null;
+		else if (value == 'UNDEFINED') return undefined;
+		else if (value == 'NAN') return NaN;
+		else if (value == 'INFINITY') return Infinity;
+		else if (value == 'NEGATIVE_INFINITY') return -Infinity;
+		else if (value == '{'){
+			const object = {};
 
-		let tries = 0;
+			let tries = 0;
 
-		while (!iter.disposeIf('}')){
-			if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
+			while (!iter.disposeIf('}')){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
 
-			if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 
-			const key = iter.next();
-			if (key.value == undefined) break;
+				const key = iter.next();
+				if (key.value == undefined) break;
 
-			if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
+				if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
 
-			object[key.value] = parseInput(iter, iter.next(), data);
+				object[key.value] = wrapped(iter.next().value);
+			}
+
+			return object;
+		}
+		else if (value == '['){
+			const array = [];
+			let tries = 0;
+
+			while (!iter.disposeIf(']')){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+				const nextItem = iter.next();
+
+				if (nextItem.value == undefined) break;
+
+				array.push(
+					wrapped(nextItem.value)
+				);
+			}
+
+			return array;
+		}
+		else if (isString(value)){
+			let stringResult = parseString(value);
+
+			while (iter.disposeIf('+') && iter.peek(1).value != null)
+				stringResult = stringResult.concat(
+					wrapped(iter.next().value)
+				);
+			
+			return stringResult;
 		}
 
-		return object;
-	}
-	else if (value == '['){
-		const array = [];
-		let tries = 0;
+		let result;
 
-		while (!iter.disposeIf(']')){
-			if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
-			if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-			const nextItem = iter.next();
-
-			if (nextItem.value == undefined) break;
-
-			array.push(
-				parseInput(iter, nextItem, data)
-			);
+		if (isA_0(value) && variables.hasOwnProperty(value)){
+			result = parseInputToVariable(iter, { value }, data);
 		}
 
-		return array;
-	}
-	else if (isString(value)){
-		let stringResult = parseString(value);
+		mathBlock: {
+			if (isNaN(value) && typeof result !== 'number') break mathBlock;
 
-		while (iter.disposeIf('+') && iter.peek(1).value != null)
-			stringResult = stringResult.concat(
-				parseInput(iter, iter.next(), data)
-			);
-		
-		return stringResult;
-	}
+			const total = forceType.forceNumber(isNum(value) ? value : result);
+			if (total == null) break mathBlock;
 
+			let mathString = total + '';
+			
+			while (mathSymbols.includes(iter.peek().value)) {
+				const symbol = iter.next().value;
+				const nextItem = iter.next().value;
 
-	let iterCache = iter.clone();
-	let result;
+				if (isNaN(nextItem) && !isA_0(nextItem)) continue;
 
+				const variable = parseInputToVariable(iter, { value: nextItem }, data);
+				const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
 
-	if (isA_0(value) && variables.hasOwnProperty(value)){
-		result = parseInputToVariable(iter, { value }, data);
-	}
+				mathString += ` ${symbol} ${num}`;
+			}
 
-	mathBlock: {
-		if (isNaN(value) && typeof result !== 'number') break mathBlock;
-
-		const total = forceType.forceNumber(isNum(value) ? value : result);
-		if (total == null) break mathBlock;
-
-		let mathString = total + '';
-		
-		while (mathSymbols.includes(iter.peek().value)) {
-			const symbol = iter.next().value;
-			const nextItem = iter.next().value;
-
-			if (isNaN(nextItem) && !isA_0(nextItem)) continue;
-
-			const variable = parseInputToVariable(iter, { value: nextItem }, data);
-			const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
-
-			mathString += ` ${symbol} ${num}`;
+			return evalMath(mathString);
 		}
 
-		return evalMath(mathString);
+		if (value === 'CURRENT_DATE') return Date.now();
+
+		return result;
 	}
 
-	iter = iterCache;
+	const result = wrapped(input.value);
 
-	if (value === 'CURRENT_DATE') return Date.now();
+	if (iter.disposeIf('EQUALS')){
+		return result == parseInput(iter, iter.next(), data);
+	}
 
 	return result;
 }
@@ -461,6 +464,38 @@ const expectSetVar = ({ iter, data }) => {
 		path,
 		data: varData
 	}
+}
+
+const parseBlock = ({ iter, data }) => {
+	const items = [];
+
+	if (!iter.disposeIf('{')){
+		const err = 'Missing Opening \'{\' after parameters';
+
+		throw new Error(err);
+	}
+
+	let openBrackets = 1;
+	let closedBrackets = 0;
+	
+	for (const item of iter){
+		if (item === '{') openBrackets++;
+		else if (item === '}') closedBrackets++;
+		if (item == '\r') continue;
+		
+		items.push(item);
+
+		if (openBrackets == closedBrackets && openBrackets > 0) break;
+	}
+
+	if (items[items.length - 1] !== '}'){
+		const err = 'Missing Closing \'}\' at end of function';
+
+		throw new Error(err);
+	}
+	else items.pop();
+
+	return items;
 }
 
 class Ora {
@@ -601,21 +636,31 @@ class Ora {
 					if (calls++ >= maxCalls) return console.log('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
-						betterIterable(items)
+						betterIterable(items, { tracking: true })
 					);
 				}
 			},
 
-			IF ({ iter, data, handleItems }) {
-				const input = iter.next();
-				const items = [];
+			async IF ({ iter, data, handleItems }) {
+				if (iter.disposeIf('(')){
+					const toCheck = [parseInput(iter, iter.next(), data, true)];
 
-				for (const item of iter) items.push(item);
+					while (iter.disposeIf('AND') && isA_0(iter.peek().value))
+						toCheck.push( parseInput(iter, iter.next(), data, true) );
 
-				if (parseInput(iter, input, data) == true)
-					handleItems(
-						betterIterable(items)
-					);
+					if (!iter.disposeIf(')'))
+						throw new Error('Expected ")" to close BIND statement!');
+					
+					if (toCheck.some(val => val != true)) return;
+				}
+					
+
+				const items = parseBlock({ iter, data });
+
+				await handleItems(
+					betterIterable(items, { tracking: true }),
+					data
+				);
 			},
 
 			RETURN ({ iter, data }) {
@@ -643,8 +688,6 @@ class Ora {
 			async AWAIT ({ iter, data }) {
 				const ep = parseInput(iter, iter.next(), data);
 
-				console.log(ep)
-
 				return await ep;
 			},
 				
@@ -655,7 +698,7 @@ class Ora {
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
 
-				const args = [], items = [];
+				const args = [];
 
 				if (iter.disposeIf('(')){
 					let passes = 0;
@@ -671,31 +714,7 @@ class Ora {
 					}
 				}
 
-				if (!iter.disposeIf('{')){
-					const err = 'Missing Opening \'{\' after parameters';
-
-					throw new Error(err);
-				}
-
-				let openBrackets = 1;
-				let closedBrackets = 0;
-				
-				for (const item of iter){
-					if (item === '{') openBrackets++;
-					else if (item === '}') closedBrackets++;
-					if (item == '\r') continue;
-					
-					items.push(item);
-
-					if (openBrackets == closedBrackets && openBrackets > 0) break;
-				}
-
-				if (items[items.length - 1] !== '}'){
-					const err = 'Missing Closing \'}\' at end of function';
-
-					throw new Error(err);
-				}
-				else items.pop();
+				const items = parseBlock({iter, data});
 
 				const func = async (...inputs) => {
 					const variables = {};
