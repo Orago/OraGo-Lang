@@ -543,10 +543,32 @@ const parseBlock = ({ iter, data }) => {
 	return items;
 }
 
+function joinPath(...args) {
+  let path = '';
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg.length > 0) {
+      if (path.length > 0 && path[path.length - 1] !== '/') {
+        path += '/';
+      }
+
+      if (arg[0] === '/') {
+        arg = arg.substring(1);
+      }
+
+      path += arg;
+    }
+  }
+
+  return path;
+}
+
 class Ora {
-	#variables;
-	#classes;
-	#functions;
+	variables;
+	classes;
+	functions;
 
 	utils = {
 		setOnPath,
@@ -570,13 +592,13 @@ class Ora {
 	}
 
 	init ({ functions, classes, overrideFunctions }){
-		this.#variables = {};
+		this.variables = {};
 
-		this.#classes = {
+		this.classes = {
 			...forceType.forceObject(classes)
 		};
 
-		this.#functions = {
+		this.functions = {
 			...forceType.forceObject(functions),
 
 			['/'] (){
@@ -592,7 +614,7 @@ class Ora {
 			},
 
 			SET: ({ iter, data }) => {
-				const variables = iter.disposeIf('GLOBAL') ? this.#variables : data.variables;
+				const variables = iter.disposeIf('GLOBAL') ? this.variables : data.variables;
 				const variableName = iter.next().value;
 				const path = [variableName];
 				
@@ -615,7 +637,7 @@ class Ora {
 			},
 
 			DELETE ({ iter, data }) {
-				const variables = iter.disposeIf('GLOBAL') ? this.#variables : data.variables;
+				const variables = iter.disposeIf('GLOBAL') ? this.variables : data.variables;
 
 				const variableName = iter.next().value;
 				const path = [variableName];
@@ -795,64 +817,6 @@ class Ora {
 				process.exit();
 			},
 
-			EXPORT ({ iter, data }) {
-				return {
-					exit: true,
-					value: parseInput(iter, iter.next(), data)
-				}
-			},
-
-			async IMPORT ({ iter, data }){
-				const fs = await import('fs');
-				const pathModule = await import('path')
-				const resolveFrom = await import('resolve-from');
-
-				const variableName = iter.next().value;
-				const path = [variableName];
-				let { variables } = data;
-				
-				if (data.functions.hasOwnProperty(variableName))
-					throw `Cannot set variable to function name: ${variableName}`;
-
-				if (iter.disposeIf('GLOBAL')) variables = this.#variables;
-
-				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push( iter.next().value );
-
-				const nextSeq = iter.next();
-					
-				if (isA_0(variableName) ){
-					if (!nextSeq.done && nextSeq.value === 'FROM'){
-						const importUrl = parseInput(iter, iter.next(), data);
-						let url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? '../'+importUrl : importUrl;
-
-						if (typeof url === 'string'){
-							if (url.endsWith('.ora')){
-								setOnPath({
-									data: variables,
-									path,
-									value: new Ora().run(
-										fs.readFileSync(pathModule.relative(__dirname, url), 'utf-8')
-									)
-								});
-							}
-							else if (url.endsWith('.js') || url.endsWith('.npm')){
-								if (url.endsWith('.npm')) url = ('../node_modules/' + url.slice(0, url.length - 4) + '/');
-
-								setOnPath({
-									data: variables,
-									path,
-									value: await import(pathModule.relative(__dirname, url))
-								});
-							}
-
-							else throw 'INVALID URL';
-						}
-						else throw 'IMPORT URL IS NOT A STRING';
-					}
-				}
-			},
-
 			PUSH ({ iter, data }) {
 				const items = [
 					parseInput(iter, iter.next(), data)
@@ -869,7 +833,7 @@ class Ora {
 					const variable = expectSetVar({ iter, data });
 					let { variables } = data;
 
-					if (iter.disposeIf('GLOBAL')) variables = this.#variables;
+					if (iter.disposeIf('GLOBAL')) variables = this.variables;
 
 					setOnPath({
 						data: variables,
@@ -909,7 +873,7 @@ class Ora {
 		delete this.init;
 	}
 
-	async handleItems (iter, data = { variables: this.#variables, functions: this.#functions }){
+	async handleItems (iter, data = this){
 		const { functions, variables } = data;
 
 		for (const method of iter) {
@@ -950,6 +914,5 @@ class Ora {
 		return this;
 	}
 }
-
 
 module.exports = Ora;

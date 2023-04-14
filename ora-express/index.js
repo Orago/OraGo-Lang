@@ -1,5 +1,5 @@
 const fs = require('fs');
-const ora = require('../ora/indexmod');
+const ora = require('../ora/commonJS.js');
 
 const run = (code) => {
 	const oraInstance = new ora();
