@@ -531,6 +531,30 @@ const parseBlock = ({ iter }) => {
 	return items;
 }
 
+const keywordDict = (input) => {
+	let keywordsToParse = {
+		comment: ['COMMENT'],
+		set: ['SET', 'LET'],
+		...input
+	};
+
+	const keywordIDs = Enum(...Object.keys(keywordsToParse));
+
+	const match = (search) => {
+		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
+
+		if (res == undefined) throw new Error(`Keyword ${search} not found in dictionary`);
+		else return keywordIDs[res[0]];
+	}
+
+	return {
+		id: keywordIDs,
+		match
+	};
+}
+
+keywordDict();
+
 class Ora {
 	//#region //* Attributes *//
 	variables;
@@ -566,14 +590,7 @@ class Ora {
 	}
 
 	init ({ functions, classes, overrideFunctions, overrideDictionary }){
-		let dictionaryToParse = {
-			comment: ['COMMENT'],
-			set: ['SET', 'LET'],
-		};
-
-		const dictEnum = Enum(...Object.keys(dictionaryToParse));
-//Object.entries(dictionaryToParse).map($ => [$[1], $[0]])
-		console.log(dictEnum)
+		const keyword = keywordDict(overrideDictionary);
 
 		this.variables = {};
 
