@@ -2,28 +2,19 @@ const fs = require('fs');
 const ora = require('../ora/commonJS.js');
 
 const newDict = {
-	set: ['👉'],
-	assign: ['💨'],
-	print: ['💬'],
-	function: ['🔨'],
-	return: ['🏠'],
+	set: ['me'],
+	assign: ['ow'],
+	print: ['mrow'],
+	function: ['mew'],
+	return: ['mow'],
 
-	import: ['📥'],
-	export: ['📤'],
+	require: ['mah'],
+	import: ['meh'],
+	from: ['muh'],
 
-	require: ['🚚'],
-	from: ['📦'],
-	global: ['🌎'],
-
-	if: ['🤔'],
-	else: ['🤷‍♂️'],
-
-	for: ['🔁'],
-	loop: ['🔄'],
-
-	equal: ['👌'],
-	delete: ['🧺'],
-	comment: ['🔇'],
+	if: ['meuh'],
+	else: ['meah'],
+	and: ['ma'],
 }
 
 const run = (code) => new ora({ overrideDictionary: newDict }).run(code);

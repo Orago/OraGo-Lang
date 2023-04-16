@@ -1,0 +1,16 @@
+mah express muh 'express.npm';
+
+me app ow express();
+me runs ow 0;
+
+mew onSlash (req, res){
+	mow res.send ('tss meow mow?' + runs);
+}
+
+app.get('/', onSlash);
+
+me port ow 3000;
+
+app.listen (port);
+
+mrow "MEOW MEOW" ma port; 
