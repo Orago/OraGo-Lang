@@ -426,9 +426,9 @@ function parseInput (iter, input, data = {}) {
 
 		let result;
 
-		if (isA_0(value) && variables.hasOwnProperty(value)){
+		if (isA_0(value) && variables.hasOwnProperty(value))
 			result = parseInputToVariable(iter, { value }, data);
-		}
+		
 
 		mathBlock: {
 			if (isNaN(value) && typeof result !== 'number') break mathBlock;
@@ -532,13 +532,49 @@ const parseBlock = ({ iter }) => {
 }
 
 const keywordDict = (input) => {
-	let keywordsToParse = {
+	const keywordsToParse = {
+		// Commands
 		comment: ['COMMENT'],
 		set: ['SET', 'LET'],
+		assign: ['TO', '='],
+		delete: ['DELETE'],
+		print: ['PRINT'],
+		loop: ['LOOP'],
+		for: ['FOR'],
+		if: ['IF'],
+		equals: ['EQUALS'],
+		return: ['RETURN'],
+		class: ['CLASS'],
+		function: ['FUNCTION'],
+		exit: ['EXIT'],
+		push: ['PUSH'],
+		pop: ['POP'],
+		shift: ['SHIFT'],
+		await: ['AWAIT'],
+		sleep: ['SLEEP'],
+
+		// Operators
+		add: ['+'],
+		subtract: ['-'],
+		multiply: ['*'],
+		divide: ['/'],
+		
+		// types
+		number: ['NUMBER'],
+		string: ['STRING'],
+		boolean: ['BOOLEAN'],
+		object: ['OBJECT'],
+		array: ['ARRAY'],
+		enum: ['ENUM'],
+		
 		...input
 	};
 
 	const keywordIDs = Enum(...Object.keys(keywordsToParse));
+
+	const has = (search) => {
+		return Object.values(keywordsToParse).some((value) => value.includes(search));
+	}
 
 	const match = (search) => {
 		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
@@ -549,7 +585,8 @@ const keywordDict = (input) => {
 
 	return {
 		id: keywordIDs,
-		match
+		match,
+		has
 	};
 }
 
@@ -578,19 +615,32 @@ class Ora {
 			customFunctions,
 			customClasses,
 			overrideFunctions,
-			overrideDictionary
+			overrideDictionary,
+			functionGenerator
 		} = forceType.forceObject(settings);
 
 		this.init({
 			functions: customFunctions,
 			classes: customClasses,
 			overrideFunctions,
-			overrideDictionary
+			overrideDictionary,
+			functionGenerator
 		});
 	}
 
-	init ({ functions, classes, overrideFunctions, overrideDictionary }){
-		const keyword = keywordDict(overrideDictionary);
+	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator }){
+		this.keywords = keywordDict(overrideDictionary);
+
+		if (typeof functionGenerator === 'function'){
+			const gen = functionGenerator(this.keywords);
+
+			if (typeof gen === 'object' && gen !== null){
+				functions = {
+					...functions,
+					...gen
+				};
+			}
+		}
 
 		this.variables = {};
 
@@ -601,18 +651,9 @@ class Ora {
 		this.functions = {
 			...forceType.forceObject(functions),
 
-			['/'] (){
-				return this.COMMENT(...arguments);
-			},
+			[this.keywords.id.comment]: () => ({ break: true }),
 
-			COMMENT: () => ({ break: true }),
-
-
-			LET (){
-				return this.SET(...arguments);
-			},
-
-			SET: ({ iter, data }) => {
+			[this.keywords.id.set]: ({ iter, data }) => {
 				const { variables } = (iter.disposeIf('GLOBAL') ? this : data);
 				const path = [iter.next().value];
 				
@@ -634,7 +675,7 @@ class Ora {
 				else throw `Invalid Variable Name: (${path[0]}), or next sequence (${nextSeq.value})`;
 			},
 
-			DELETE ({ iter, data }) {
+			[this.keywords.id.delete] ({ iter, data }) {
 				const variables = iter.disposeIf('GLOBAL') ? this.variables : data.variables;
 				const path = [iter.next().value];
 				
@@ -655,7 +696,7 @@ class Ora {
 				else throw `Invalid Variable Name: (${path[0]})`;
 			},
 
-			PRINT ({ iter, data }) {
+			[this.keywords.id.print] ({ iter, data }) {
 				const input = iter.next();
 				if (!input.value) return;
 
@@ -670,7 +711,7 @@ class Ora {
 				results.length > 0 && console.log(...results);
 			},
 
-			LOOP ({ iter, handleItems }) {
+			[this.keywords.id.loop] ({ iter, handleItems }) {
 				const input = iter.next().value, 
 							items = [...iter];
 
@@ -688,7 +729,7 @@ class Ora {
 				else throw 'Cannot Find Loop Status';
 			},
 
-			FOR ({ iter, data, handleItems, maxCalls = 100 }) {
+			[this.keywords.id.for] ({ iter, data, handleItems, maxCalls = 100 }) {
 				const input = iter.next();
 				const items = [...iter];
 				let calls = 0;
@@ -702,7 +743,7 @@ class Ora {
 				}
 			},
 
-			async IF ({ iter, data, handleItems }) {
+			async [this.keywords.id.if] ({ iter, data, handleItems }) {
 				if (iter.disposeIf('(')){
 					const toCheck = [parseInput(iter, iter.next(), data, true)];
 
@@ -724,10 +765,10 @@ class Ora {
 				);
 			},
 
-			RETURN: ({ iter: i, data }) => parseInput(i, i.next(), data),
+			[this.keywords.id.return]: ({ iter: i, data }) => parseInput(i, i.next(), data),
 
 
-			CLASS ({ iter, data }) {
+			[this.keywords.id.class] ({ iter, data }) {
 				const className = iter.next().value;
 				const items = [];
 
@@ -737,11 +778,11 @@ class Ora {
 					data.classes[className] = { items, data };
 			},
 
-			LOG_VARIABLES: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
+			// LOG_VARIABLES: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
 
-			LOG_SCOPE: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
+			// LOG_SCOPE: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
 				
-			FUNCTION ({ iter, data, handleItems }) {
+			[this.keywords.id.function] ({ iter, data, handleItems }) {
 				const variableName = iter.next().value;
 				const path = [variableName];
 
@@ -797,9 +838,9 @@ class Ora {
 				});
 			},
 
-			EXIT: () => process.exit(),
+			[this.keywords.id.exit]: () => process.exit(),
 
-			PUSH ({ iter, data }) {
+			[this.keywords.id.push] ({ iter, data }) {
 				const items = [parseInput(iter, iter.next(), data)];
 
 				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
@@ -821,21 +862,21 @@ class Ora {
 				}
 			},
 
-			SHIFT ({ iter, data }) {
+			[this.keywords.id.shift] ({ iter, data }) {
 				const variable = expectSetVar({ iter, data });
 
 				variable.data.shift();
 			},
 
-			POP ({ iter, data }) {
+			[this.keywords.id.pop] ({ iter, data }) {
 				const variable = expectSetVar({ iter, data });
 
 				variable.data.pop();
 			},
 
-			AWAIT: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
+			[this.keywords.id.await]: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
 
-			async SLEEP ({ iter, data }) {
+			async [this.keywords.id.sleep] ({ iter, data }) {
 				const time = parseInput(iter, iter.next(), data);
 
 				return new Promise(resolve => setTimeout(resolve, time));
@@ -855,14 +896,14 @@ class Ora {
 		const { functions, variables } = data;
 
 		for (const method of iter) {
-			if (!functions.hasOwnProperty(method)){
+			if (!data.keywords.has(method)){
 				if (variables?.hasOwnProperty(method))
 					await parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
-
-			const response = await functions[method]({
+			
+			const response = await functions[data.keywords.match(method)]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
@@ -892,5 +933,6 @@ class Ora {
 		return this;
 	}
 }
+
 
 module.exports = Ora;
