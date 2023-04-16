@@ -7,19 +7,20 @@ function commonOra (data) {
 		import: ['IMPORT'],
 	};
 
-	function functionGenerator (kw){
+	function functionGenerator ({ keywords: kw, settings }){
+
 		customFunctions[kw.id.require] = async function ({ iter, data }) {
+
 			if (typeof require !== 'function') throw 'REQUIRE IS NOT SUPPORTED IN THIS ENVIRONMENT';
+
 			const pathModule = require('path');
+			let { variables } = data;
 
 			const variableName = iter.next().value;
 			const path = [variableName];
-			let { variables } = data;
 
 			if (data.functions.hasOwnProperty(variableName))
 				throw `Cannot set variable to function name: ${variableName}`;
-
-			if (iter.disposeIf('GLOBAL')) variables = data.variables;
 
 			while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 				path.push( iter.next().value );
@@ -28,7 +29,7 @@ function commonOra (data) {
 
 				
 			if (data.utils.isA_0(variableName) ){
-				if (!nextSeq.done && nextSeq.value === 'FROM'){
+				if (!nextSeq.done && kw.is(nextSeq.value, kw.id.from)){
 					const importUrl = data.utils.parseInput(iter, iter.next(), data);
 					let url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? pathModule.join(process.argv[1], '../'+importUrl) : importUrl;
 
@@ -50,15 +51,13 @@ function commonOra (data) {
 			try {
 				const fs = require('fs');
 				const pathModule = require('path');
+				let { variables } = data;
 
 				const variableName = iter.next().value;
 				const path = [variableName];
-				let { variables } = data;
 				
 				if (data.functions.hasOwnProperty(variableName))
 					throw `Cannot set variable to function name: ${variableName}`;
-
-				if (iter.disposeIf('GLOBAL')) variables = data.variables;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
@@ -66,7 +65,7 @@ function commonOra (data) {
 				const nextSeq = iter.next();
 					
 				if (data.utils.isA_0(variableName) ){
-					if (!nextSeq.done && nextSeq.value === 'FROM'){
+					if (!nextSeq.done && kw.is(nextSeq.value, kw.id.from)){
 						const importUrl = data.utils.parseInput(iter, iter.next(), data);
 						const url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? pathModule.join(process.argv[1], '../'+importUrl) : importUrl;
 
@@ -74,7 +73,7 @@ function commonOra (data) {
 							data.utils.setOnPath({
 								data: variables,
 								path,
-								value: new commonOra().run(
+								value: new commonOra(settings).run(
 									fs.readFileSync(url, 'utf-8')
 								)
 							});
@@ -87,6 +86,7 @@ function commonOra (data) {
 				throw console.error(err);
 			}
 		};
+		
 	}
 
 	return new ora({
@@ -94,9 +94,8 @@ function commonOra (data) {
 		functionGenerator,
 		...data,
 		overrideDictionary: {
-			...data?.overrideDictionary,
 			...cjsDict,
-
+			...data?.overrideDictionary,
 		},
 	});
 }

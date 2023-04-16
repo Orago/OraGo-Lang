@@ -7,10 +7,11 @@ const newDict = {
 	assign: ['='],
 	function: ['func'],
 	return: ['return'],
-	import: ['import'],
 	from: ['from'],
+	import: ['import'],
 	require: ['require'],
 	global: ['global'],
+	print: ['consolelog']
 }
 
 const run = (code) => {
