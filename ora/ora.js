@@ -566,6 +566,7 @@ const keywordDict = (input) => {
 		object: ['OBJECT'],
 		array: ['ARRAY'],
 		enum: ['ENUM'],
+		from: ['FROM'],
 		
 		...input
 	};
@@ -583,9 +584,16 @@ const keywordDict = (input) => {
 		else return keywordIDs[res[0]];
 	}
 
+	const matchUnsafe = (search) => {
+		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
+
+		return res != undefined ? keywordIDs[res[0]] : null;
+	}
+
 	return {
 		id: keywordIDs,
 		match,
+		matchUnsafe,
 		has
 	};
 }
@@ -897,7 +905,7 @@ class Ora {
 		const { functions, variables } = data;
 
 		for (const method of iter) {
-			if (!this.keywords.has(method)){
+			if (!this.keywords.has(method) || !functions.hasOwnProperty(this.keywords.match(method))){
 				if (variables?.hasOwnProperty(method))
 					await parseInput(iter, { value: method }, data);
 				

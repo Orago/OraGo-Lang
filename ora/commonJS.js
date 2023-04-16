@@ -2,9 +2,9 @@ const ora = require('./ora');
 
 function commonOra (data) {
 	const customFunctions = {};
-	const overrideDictionary = {
+	const cjsDict = {
 		require: ['REQUIRE'],
-		import: ['IMPORT']
+		import: ['IMPORT'],
 	};
 
 	function functionGenerator (kw){
@@ -88,12 +88,16 @@ function commonOra (data) {
 			}
 		};
 	}
-	
+
 	return new ora({
 		customFunctions,
-		overrideDictionary,
 		functionGenerator,
-		...data
+		...data,
+		overrideDictionary: {
+			...data?.overrideDictionary,
+			...cjsDict,
+
+		},
 	});
 }
 
