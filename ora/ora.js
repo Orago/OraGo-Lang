@@ -115,9 +115,10 @@ function evalMath(mathString) {
 				case '-': return b - a;
 				case '*': return b * a;
 				case '/': return b / a;
-				case '^': return Math.pow(b, a);
+				case '^': return b ** a;
 			}
 		}
+
 		// using a stack and a postfix notation algorithm to evaluate the math string
 		const operators = ['+', '-', '*', '/', '^'];
 		const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
@@ -195,16 +196,12 @@ function chunkLexed(lexed) {
 	for (const item of lexed){
 		if (item === '{'){
 			scopeDepth++;
-
 			chunk.push(item);
-
-			continue
+			continue;
 		}
 		else if (item === '}'){
 			scopeDepth--;
-
 			chunk.push(item);
-
 			continue;
 		}
 
@@ -218,7 +215,6 @@ function chunkLexed(lexed) {
 		else if (item !== '\n' && item !== '\t' && item !== '\r') chunk.push(item);
 	}
 
-
 	return chunks;
 }
 
@@ -227,10 +223,11 @@ const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
 function parseInputToVariable (iter, input, data = {}, functions = true) {
-	const { parseInput } = this;
+	const { parseInput, keywords: kw } = this;
 
 	const { variables = {} } = data;
 	const { value } = input;
+	let parent = variables;
 
 	const scaleTree = ({ source, property }) => {
 		let scopeV = (property != undefined ? source[property] : source);
@@ -240,7 +237,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			scopeV = scopeV.bind(source);
 		}
 
-		if (iter.disposeIf('BIND')){
+		if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
 			if (typeof scopeV == 'function' && !isClass){
 				const toBind = forceType.forceObject(
 					parseInput(iter, iter.next(), data)
@@ -286,7 +283,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 				property: iter.last()
 			});
 
-		if (iter.disposeIf('=')){
+		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
 			if (property != undefined) source[property] = parseInput(iter, iter.next(), data);
 			else throw 'Cannot mod a raw variable to a value!'
 				
@@ -436,8 +433,6 @@ const keywordDict = (input) => {
 		multiply: ['*'],
 		divide: ['/'],
 		
-
-		
 		// types
 		number: ['NUMBER'],
 		string: ['STRING'],
@@ -534,12 +529,11 @@ class Ora {
 		if (typeof functionGenerator === 'function'){
 			const gen = functionGenerator(this);
 
-			if (typeof gen === 'object' && gen !== null){
+			if (typeof gen === 'object' && gen !== null)
 				functions = {
 					...functions,
 					...gen
 				};
-			}
 		}
 
 		this.variables = {};
@@ -791,22 +785,22 @@ class Ora {
 		delete this.init;
 	}
 
-	includesFunction (name){
-		return this.dictionary.find($ => $[0].includes(name)) != null;
-	}
+	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
 
 	handleItems = async (iter, data = this) => {
 		const { functions, variables } = data;
+		const { keywords: kw } = this;
 
 		for (const method of iter) {
-			if (!this.keywords.has(method) || !functions.hasOwnProperty(this.keywords.match(method))){
+			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
+
 				if (variables?.hasOwnProperty(method))
 					await this.parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
 
-			const response = await functions[this.keywords.match(method)]({
+			const response = await functions[kw.match(method)]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
@@ -821,7 +815,7 @@ class Ora {
 	parseInput = (iter, input, data = {}) => {
 		const { variables = {} } = data;
 		const { keywords: kw } = this;
-		// const mathSymbols = ['+', '-', '*', '/', '^'];
+
 		const mathSymbols = {
 			[kw.id.add]: '+',
 			[kw.id.subtract]: '-',
@@ -830,15 +824,17 @@ class Ora {
 		};
 
 		const wrapped = (value) => {
-			if      (kw.is(value, kw.id.true))  return true;
-			else if (kw.is(value, kw.id.false)) return false;
-			else if (kw.is(value, kw.id.object))            return {};
-			else if (kw.is(value, kw.id.array))             return [];
-			else if (kw.is(value, kw.id.null))              return null;
-			else if (kw.is(value, kw.id.undefined))         return undefined;
-			else if (kw.is(value, kw.id.nan))               return NaN;
-			else if (kw.is(value, kw.id.Infinity))          return Infinity;
-			else if (kw.is(value, kw.id.negativeInfinity)) return -Infinity;
+			const kIs = (key) => kw.is(value, kw.id[key]);
+
+			if   	  (kIs('true'))             return true;
+			else if (kIs('false'))            return false;
+			else if (kIs('object'))           return {};
+			else if (kIs('array'))            return [];
+			else if (kIs('null'))             return null;
+			else if (kIs('undefined'))        return undefined;
+			else if (kIs('nan'))              return NaN;
+			else if (kIs('Infinity'))         return Infinity;
+			else if (kIs('negativeInfinity')) return -Infinity;
 			
 			if (value == '{'){
 				const object = {};
@@ -847,7 +843,6 @@ class Ora {
 
 				while (!iter.disposeIf('}')){
 					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
-
 					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 
 					const key = iter.next();
@@ -879,6 +874,7 @@ class Ora {
 			}
 			else if (isString(value)){
 				let stringResult = parseString(value);
+
 
 				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
 					stringResult = stringResult.concat(
@@ -928,7 +924,7 @@ class Ora {
 
 					if (isNaN(nextItem) && !isA_0(nextItem)) continue;
 
-					const variable = parseInputToVariable(iter, { value: nextItem }, data);
+					const variable = parseInputToVariable.bind(this)(iter, { value: nextItem }, data);
 					const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
 
 					mathString += ` ${symbol} ${num}`;
@@ -947,8 +943,7 @@ class Ora {
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
 			return result == wrapped(iter.next.value);
 
-		else 
-			return result;
+		else return result;
 	}
 
 	async run (codeInput){

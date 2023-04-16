@@ -5,7 +5,7 @@
   "main": "ora.js",
   "scripts": {
     "test": "test",
-    "build": "rollup ora.js --format cjs --file index.js"
+    "min": "uglifyjs --compress --mangle --output ora.min.js -- ora.js "
   },
   "repository": {
     "type": "git",
@@ -25,6 +25,7 @@
     "rollup": "^3.20.2"
   },
   "dependencies": {
-    "node-fetch": "^3.3.1"
+    "node-fetch": "^3.3.1",
+    "uglify-js": "^3.17.4"
   }
 }
