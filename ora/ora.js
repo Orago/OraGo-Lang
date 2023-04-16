@@ -241,7 +241,7 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 		if (iter.disposeIf('BIND')){
 			if (typeof scopeV == 'function' && !isClass){
 				const toBind = forceType.forceObject(
-					parseInput(iter, iter.next(), data, false)
+					parseInput(iter, iter.next(), data)
 				);
 				
 				scopeV = scopeV.bind(toBind);
@@ -340,21 +340,19 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 
 function parseInput (iter, input, data = {}) {
 	const { variables = {} } = data;
+	const { keywords: kw } = data;
 	const mathSymbols = ['+', '-', '*', '/', '^'];
 
 	const wrapped = (value) => {
-
-		switch(value) {
-			case 'true':              return true;
-			case 'false':             return false;
-			case 'OBJECT':            return {};
-			case 'ARRAY':             return [];
-			case 'NULL':              return null;
-			case 'UNDEFINED':         return undefined;
-			case 'NAN':               return NaN;
-			case 'INFINITY':          return Infinity;
-			case 'NEGATIVE_INFINITY': return -Infinity;
-		}
+		// if      (kw.is(value, kw.id.true))  return true;
+		// else if (kw.is(value, kw.id.false)) return false;
+		// else if (kw.is(value, kw.id.object))            return {};
+		// else if (kw.is(value, kw.id.array))             return [];
+		// else if (kw.is(value, kw.id.null))              return null;
+		// else if (kw.is(value, kw.id.undefined))         return undefined;
+		// else if (kw.is(value, kw.id.nan))               return NaN;
+		// else if (kw.is(value, kw.id.Infinity))          return Infinity;
+		// else if (kw.is(value, kw.id.negativeInfinity)) return -Infinity;
 		
 		if (value == '{'){
 			const object = {};
@@ -396,14 +394,14 @@ function parseInput (iter, input, data = {}) {
 		else if (isString(value)){
 			let stringResult = parseString(value);
 
-			while (iter.disposeIf('+') && iter.peek(1).value != null)
+			while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
 				stringResult = stringResult.concat(
 					wrapped(iter.next().value)
 				);
 			
 			return stringResult;
 		}
-		else if (value == 'ENUM'){
+		else if (kw.is(value, kw.id.enum)){
 			if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
 
 			const enumObject = [];
@@ -413,7 +411,7 @@ function parseInput (iter, input, data = {}) {
 			while (!iter.disposeIf('}')){
 				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
 
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+				if (iter.disposeIf(next => kw.is(next, kw.id.and)) && iter.disposeIfNot(isA_0)) continue;
 
 				const key = iter.next();
 				if (key.value == undefined) break;
@@ -460,7 +458,7 @@ function parseInput (iter, input, data = {}) {
 
 	const result = wrapped(input.value);
 
-	if (iter.disposeIf('EQUALS')) 
+	if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
 		return result == wrapped(iter.next.value);
 
 	else 
@@ -553,12 +551,15 @@ const keywordDict = (input) => {
 		await: ['AWAIT'],
 		sleep: ['SLEEP'],
 		and: ['AND', '&'],
+		from: ['FROM'],
 
 		// Operators
 		add: ['+'],
 		subtract: ['-'],
 		multiply: ['*'],
 		divide: ['/'],
+		
+
 		
 		// types
 		number: ['NUMBER'],
@@ -567,7 +568,14 @@ const keywordDict = (input) => {
 		object: ['OBJECT'],
 		array: ['ARRAY'],
 		enum: ['ENUM'],
-		from: ['FROM'],
+		true: ['TRUE'],
+		false: ['FALSE'],
+		null: ['NULL'],
+		undefined: ['UNDEFINED'],
+		NaN: ['NAN'],
+		Infinity: ['INFINITY'],
+		negativeInfinity: ['NEGATIVE_INFINITY'],
+
 		
 		...input
 	};
@@ -919,7 +927,6 @@ class Ora {
 				
 				continue;
 			}
-
 
 			const response = await functions[this.keywords.match(method)]({
 				iter,
