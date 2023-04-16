@@ -6,7 +6,7 @@ const newDict = {
 	assign: ['ow'],
 	print: ['mrow'],
 	function: ['mew'],
-	return: ['mow'],
+	return: ['mlep'],
 
 	require: ['mah'],
 	import: ['meh'],
@@ -15,6 +15,9 @@ const newDict = {
 	if: ['meuh'],
 	else: ['meah'],
 	and: ['ma'],
+	global: ['wuh'],
+
+	add: ['en']
 }
 
 const run = (code) => new ora({ overrideDictionary: newDict }).run(code);

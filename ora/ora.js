@@ -226,7 +226,9 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-const parseInputToVariable = (iter, input, data = {}, functions = true) => {
+function parseInputToVariable (iter, input, data = {}, functions = true) {
+	const { parseInput } = this;
+
 	const { variables = {} } = data;
 	const { value } = input;
 
@@ -338,132 +340,6 @@ const parseInputToVariable = (iter, input, data = {}, functions = true) => {
 	});
 }
 
-function parseInput (iter, input, data = {}) {
-	const { variables = {} } = data;
-	const { keywords: kw } = data;
-	const mathSymbols = ['+', '-', '*', '/', '^'];
-
-	const wrapped = (value) => {
-		// if      (kw.is(value, kw.id.true))  return true;
-		// else if (kw.is(value, kw.id.false)) return false;
-		// else if (kw.is(value, kw.id.object))            return {};
-		// else if (kw.is(value, kw.id.array))             return [];
-		// else if (kw.is(value, kw.id.null))              return null;
-		// else if (kw.is(value, kw.id.undefined))         return undefined;
-		// else if (kw.is(value, kw.id.nan))               return NaN;
-		// else if (kw.is(value, kw.id.Infinity))          return Infinity;
-		// else if (kw.is(value, kw.id.negativeInfinity)) return -Infinity;
-		
-		if (value == '{'){
-			const object = {};
-
-			let tries = 0;
-
-			while (!iter.disposeIf('}')){
-				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
-
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-				const key = iter.next();
-				if (key.value == undefined) break;
-
-				if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
-
-				object[key.value] = wrapped(iter.next().value);
-			}
-
-			return parseInputToVariable(iter, { }, { variables: object });
-		}
-		else if (value == '['){
-			const array = [];
-			let tries = 0;
-
-			while (!iter.disposeIf(']')){
-				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
-				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-				const nextItem = iter.next();
-
-				if (nextItem.value == undefined) break;
-
-				array.push( wrapped(nextItem.value) );
-			}
-
-			return array;
-		}
-		else if (isString(value)){
-			let stringResult = parseString(value);
-
-			while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
-				stringResult = stringResult.concat(
-					wrapped(iter.next().value)
-				);
-			
-			return stringResult;
-		}
-		else if (kw.is(value, kw.id.enum)){
-			if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
-
-			const enumObject = [];
-
-			let tries = 0;
-
-			while (!iter.disposeIf('}')){
-				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
-
-				if (iter.disposeIf(next => kw.is(next, kw.id.and)) && iter.disposeIfNot(isA_0)) continue;
-
-				const key = iter.next();
-				if (key.value == undefined) break;
-
-				enumObject.push(wrapped(key.value));
-			}
-
-			return Enum(...enumObject);
-		}
-
-		let result;
-
-		if (isA_0(value) && variables.hasOwnProperty(value))
-			result = parseInputToVariable(iter, { value }, data);
-		
-
-		mathBlock: {
-			if (isNaN(value) && typeof result !== 'number') break mathBlock;
-
-			const total = forceType.forceNumber(isNum(value) ? value : result);
-			if (total == null) break mathBlock;
-
-			let mathString = total + '';
-			
-			while (mathSymbols.includes(iter.peek().value)) {
-				const symbol = iter.next().value;
-				const nextItem = iter.next().value;
-
-				if (isNaN(nextItem) && !isA_0(nextItem)) continue;
-
-				const variable = parseInputToVariable(iter, { value: nextItem }, data);
-				const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
-
-				mathString += ` ${symbol} ${num}`;
-			}
-
-			return evalMath(mathString);
-		}
-
-		if (value === 'CURRENT_DATE') return Date.now();
-
-		return result;
-	}
-
-	const result = wrapped(input.value);
-
-	if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
-		return result == wrapped(iter.next.value);
-
-	else 
-		return result;
-}
 
 const setOnPath = ({ value, path, data: obj }) => {
 	for (const sub of path.slice(0, path.length - 1)){
@@ -552,6 +428,7 @@ const keywordDict = (input) => {
 		sleep: ['SLEEP'],
 		and: ['AND', '&'],
 		from: ['FROM'],
+		bind: ['BIND'],
 
 		// Operators
 		add: ['+'],
@@ -620,7 +497,6 @@ class Ora {
 
 	utils = {
 		setOnPath,
-		parseInput,
 		chunkLexed,
 		isA_0,
 		isNum,
@@ -640,6 +516,8 @@ class Ora {
 		} = forceType.forceObject(settings);
 
 		this.settings = {};
+
+		this.utils.parseInput = this.parseInput;
 
 		this.init({
 			functions: customFunctions,
@@ -670,7 +548,7 @@ class Ora {
 			...forceType.forceObject(classes)
 		};
 
-		const { keywords: kw } = this;
+		const { keywords: kw, parseInput } = this;
 
 		this.functions = {
 			...forceType.forceObject(functions),
@@ -923,7 +801,7 @@ class Ora {
 		for (const method of iter) {
 			if (!this.keywords.has(method) || !functions.hasOwnProperty(this.keywords.match(method))){
 				if (variables?.hasOwnProperty(method))
-					await parseInput(iter, { value: method }, data);
+					await this.parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
@@ -938,6 +816,139 @@ class Ora {
 
 			if (response) return response;
 		}
+	}
+
+	parseInput = (iter, input, data = {}) => {
+		const { variables = {} } = data;
+		const { keywords: kw } = this;
+		// const mathSymbols = ['+', '-', '*', '/', '^'];
+		const mathSymbols = {
+			[kw.id.add]: '+',
+			[kw.id.subtract]: '-',
+			[kw.id.multiply]: '*',
+			[kw.id.divide]: '/',
+		};
+
+		const wrapped = (value) => {
+			if      (kw.is(value, kw.id.true))  return true;
+			else if (kw.is(value, kw.id.false)) return false;
+			else if (kw.is(value, kw.id.object))            return {};
+			else if (kw.is(value, kw.id.array))             return [];
+			else if (kw.is(value, kw.id.null))              return null;
+			else if (kw.is(value, kw.id.undefined))         return undefined;
+			else if (kw.is(value, kw.id.nan))               return NaN;
+			else if (kw.is(value, kw.id.Infinity))          return Infinity;
+			else if (kw.is(value, kw.id.negativeInfinity)) return -Infinity;
+			
+			if (value == '{'){
+				const object = {};
+
+				let tries = 0;
+
+				while (!iter.disposeIf('}')){
+					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
+
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+					const key = iter.next();
+					if (key.value == undefined) break;
+
+					if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
+
+					object[key.value] = wrapped(iter.next().value);
+				}
+
+				return parseInputToVariable.bind(this)(iter, { }, { variables: object });
+			}
+			else if (value == '['){
+				const array = [];
+				let tries = 0;
+
+				while (!iter.disposeIf(']')){
+					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+					const nextItem = iter.next();
+
+					if (nextItem.value == undefined) break;
+
+					array.push( wrapped(nextItem.value) );
+				}
+
+				return array;
+			}
+			else if (isString(value)){
+				let stringResult = parseString(value);
+
+				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
+					stringResult = stringResult.concat(
+						wrapped(iter.next().value)
+					);
+				
+				return stringResult;
+			}
+			else if (kw.is(value, kw.id.enum)){
+				if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
+
+				const enumObject = [];
+
+				let tries = 0;
+
+				while (!iter.disposeIf('}')){
+					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
+
+					if (iter.disposeIf(next => kw.is(next, kw.id.and)) && iter.disposeIfNot(isA_0)) continue;
+
+					const key = iter.next();
+					if (key.value == undefined) break;
+
+					enumObject.push(wrapped(key.value));
+				}
+
+				return Enum(...enumObject);
+			}
+
+			let result;
+
+			if (isA_0(value) && variables.hasOwnProperty(value))
+				result = parseInputToVariable.bind(this)(iter, { value }, data);
+			
+
+			mathBlock: {
+				if (isNaN(value) && typeof result !== 'number') break mathBlock;
+
+				const total = forceType.forceNumber(isNum(value) ? value : result);
+				if (total == null) break mathBlock;
+
+				let mathString = total + '';
+				
+				while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
+					const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
+					const nextItem = iter.next().value;
+
+					if (isNaN(nextItem) && !isA_0(nextItem)) continue;
+
+					const variable = parseInputToVariable(iter, { value: nextItem }, data);
+					const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
+
+					mathString += ` ${symbol} ${num}`;
+				}
+
+				return evalMath(mathString);
+			}
+
+			if (value === 'CURRENT_DATE') return Date.now();
+
+			return result;
+		}
+
+		const result = wrapped(input.value);
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
+			return result == wrapped(iter.next.value);
+
+		else 
+			return result;
 	}
 
 	async run (codeInput){
