@@ -711,7 +711,7 @@ class Ora {
 				results.length > 0 && console.log(...results);
 			},
 
-			[this.keywords.id.loop] ({ iter, handleItems }) {
+			[this.keywords.id.loop]: ({ iter, handleItems }) => {
 				const input = iter.next().value, 
 							items = [...iter];
 
@@ -723,7 +723,8 @@ class Ora {
 							betterIterable(
 								items,
 								{ tracking: true }
-							)
+							),
+							this
 						);
 				}
 				else throw 'Cannot Find Loop Status';
@@ -892,18 +893,18 @@ class Ora {
 		return this.dictionary.find($ => $[0].includes(name)) != null;
 	}
 
-	async handleItems (iter, data = this){
+	handleItems = async (iter, data = this) => {
 		const { functions, variables } = data;
 
 		for (const method of iter) {
-			if (!data.keywords.has(method)){
+			if (!this.keywords.has(method)){
 				if (variables?.hasOwnProperty(method))
 					await parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
-			
-			const response = await functions[data.keywords.match(method)]({
+
+			const response = await functions[this.keywords.match(method)]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
