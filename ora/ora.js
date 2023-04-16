@@ -230,7 +230,18 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 	let parent = variables;
 
 	const scaleTree = ({ source, property }) => {
-		let scopeV = (property != undefined ? source[property] : source);
+		let scopeV;
+		
+		// let scopeV = (property != undefined ? source[property] : source);
+
+		if (property != undefined){
+			if (source[property] == undefined) source[property] = {};
+
+			scopeV = source[property];
+		}
+		else scopeV = source;
+			
+			
 		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
 		if (!isClass && typeof scopeV == 'function'){
@@ -338,20 +349,18 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 }
 
 
-const setOnPath = ({ value, path, data: obj }) => {
+const setOnPath = ({ value, path, source }) => {
 	for (const sub of path.slice(0, path.length - 1)){
-		if (typeof obj[sub] !== 'object') obj[sub] = { value: obj[sub] };
-		if (obj[sub].value == null) delete obj[sub].value;
+		if (typeof source[sub] !== 'object') source[sub] = { value: source[sub] };
+		if (source[sub].value == null) delete source[sub].value;
 
-		obj = obj[sub];
+		source = source[sub];
 	}
 
 	const i = path.length > 1 ? path.length - 1 : 0;
 	
-	if (value != undefined){
-		obj[path[i]] = value;
-	}
-	else delete obj[path[i]];
+	if (value != undefined) source[path[i]] = value;
+	else delete source[path[i]];
 }
 
 function expectSetVar({ iter, data }) {
@@ -559,16 +568,18 @@ class Ora {
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
 				
-				const nextSeq = iter.next();
-
-				if (isA_0(path[0]) && !nextSeq.done && kw.is(nextSeq.value, kw.id.assign))
-					setOnPath({
-						data: variables,
+				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
+					if (false){
+						
+					}
+					else setOnPath({
+						source: variables,
 						path,
 						value: parseInput(iter, iter.next(), data)
 					});
+				}
 
-				else throw `Invalid Variable Name: (${path[0]}), or next sequence (${nextSeq.value})`;
+				else throw `Invalid Variable Name: (${path[0]}), or next sequence (${iter.stack()[0]})`;
 			},
 
 			[kw.id.delete] ({ iter, data }) {
@@ -585,7 +596,7 @@ class Ora {
 
 				if (isA_0(path[0]))
 					setOnPath({
-						data: variables,
+						source: variables,
 						path
 					});
 
@@ -729,7 +740,7 @@ class Ora {
 				}
 
 				setOnPath({
-					data: data.variables,
+					source: data.variables,
 					path,
 					value: func
 				});
@@ -752,7 +763,7 @@ class Ora {
 					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 
 					setOnPath({
-						data: variables,
+						source: variables,
 						path: variable.path,
 						value: [...variable.data, ...items]
 					});
@@ -812,9 +823,28 @@ class Ora {
 		}
 	}
 
+	parseType = (value) => {
+		const { keywords: kw } = this;
+		const kIs = (key) => kw.is(value, kw.id[key]);
+		
+		let r = 'any';
+
+		if   	  (kIs('true'))             r = true;
+		else if (kIs('false'))            r = false;
+		else if (kIs('object'))           r = {};
+		else if (kIs('array'))            r = [];
+		else if (kIs('null'))             r = null;
+		else if (kIs('undefined'))        r = undefined;
+		else if (kIs('nan'))              r = NaN;
+		else if (kIs('Infinity'))         r = Infinity;
+		else if (kIs('negativeInfinity')) r = -Infinity;
+
+		return { type: r };
+	}
+
 	parseInput = (iter, input, data = {}) => {
 		const { variables = {} } = data;
-		const { keywords: kw } = this;
+		const { keywords: kw, parseType } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -824,33 +854,31 @@ class Ora {
 		};
 
 		const wrapped = (value) => {
-			const kIs = (key) => kw.is(value, kw.id[key]);
-
-			if   	  (kIs('true'))             return true;
-			else if (kIs('false'))            return false;
-			else if (kIs('object'))           return {};
-			else if (kIs('array'))            return [];
-			else if (kIs('null'))             return null;
-			else if (kIs('undefined'))        return undefined;
-			else if (kIs('nan'))              return NaN;
-			else if (kIs('Infinity'))         return Infinity;
-			else if (kIs('negativeInfinity')) return -Infinity;
+			const { type } = parseType(value);
+			if (type !== 'any') return type;
 			
 			if (value == '{'){
 				const object = {};
 
 				let tries = 0;
 
-				while (!iter.disposeIf('}')){
+				while (true){
 					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
 					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
 
 					const key = iter.next();
-					if (key.value == undefined) break;
+					if (key.value == undefined || key.value == '}') break;
 
-					if (!iter.disposeIf(':')) throw new Error('Expected ":" after key');
+					const path = [key.value];
 
-					object[key.value] = wrapped(iter.next().value);
+					while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+						path.push( iter.next().value );
+
+					setOnPath({
+						source: object,
+						path,
+						value: wrapped((iter.disposeIf(':') ? iter.next() : key).value)
+					});
 				}
 
 				return parseInputToVariable.bind(this)(iter, { }, { variables: object });

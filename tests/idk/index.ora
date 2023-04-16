@@ -1,0 +1,7 @@
+@h = "hello";
+@w = 'world';
+@obj = { w } ~ OBJECT;
+
+obj.cat.e = 'Meow';
+
+PRINT h & w & obj;
