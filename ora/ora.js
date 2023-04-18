@@ -435,6 +435,7 @@ const keywordDict = (input) => {
 		and: ['AND', '&'],
 		from: ['FROM'],
 		bind: ['BIND'],
+		as: ['AS'],
 
 		// Operators
 		add: ['+'],
