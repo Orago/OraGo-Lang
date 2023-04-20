@@ -1,7 +1,8 @@
 @h = "hello";
 @w = 'world';
+w.cat = 'dsfef';
 @obj = { w };
 
-obj.obj = obj;
+PRINT w.cat;
 
 PRINT h & w & obj;

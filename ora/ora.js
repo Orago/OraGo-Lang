@@ -97,6 +97,45 @@ const forceType = {
 	forceArray:   $ => Array.isArray($) ? $ : []
 }
 
+const resolveTyped = (input, type) => {
+  switch (type){
+    case null:
+    case 'null':    return forceTypeModule.forceNull(input);
+
+    case Boolean:
+    case 'boolean': return forceTypeModule.forceBoolean(input);
+
+    case Number:
+    case 'number':  return forceTypeModule.forceNumber(input);
+
+    case 'bigint':  return forceTypeModule.forceBigInt(input);
+
+    case String:
+    case 'string':  return forceTypeModule.forceString(input);
+
+    case Object:
+    case 'object':  return forceTypeModule.forceObject(input);
+
+    case Array:
+    case 'array':   return forceTypeModule.forceArray(input);
+    
+    default:        return input;
+  }
+}
+
+function objFrom (obj, keys){
+  const res = {};
+
+  for (const key of keys)
+    if (Array.isArray(key) && obj.hasOwnProperty(key[0]))
+      res[key[0]] = resolveTyped(obj[key[0]], key[1]);
+
+    else if (obj.hasOwnProperty(key))
+      res[key] = obj[key];
+      
+  return res;
+}
+
 const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
 
 
@@ -229,7 +268,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 	const { value } = input;
 	let parent = variables;
 
-	const scaleTree = ({ source, property }) => {
+	const scaleTree = ({ source, property, last }) => {
 		let scopeV;
 		
 		// let scopeV = (property != undefined ? source[property] : source);
@@ -240,7 +279,6 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			scopeV = source[property];
 		}
 		else scopeV = source;
-			
 			
 		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
@@ -295,7 +333,13 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			});
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-			if (property != undefined) source[property] = parseInput(iter, iter.next(), data);
+			if (property != undefined){
+				setOnPath({
+					source: source,
+					path: [property],
+					value: parseInput(iter, iter.next(), data)
+				});
+			}
 			else throw 'Cannot mod a raw variable to a value!'
 				
 			return source;
@@ -338,8 +382,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			}
 		}
 		
-		else if (scopeV != undefined)
-			return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
+		else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 	}
 	
 	return scaleTree({
@@ -359,7 +402,7 @@ const setOnPath = ({ value, path, source }) => {
 
 	const i = path.length > 1 ? path.length - 1 : 0;
 	
-	if (value != undefined) source[path[i]] = value;
+	if (value != undefined) source[path[i]] = { value };
 	else delete source[path[i]];
 }
 
@@ -935,8 +978,9 @@ class Ora {
 
 			let result;
 
-			if (isA_0(value) && variables.hasOwnProperty(value))
+			if (isA_0(value) && variables.hasOwnProperty(value)){
 				result = parseInputToVariable.bind(this)(iter, { value }, data);
+			}
 			
 
 			mathBlock: {
