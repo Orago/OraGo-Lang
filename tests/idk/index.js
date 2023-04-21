@@ -12,6 +12,7 @@ const newDict = {
 	import: ['imp'],
 	require: ['req'],
 	global: ['$'],
+	comment: ['#']
 	// print: ['!']
 }
 

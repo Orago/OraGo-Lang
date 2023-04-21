@@ -1,8 +1,12 @@
 @h = "hello";
 @w = 'world';
-w.cat = 'dsfef';
-@obj = { w };
+w.cat = 'dsfef' ~ STRING;
+@obj = { w } ~ OBJECT;
 
-PRINT w.cat;
+@obj = { cool: 'heh' };
+
 
 PRINT h & w & obj;
+
+
+//LOG_VARIABLES;

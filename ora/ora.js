@@ -97,7 +97,7 @@ const forceType = {
 	forceArray:   $ => Array.isArray($) ? $ : []
 }
 
-const resolveTyped = (input, type) => {
+const resolveTyped = (input, type = 'any') => {
   switch (type){
     case null:
     case 'null':    return forceTypeModule.forceNull(input);
@@ -118,7 +118,8 @@ const resolveTyped = (input, type) => {
 
     case Array:
     case 'array':   return forceTypeModule.forceArray(input);
-    
+		
+    case 'any':
     default:        return input;
   }
 }
@@ -392,17 +393,35 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 }
 
 
-const setOnPath = ({ value, path, source }) => {
+const setOnPath = ({ value, path, source, type = 'any' }) => {
 	for (const sub of path.slice(0, path.length - 1)){
-		if (typeof source[sub] !== 'object') source[sub] = { value: source[sub] };
-		if (source[sub].value == null) delete source[sub].value;
+
+		if (typeof source[sub] !== 'object')
+			source[sub] = { value: source[sub] };
+
+		if (source[sub].value == null)
+			delete source[sub].value;
 
 		source = source[sub];
 	}
 
 	const i = path.length > 1 ? path.length - 1 : 0;
+	const result = source[path[i]] ?? { value };
+	const __type = result?.__type ?? type;
+
+	if (!result.hasOwnProperty('__type')){
+		Object.defineProperty(result, '__type', {
+			enumerable: false,
+			writable: false,
+			value: __type
+		});
+	}
+
+	else if (result.__type !== type && type != 'any') return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
 	
-	if (value != undefined) source[path[i]] = { value };
+	if (__type != 'any') result.value = resolveTyped(value, type);
+	
+	if (value != undefined) source[path[i]] = result;
 	else delete source[path[i]];
 }
 
@@ -456,7 +475,7 @@ const parseBlock = ({ iter }) => {
 
 const keywordDict = (input) => {
 	const keywordsToParse = {
-		// Commands
+		//#region //* Commands *//
 		comment: ['COMMENT'],
 		set: ['SET', 'LET'],
 		assign: ['TO', '='],
@@ -479,14 +498,19 @@ const keywordDict = (input) => {
 		from: ['FROM'],
 		bind: ['BIND'],
 		as: ['AS'],
+		//#endregion //* Commands *//
 
-		// Operators
+		log_variables: ['LOG_VARIABLES'],
+		log_scope: ['LOG_SCOPE'],
+
+		//#region //* Operators *//
 		add: ['+'],
 		subtract: ['-'],
 		multiply: ['*'],
 		divide: ['/'],
-		
-		// types
+		//#endregion //* Operators *//
+
+		//#region //* Types *//
 		number: ['NUMBER'],
 		string: ['STRING'],
 		boolean: ['BOOLEAN'],
@@ -500,7 +524,7 @@ const keywordDict = (input) => {
 		NaN: ['NAN'],
 		Infinity: ['INFINITY'],
 		negativeInfinity: ['NEGATIVE_INFINITY'],
-
+		//#endregion //* Types *//
 		
 		...input
 	};
@@ -613,13 +637,19 @@ class Ora {
 					path.push( iter.next().value );
 				
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
-					if (false){
-						
+					const value = parseInput(iter, iter.next(), data);
+					let type = 'any';
+
+					if (iter.disposeIf(next => kw.is(next, kw.id.as))){
+
+						type = this.parseType(iter.next().value).type
 					}
-					else setOnPath({
+
+					setOnPath({
 						source: variables,
 						path,
-						value: parseInput(iter, iter.next(), data)
+						type,
+						value
 					});
 				}
 
@@ -714,7 +744,7 @@ class Ora {
 						{ tracking: true }
 					),
 					data
-				);
+				).catch(e => console.log('Handle-Items Error: ', e));
 			},
 
 			[kw.id.return]: ({ iter: i, data }) => parseInput(i, i.next(), data),
@@ -730,13 +760,12 @@ class Ora {
 					data.classes[className] = { items, data };
 			},
 
-			// LOG_VARIABLES: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
+			[kw.id.log_variables]: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
 
-			// LOG_SCOPE: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
+			[kw.id.log_scope]: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
 				
 			[kw.id.function] ({ iter, data, handleItems }) {
-				const variableName = iter.next().value;
-				const path = [variableName];
+				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
@@ -780,7 +809,7 @@ class Ora {
 							functions: data.functions,
 							variables
 						}
-					);
+					).catch(e => console.log('Handle-Items (function) Error: ', e));;
 				}
 
 				setOnPath({
@@ -850,7 +879,7 @@ class Ora {
 			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
 
 				if (variables?.hasOwnProperty(method))
-					await this.parseInput(iter, { value: method }, data);
+					this.parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
@@ -859,7 +888,7 @@ class Ora {
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
-			});
+			})
 			
 			if (response?.break == true) break;
 
@@ -871,19 +900,37 @@ class Ora {
 		const { keywords: kw } = this;
 		const kIs = (key) => kw.is(value, kw.id[key]);
 		
-		let r = 'any';
+		let type = 'any'
 
-		if   	  (kIs('true'))             r = true;
-		else if (kIs('false'))            r = false;
-		else if (kIs('object'))           r = {};
-		else if (kIs('array'))            r = [];
-		else if (kIs('null'))             r = null;
-		else if (kIs('undefined'))        r = undefined;
-		else if (kIs('nan'))              r = NaN;
-		else if (kIs('Infinity'))         r = Infinity;
-		else if (kIs('negativeInfinity')) r = -Infinity;
+		if   	  (kIs('true')){
+			type = true;
+		}
+		else if (kIs('false')){
+			type = false;
+		}
+		else if (kIs('object')){
+			type = {};
+		}
+		else if (kIs('array')){
+			type = [];
+		}
+		else if (kIs('null')){
+			type = null;
+		}
+		else if (kIs('undefined')){
+			type = undefined;
+		}
+		else if (kIs('nan')){
+			type = NaN;
+		}
+		else if (kIs('Infinity')){
+			type = Infinity;
+		}
+		else if (kIs('negativeInfinity')){
+			type = -Infinity;
+		}
 
-		return { type: r };
+		return { type };
 	}
 
 	parseInput = (iter, input, data = {}) => {
@@ -915,7 +962,7 @@ class Ora {
 
 					const path = [key.value];
 
-					while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
+					while (iter.disposeIf('.') && isA_0(iter.peek().value))
 						path.push( iter.next().value );
 
 					setOnPath({
@@ -946,7 +993,6 @@ class Ora {
 			}
 			else if (isString(value)){
 				let stringResult = parseString(value);
-
 
 				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
 					stringResult = stringResult.concat(
