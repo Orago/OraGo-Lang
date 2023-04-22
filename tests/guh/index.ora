@@ -1,4 +1,2 @@
 LET testObj = { a: 1, b: 2, c: 3 };
-
-PRINT testObj * 4;
 PRINT testObj;

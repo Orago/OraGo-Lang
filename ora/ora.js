@@ -375,8 +375,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 							new Error('Cannot run more than 100 args on a function')
 						);
 						
-					if (iter.peek(1).value == undefined)
-						break;
+					if (iter.peek(1).value == null) break;
 				}
 
 				const called = isClass ? new scopeV(...items) : scopeV(...items);
@@ -439,7 +438,7 @@ const setOnPath = ({ value, path, source, type = 'any' }) => {
 
 function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
-		parseInput(iter.clone(), iter.peek(1), data)
+		this.parseInput(iter.clone(), iter.peek(1), data)
 	);
 
 	const name = iter.next().value;
@@ -511,6 +510,7 @@ const keywordDict = (input) => {
 		bind: ['BIND'],
 		as: ['AS'],
 		has: ['HAS'],
+		copy: ['COPY'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -864,13 +864,13 @@ class Ora {
 			},
 
 			[kw.id.shift] ({ iter, data }) {
-				const variable = expectSetVar({ iter, data });
+				const variable = expectSetVar.bind(this)({ iter, data });
 
 				variable.data.shift();
 			},
 
 			[kw.id.pop] ({ iter, data }) {
-				const variable = expectSetVar({ iter, data });
+				const variable = expectSetVar.bind(this)({ iter, data });
 
 				variable.data.pop();
 			},
@@ -881,6 +881,12 @@ class Ora {
 				const time = parseInput(iter, iter.next(), data);
 
 				return new Promise(resolve => setTimeout(resolve, time));
+			},
+
+			[kw.id.copy]: ({ iter, data }) => {
+				const variable = deepClone(parseInput(iter, iter.next(), data));
+
+				return variable;
 			},
 
 			...forceType.forceObject(overrideFunctions),
@@ -955,7 +961,7 @@ class Ora {
 
 	parseInput = (iter, input, data = {}) => {
 		const { variables = {} } = data;
-		const { keywords: kw, parseType } = this;
+		const { keywords: kw, parseType, functions } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -967,6 +973,13 @@ class Ora {
 		const wrapped = (value) => {
 			const { type } = parseType(value);
 			if (type !== 'any') return type;
+
+			if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
+				return functions[kw.match(value)]({
+					iter,
+					data,
+					handleItems: this.handleItems.bind(this)
+				});
 			
 			if (value == '{'){
 				const object = {};
@@ -1092,7 +1105,7 @@ class Ora {
 				const keys = Object.keys(result);
 
 				for (let i = 0; i < keys.length; i++)
-					result[keys[i]] = evalMath(`${result[keys[i]]?.value} ${symbol} ${value}`);
+					result[keys[i]].value = evalMath(`${result[keys[i]]?.value} ${symbol} ${value}`);
 			}
 		}
 
