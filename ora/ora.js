@@ -283,8 +283,8 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			
 		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
-		if (!isClass && typeof scopeV == 'function'){
-			scopeV = scopeV.bind(source);
+		if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function'){
+			scopeV = scopeV?.bind(source);
 		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
@@ -498,6 +498,7 @@ const keywordDict = (input) => {
 		from: ['FROM'],
 		bind: ['BIND'],
 		as: ['AS'],
+		has: ['HAS'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -727,14 +728,22 @@ class Ora {
 
 			async [kw.id.if] ({ iter, data, handleItems }) {
 				if (iter.disposeIf('(')){
-					const toCheck = [parseInput(iter, iter.next(), data, true)];
+					const toCheck = [parseInput(iter, iter.next(), data)];
 
 					while (iter.disposeIf(next => kw.is(next, kw.id.and)) && isA_0(iter.peek().value))
-						toCheck.push( parseInput(iter, iter.next(), data, true) );
+						toCheck.push( parseInput(iter, iter.next(), data) );
 
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
-					if (toCheck.some(val => val != true)) return;
+
+					if (toCheck.some(val => val != true)){
+						while (iter.peek()?.done != true){
+							iter.next();
+						}
+
+						return;
+					};
 				}
+				else throw new Error('Expected "(" to open IF statement!');
 					
 				const items = parseBlock({ iter, data });
 
@@ -748,7 +757,6 @@ class Ora {
 			},
 
 			[kw.id.return]: ({ iter: i, data }) => parseInput(i, i.next(), data),
-
 
 			[kw.id.class] ({ iter, data }) {
 				const className = iter.next().value;
@@ -784,7 +792,7 @@ class Ora {
 					}
 				}
 
-				const items = parseBlock({iter, data});
+				const items = parseBlock({ iter, data });
 
 				const func = async (...inputs) => {
 					const variables = {};
@@ -1028,7 +1036,6 @@ class Ora {
 				result = parseInputToVariable.bind(this)(iter, { value }, data);
 			}
 			
-
 			mathBlock: {
 				if (isNaN(value) && typeof result !== 'number') break mathBlock;
 
@@ -1059,9 +1066,31 @@ class Ora {
 
 		const result = wrapped(input.value);
 
-		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
-			return result == wrapped(iter.next.value);
+		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
+			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
+			const value = wrapped(iter.next().value);
 
+			if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
+
+			if (Array.isArray(result)){
+				for (let i = 0; i < result.length; i++)
+					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
+			}
+			else if (typeof result == 'object') {
+				const keys = Object.keys(result);
+
+				for (let i = 0; i < keys.length; i++){
+					result[keys[i]] = evalMath(`${result[keys[i]]?.value} ${symbol} ${value}`);
+				}
+			}
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
+			return result == wrapped(iter.next().value);
+
+		else if (iter.disposeIf(next => kw.is(next, kw.id.has)))
+			return result[typeof result == 'array' ? 'includes' : 'hasOwnProperty'](wrapped(iter.next().value));
+		
 		else return result;
 	}
 
