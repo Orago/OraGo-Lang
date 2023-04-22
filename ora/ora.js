@@ -147,6 +147,18 @@ const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
 
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 
+const deepClone = (obj) => {
+	if (obj === null || typeof obj !== 'object') return obj;
+
+	const copy = obj.constructor();
+
+	for (const key in obj)
+		if (obj.hasOwnProperty(key))
+			copy[key] = deepClone(obj[key]);
+
+	return copy;
+}
+
 function evalMath(mathString) {
 	try {
 		let applyMath = (symbol, a, b) => {
@@ -1072,16 +1084,15 @@ class Ora {
 
 			if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
 
-			if (Array.isArray(result)){
+			if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
 					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
-			}
+			
 			else if (typeof result == 'object') {
 				const keys = Object.keys(result);
 
-				for (let i = 0; i < keys.length; i++){
+				for (let i = 0; i < keys.length; i++)
 					result[keys[i]] = evalMath(`${result[keys[i]]?.value} ${symbol} ${value}`);
-				}
 			}
 		}
 
