@@ -2,7 +2,7 @@ import fs from 'fs';
 import ora from '../../ora/esm.js'
 
 const run = async (code) => {
-	const instance = await ora({ });
+	const instance = ora({ });
 	
 	return instance.run(code);
 };

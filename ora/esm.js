@@ -2,7 +2,7 @@ import fs from 'fs';
 import ora from './ora.js';
 import pathModule from 'path';
 
-async function esmOra (data) {
+function esmOra (data) {
 	const customFunctions = {};
 	const cjsDict = {
 		require: ['REQUIRE'],
@@ -53,15 +53,13 @@ async function esmOra (data) {
 		customFunctions[kw.id.export] = ({ iter, data }) => {
 			const value = data.utils.parseInput(iter, iter.next(), data);
 
-			console.log(value)
-
 			return {
 				exit: true,
 				value
 			}
 		};
 
-		customFunctions[kw.id.import] = async function ({ iter, data }){
+		customFunctions[kw.id.import] = function ({ iter, data }){
 			try {
 				let { variables } = data;
 
@@ -82,16 +80,16 @@ async function esmOra (data) {
 						const url = (importUrl.startsWith('.') || importUrl.startsWith('/')) ? pathModule.join(process.argv[1], '../'+importUrl) : importUrl;
 
 						if (typeof url === 'string' && url.endsWith('.ora')){
-							const instance = await esmOra(settings);
+							const instance = esmOra(settings);
 
-							const value = await instance.run(
+							const value = instance.run(
 								fs.readFileSync(url, 'utf-8')
 							);
 
 							data.utils.setOnPath({
 								source: variables,
 								path,
-								value: await value
+								value: value
 							});
 						}
 						else throw 'IMPORT URL IS NOT VALID';

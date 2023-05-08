@@ -58,14 +58,14 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-function parseInputToVariable (iter, input, data = {}, functions = true) {
+async function parseInputToVariable (iter, input, data = {}, functions = true) {
 	const { parseInput, keywords: kw } = this;
 
 	const { variables = {} } = data;
 	const { value } = input;
 	let parent = variables;
 
-	const scaleTree = ({ source, property, last }) => {
+	const scaleTree = async ({ source, property, last }) => {
 		let scopeV;
 		
 		// let scopeV = (property != undefined ? source[property] : source);
@@ -124,7 +124,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 		}
 		
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
-			return scaleTree({
+			return await scaleTree({
 				source: scopeV,
 				property: iter.last()
 			});
@@ -141,6 +141,8 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 				
 			return source;
 		}
+
+		scopeV = await scopeV;
 
 		if (functions && iter.disposeIf('(')){
 			if (typeof(scopeV) === 'function' || isClass){
@@ -162,10 +164,8 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 					if (iter.peek(1).value == null) break;
 				}
 
-				const called = isClass ? new scopeV(...items) : scopeV(...items);
-
 				return scaleTree({
-					source: called
+					source: isClass ? new scopeV(...items) : scopeV(...items)
 				});
 			}
 			else {
@@ -181,7 +181,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 		else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 	}
 	
-	return scaleTree({
+	return await scaleTree({
 		property: value,
 		source: variables
 	});
@@ -701,7 +701,6 @@ class Ora {
 			})
 			
 			if (response?.break == true) break;
-
 			if (response) return response;
 		}
 	}
