@@ -5,9 +5,12 @@ import deepClone from './util/deepClone.js';
 import {
 	forceType,
 	resolveTyped,
+	objFrom,
 	Enum,
 	isNum,
-	isA_0
+	isA0,
+	isA_0,
+	isMath
 } from './util/forceType.js';
 
 function oraLexer(input) {
@@ -57,12 +60,16 @@ const parseString = input => strReg.exec(input)?.[2];
 
 function parseInputToVariable (iter, input, data = {}, functions = true) {
 	const { parseInput, keywords: kw } = this;
-	const { variables = {}           } = data;
-	const { value                    } = input;
+
+	const { variables = {} } = data;
+	const { value } = input;
+	let parent = variables;
 
 	const scaleTree = ({ source, property, last }) => {
 		let scopeV;
 		
+		// let scopeV = (property != undefined ? source[property] : source);
+
 		if (property != undefined){
 			if (source[property] == undefined) source[property] = {};
 
@@ -70,17 +77,11 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 		}
 		else scopeV = source;
 			
-
 		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
-
-		if (
-			!isClass &&
-			typeof scopeV == 'function' &&
-			typeof scopeV?.bind == 'function'
-		)
+		if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function'){
 			scopeV = scopeV?.bind(source);
-		
+		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
 			if (typeof scopeV == 'function' && !isClass){
@@ -122,31 +123,31 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			}
 		}
 		
-
 		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 			return scaleTree({
 				source: scopeV,
 				property: iter.last()
 			});
 
-
 		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-			if (property != undefined)
+			if (property != undefined){
 				setOnPath({
 					source: source,
 					path: [property],
 					value: parseInput(iter, iter.next(), data)
 				});
-
+			}
 			else throw 'Cannot mod a raw variable to a value!'
 				
 			return source;
 		}
-		
+
+
 		if (typeof(scopeV?.value) === 'function')
 			scopeV = scopeV.value;
 
 		if (functions && iter.disposeIf('(')){
+
 			if (typeof(scopeV) === 'function' || isClass){
 				const items = [];
 				let passes = 0;
@@ -166,8 +167,10 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 					if (iter.peek(1).value == null) break;
 				}
 
+				const called = isClass ? new scopeV(...items) : scopeV(...items);
+
 				return scaleTree({
-					source: isClass ? new scopeV(...items) : scopeV(...items)
+					source: called
 				});
 			}
 			else {
@@ -195,7 +198,7 @@ const setOnPath = ({ value, path, source, type = 'any' }) => {
 
 		if (typeof source[sub] !== 'object')
 			source[sub] = { value: source[sub] };
-			
+
 		if (source[sub].value == null)
 			delete source[sub].value;
 
@@ -206,24 +209,20 @@ const setOnPath = ({ value, path, source, type = 'any' }) => {
 	const result = source[path[i]] ?? { value };
 	const __type = result?.__type ?? type;
 
-	if (!result.hasOwnProperty('__type'))
+	if (!result.hasOwnProperty('__type')){
 		Object.defineProperty(result, '__type', {
 			enumerable: false,
 			writable: false,
 			value: __type
 		});
+	}
 
-	else if (result.__type !== type && type != 'any')
-		return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
+	else if (result.__type !== type && type != 'any') return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
 	
-	if (__type != 'any')
-		result.value = resolveTyped(value, type);
+	if (__type != 'any') result.value = resolveTyped(value, type);
 	
-	if (value != undefined)
-		source[path[i]] = result;
-
-	else
-		delete source[path[i]];
+	if (value != undefined) source[path[i]] = result;
+	else delete source[path[i]];
 }
 
 function expectSetVar({ iter, data }) {
@@ -341,9 +340,7 @@ const keywordDict = (input) => {
 	const match = (search) => {
 		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
 
-		if (res == undefined)
-			throw new Error(`Keyword ${search} not found in dictionary`);
-
+		if (res == undefined) throw new Error(`Keyword ${search} not found in dictionary`);
 		else return keywordIDs[res[0]];
 	}
 
@@ -353,7 +350,9 @@ const keywordDict = (input) => {
 		return res != undefined ? keywordIDs[res[0]] : null;
 	}
 
-	const is = (search, keywordID) => matchUnsafe(search) === keywordID;
+	const is = (search, keywordID) => {
+		return matchUnsafe(search) === keywordID;
+	}
 
 	return {
 		id: keywordIDs,
@@ -441,8 +440,12 @@ class Ora {
 				
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
-					let type = iter.disposeIf(next => kw.is(next, kw.id.as)) ? this.parseType(iter.next().value).type : 'any';
+					let type = 'any';
 
+					if (iter.disposeIf(next => kw.is(next, kw.id.as))){
+
+						type = this.parseType(iter.next().value).type
+					}
 
 					setOnPath({
 						source: variables,
@@ -524,7 +527,7 @@ class Ora {
 				}
 			},
 
-			[kw.id.if] ({ iter, data, handleItems }) {
+			async [kw.id.if] ({ iter, data, handleItems }) {
 				if (iter.disposeIf('(')){
 					const toCheck = [parseInput(iter, iter.next(), data)];
 
@@ -545,7 +548,7 @@ class Ora {
 					
 				const items = parseBlock({ iter, data });
 
-				handleItems(
+				await handleItems(
 					betterIterable(
 						items,
 						{ tracking: true }
@@ -592,7 +595,7 @@ class Ora {
 
 				const items = parseBlock({ iter, data });
 
-				const func = (...inputs) => {
+				const func = async (...inputs) => {
 					const variables = {};
 
 					for (const [key, value] of Object.entries(data.variables))
@@ -609,13 +612,13 @@ class Ora {
 						}
 					}
 
-					return handleItems(
+					return await handleItems(
 						betterIterable(items, { tracking: true }),
 						{
 							functions: data.functions,
 							variables
 						}
-					);
+					).catch(e => console.log('Handle-Items (function) Error: ', e));;
 				}
 
 				setOnPath({
@@ -630,9 +633,7 @@ class Ora {
 			[kw.id.push]: ({ iter, data }) =>  {
 				const items = [parseInput(iter, iter.next(), data)];
 
-				while (
-					iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null
-				)
+				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
 					items.push(
 						parseInput(iter, iter.next(), data)
 					);
@@ -641,7 +642,7 @@ class Ora {
 
 				if (!nextSeq.done && kw.is(nextSeq.value, kw.id.assign) && isA_0(iter.peek(1).value)){
 					const variable = expectSetVar.bind(this)({ iter, data });
-					const { variables } = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data;
+					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 
 					setOnPath({
 						source: variables,
@@ -663,9 +664,9 @@ class Ora {
 				variable.data.pop();
 			},
 
-			[kw.id.await]: ({ iter, data }) => parseInput(iter, iter.next(), data),
+			[kw.id.await]: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
 
-			[kw.id.sleep] ({ iter, data }) {
+			async [kw.id.sleep] ({ iter, data }) {
 				const time = parseInput(iter, iter.next(), data);
 
 				return new Promise(resolve => setTimeout(resolve, time));
@@ -685,7 +686,7 @@ class Ora {
 
 	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
 
-	handleItems = (iter, data = this) => {
+	handleItems = async (iter, data = this) => {
 		const { functions, variables } = data;
 		const { keywords: kw } = this;
 
@@ -698,14 +699,17 @@ class Ora {
 				continue;
 			}
 
-			const response = functions[kw.match(method)]({
+			const response = await functions[kw.match(method)]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)
-			})
+			});
 			
-			if (response?.break == true) break;
-			if (response) return response;
+			if (response?.break == true)
+				break;
+
+			if (response)
+				return response;
 		}
 	}
 
@@ -905,12 +909,12 @@ class Ora {
 		else return result;
 	}
 
-	run (codeInput){
+	async run (codeInput){
 		const lexed = oraLexer(codeInput);
 		const chunks = chunkLexed(lexed);
 
 		for (const chunk of chunks){
-			const response = this.handleItems(
+			const response = await this.handleItems(
 				betterIterable(
 					chunk,
 					{ tracking: true }
