@@ -1,233 +1,17 @@
+import betterIterable from './util/betterIterables.js';
+import evalMath from './util/evalMath.js';
+import deepClone from './util/deepClone.js';
 
-//#region //* UTIL *//
-function betterIterable(itemsInput, settings = {}) {
-	const { tracking = false, maxStack = 10 } = settings;
-	const items = [...itemsInput];
-	const source = items;
-	let stack = [];
-
-	return {
-		source,
-
-		*[Symbol.iterator]() {
-			while (items.length > 0)
-				yield this.next().value;
-		},
-
-		next(n = 0) {
-			if (typeof n === 'number') for (let i = 0; i < n; i++) items.shift();
-
-			if (tracking){
-				stack.push(items[0]);
-				
-				stack.length > maxStack && stack.shift();
-			}
-
-			return {
-				value: items.shift(),
-				done: 1 > items.length
-			}
-		},
-
-		peek(n = 1) {
-			return { value: items[n - 1], done: 1 > items.length };
-		},
-
-		clone() {
-			return betterIterable(items, settings);
-		},
-
-		push(...itemToPush) {
-			items.push(itemToPush);
-		},
-
-		size() {
-			return items.length;
-		},
-
-		test (check, n = 1){
-			const item = items[n - 1];
-			
-			return (
-				(typeof check === 'string' && check == item) ||
-				(check instanceof Function && check(item) === true) ||
-				(check instanceof RegExp   && check.test(item))
-			);
-		},
-
-		disposeIf (check, n = 1) {
-			const status = this.test(check, n);
-
-			status && this.next(n - 1);
-
-			return status;
-		},
-
-		disposeIfNot (check, n = 1){
-			const status = this.test(check, n);
-
-			!status && this.next(n - 1);
-
-			return status;
-		},
-
-		stringify(join = ' ') {
-			return items.join(join);
-		},
-		
-		stack (){
-			return stack;
-		},
-
-		last (n = 0){
-			return stack[stack.length - 1 - n]
-		}
-	};
-}
-
-const typeEnforcer = (type, value) => typeof new type().valueOf() === typeof value && value !== null ? value : new type().valueOf();
-
-const forceType = {
-	forceNull:    $ => null,
-	forceBoolean: $ => typeEnforcer(Boolean, $),
-	forceNumber:  $ => typeEnforcer(Number, isNaN($) ? false : Number($)),
-	forceBigInt:  $ => typeEnforcer(BigInt, $),
-	forceString:  $ => typeEnforcer(String, $),
-	forceObject:  $ => typeEnforcer(Object, $),
-	forceArray:   $ => Array.isArray($) ? $ : []
-}
-
-const resolveTyped = (input, type = 'any') => {
-  switch (type){
-    case null:
-    case 'null':    return forceTypeModule.forceNull(input);
-
-    case Boolean:
-    case 'boolean': return forceTypeModule.forceBoolean(input);
-
-    case Number:
-    case 'number':  return forceTypeModule.forceNumber(input);
-
-    case 'bigint':  return forceTypeModule.forceBigInt(input);
-
-    case String:
-    case 'string':  return forceTypeModule.forceString(input);
-
-    case Object:
-    case 'object':  return forceTypeModule.forceObject(input);
-
-    case Array:
-    case 'array':   return forceTypeModule.forceArray(input);
-		
-    case 'any':
-    default:        return input;
-  }
-}
-
-function objFrom (obj, keys){
-  const res = {};
-
-  for (const key of keys)
-    if (Array.isArray(key) && obj.hasOwnProperty(key[0]))
-      res[key[0]] = resolveTyped(obj[key[0]], key[1]);
-
-    else if (obj.hasOwnProperty(key))
-      res[key] = obj[key];
-      
-  return res;
-}
-
-const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
-
-
-const isNum = (num) => !isNaN(num);
-
-const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
-const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
-
-const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
-
-const deepClone = (obj) => {
-	if (obj === null || typeof obj !== 'object') return obj;
-
-	const copy = obj.constructor();
-
-	for (const key in obj)
-		if (obj.hasOwnProperty(key))
-			copy[key] = deepClone(obj[key]);
-
-	return copy;
-}
-
-function evalMath(mathString) {
-	try {
-		let applyMath = (symbol, a, b) => {
-			switch (symbol) {
-				case '+': return b + a;
-				case '-': return b - a;
-				case '*': return b * a;
-				case '/': return b / a;
-				case '^': return b ** a;
-			}
-		}
-
-		// using a stack and a postfix notation algorithm to evaluate the math string
-		const operators = ['+', '-', '*', '/', '^'];
-		const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
-		let stack = [];
-		let postfix = [];
-
-		for (let i = 0; i < mathString.length; i++) {
-			const char = mathString[i];
-			
-			if (!isNaN(parseFloat(char)) || char === '.') {
-				let number = char;
-
-				while (!isNaN(parseFloat(mathString[i + 1])) || mathString[i + 1] === '.')
-					number += mathString[++i];
-
-				postfix.push(parseFloat(number));
-			}
-			else if (operators.indexOf(char) !== -1) {
-				while (stack.length && operators.indexOf(stack[stack.length - 1]) !== -1 && precedence[char] <= precedence[stack[stack.length - 1]])
-					postfix.push(stack.pop());
-
-				stack.push(char);
-			}
-
-			else if (char === '(') stack.push(char);
-
-			else if (char === ')') {
-				while (stack[stack.length - 1] !== '(')
-					postfix.push(stack.pop());
-
-				stack.pop();
-			}
-		}
-
-		while (stack.length)
-			postfix.push(stack.pop());
-
-		for (const symbol of postfix)
-			stack.push(
-				typeof symbol === 'number' ?
-				symbol :
-				applyMath(
-					symbol,
-					stack.pop(),
-					stack.pop()
-				)
-			);
-
-		return stack[0];
-	}
-	catch (error) {
-		console.error(`Error: ${error}`);
-		return NaN;
-	}
-}
-
-//#endregion //* UTIL *//
+import {
+	forceType,
+	resolveTyped,
+	objFrom,
+	Enum,
+	isNum,
+	isA0,
+	isA_0,
+	isMath
+} from './util/forceType.js';
 
 function oraLexer(input) {
 	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*{}()-_+"'\\/.;:\[\]\s]|[\uD83C-\uDBFF\uDC00-\uDFFF]+/g);
@@ -841,7 +625,7 @@ class Ora {
 
 			[kw.id.exit]: () => process.exit(),
 
-			[kw.id.push] ({ iter, data }) {
+			[kw.id.push]: ({ iter, data }) =>  {
 				const items = [parseInput(iter, iter.next(), data)];
 
 				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
@@ -852,7 +636,7 @@ class Ora {
 				const nextSeq = iter.next();
 
 				if (!nextSeq.done && kw.is(nextSeq.value, kw.id.assign) && isA_0(iter.peek(1).value)){
-					const variable = expectSetVar({ iter, data });
+					const variable = expectSetVar.bind(this)({ iter, data });
 					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 
 					setOnPath({
@@ -863,13 +647,13 @@ class Ora {
 				}
 			},
 
-			[kw.id.shift] ({ iter, data }) {
+			[kw.id.shift]: ({ iter, data }) => {
 				const variable = expectSetVar.bind(this)({ iter, data });
 
 				variable.data.shift();
 			},
 
-			[kw.id.pop] ({ iter, data }) {
+			[kw.id.pop]: ({ iter, data }) => {
 				const variable = expectSetVar.bind(this)({ iter, data });
 
 				variable.data.pop();
@@ -1138,4 +922,4 @@ class Ora {
 }
 
 
-module.exports = Ora;
+export default Ora;

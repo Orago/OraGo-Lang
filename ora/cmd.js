@@ -1,5 +1,5 @@
-const fs = require('fs');
-const ora = require('./index.js');
+import fs from 'fs';
+import ora from './ora.js';
 
 const run = (code) => {
 	const oraInstance = new ora();
