@@ -1,4 +1,15 @@
-IMPORT cat FROM "./cat.ora";
+FUNCTION create_cat (age){
+	SET cat TO OBJECT;
+
+	SET cat.age TO age;
+
+	FUNCTION cat.speak () {
+		PRINT "Meow";
+	}
+
+	RETURN cat;
+}
 
 LET testObj = { a: 1, b: 2, c: 3 };
-PRINT testObj & cat();
+PRINT testObj & create_cat(4);
+PRINT "gg";
