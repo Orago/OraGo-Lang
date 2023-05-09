@@ -201,20 +201,17 @@ const setOnPath = ({ source, path, value, type = 'any' }) => {
 
 
 	const i = path.length > 1 ? path.length - 1 : 0;
+
 	source[path[i]] ??= { value }
 
 	const result = source[path[i]];
 	const __type = result?.__type ?? type;
 
-	
-
-	if (!result.hasOwnProperty('__type')){
-		Object.defineProperty(result, '__type', {
-			enumerable: false,
-			writable: false,
-			value: __type
-		});
-	}
+	if (!result.hasOwnProperty('__type')) Object.defineProperty(result, '__type', {
+		enumerable: false,
+		writable: false,
+		value: __type
+	});
 
 	else if (result.__type !== type && type != 'any')
 		return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
@@ -527,7 +524,7 @@ class Ora {
 				}
 			},
 
-			async [kw.id.if] ({ iter, data, handleItems }) {
+			[kw.id.if] ({ iter, data, handleItems }) {
 				if (iter.disposeIf('(')){
 					const toCheck = [parseInput(iter, iter.next(), data)];
 
@@ -548,7 +545,7 @@ class Ora {
 					
 				const items = parseBlock({ iter, data });
 
-				await handleItems(
+				handleItems(
 					betterIterable(
 						items,
 						{ tracking: true }

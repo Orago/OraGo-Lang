@@ -8,4 +8,5 @@ FUNCTION create_cat (age){
 
 LET testObj = { a: 1, b: 2, c: 3 };
 
-PRINT testObj & create_cat(4);
+PRINT testObj;
+PRINT create_cat(50);
