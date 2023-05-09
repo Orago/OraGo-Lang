@@ -3,8 +3,12 @@ body.styles({ background: 'red' });
 body.append('YOO THIS IS FIRE');
 
 
+
 FUNCTION run (){
-	LET background = 'rgb('+Math.random() + ',' + Math.random() + ',' + Math.random() + ')';
+	LET c = [Math.random(), Math.random(), Math.random()] * 255;
+
+	LET background = 'rgb('+ c.0 + ',' + c.1 + ',' + c.2 + ')';
+
 
 	PRINT background;
 	body.styles({
@@ -12,4 +16,4 @@ FUNCTION run (){
 	});
 }
 
-interval(run, 3000);
+interval(run, 1000);

@@ -816,7 +816,7 @@ class Ora {
 
 				return array;
 			}
-			else if (isString(value)){
+			else if (kw.is(iter.peek().value, kw.id.add)){
 				let stringResult = parseString(value);
 
 				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null){
