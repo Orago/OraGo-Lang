@@ -76,9 +76,8 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			
 		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
 
-		if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function'){
+		if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function')
 			scopeV = scopeV?.bind(source);
-		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
 			if (typeof scopeV == 'function' && !isClass){
@@ -161,7 +160,7 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 						
 					if (iter.peek(1).value == null) break;
 				}
-
+				
 				const called = isClass ? new scopeV(...items) : scopeV(...items);
 
 				return scaleTree({
@@ -382,10 +381,13 @@ class Ora {
 			customClasses,
 			overrideFunctions,
 			overrideDictionary,
-			functionGenerator
+			functionGenerator,
+			variables
 		} = forceType.forceObject(settings);
 
 		this.settings = {};
+
+
 
 		this.utils.parseInput = this.parseInput;
 
@@ -394,11 +396,12 @@ class Ora {
 			classes: customClasses,
 			overrideFunctions,
 			overrideDictionary,
-			functionGenerator
+			functionGenerator,
+			variables
 		});
 	}
 
-	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator }){
+	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator, variables }){
 		this.keywords = keywordDict(overrideDictionary);
 
 		if (typeof functionGenerator === 'function'){
@@ -411,7 +414,9 @@ class Ora {
 				};
 		}
 
-		this.variables = {};
+		this.variables = {
+			...variables
+		}
 
 		this.classes = {
 			...forceType.forceObject(classes)
@@ -439,7 +444,6 @@ class Ora {
 					let type = 'any';
 
 					if (iter.disposeIf(next => kw.is(next, kw.id.as))){
-
 						type = this.parseType(iter.next().value).type
 					}
 
@@ -815,10 +819,9 @@ class Ora {
 			else if (isString(value)){
 				let stringResult = parseString(value);
 
-				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null)
-					stringResult = stringResult.concat(
-						wrapped(iter.next().value)
-					);
+				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null){
+					stringResult += wrapped(iter.next().value);
+				}
 				
 				return stringResult;
 			}
@@ -922,12 +925,12 @@ class Ora {
 		else return result;
 	}
 
-	async run (codeInput){
+	run (codeInput){
 		const lexed = oraLexer(codeInput);
 		const chunks = chunkLexed(lexed);
 
 		for (const chunk of chunks){
-			const response = await this.handleItems(
+			const response = this.handleItems(
 				betterIterable(
 					chunk,
 					{ tracking: true }

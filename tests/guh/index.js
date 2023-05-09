@@ -1,8 +1,12 @@
 import fs from 'fs';
-import ora from '../../ora/esm.js'
+import ora from '../../ora/esm.js';
 
 const run = async (code) => {
-	const instance = ora({ });
+	const instance = ora({
+		variables: {
+			cat: 'test'
+		}
+	});
 	
 	return instance.run(code);
 };

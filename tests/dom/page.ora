@@ -1,0 +1,15 @@
+LET body = qs('body');
+body.styles({ background: 'red' });
+body.append('YOO THIS IS FIRE');
+
+
+FUNCTION run (){
+	LET background = 'rgb('+Math.random() + ',' + Math.random() + ',' + Math.random() + ')';
+
+	PRINT background;
+	body.styles({
+		background
+	});
+}
+
+interval(run, 3000);
