@@ -5,12 +5,9 @@ import deepClone from './util/deepClone.js';
 import {
 	forceType,
 	resolveTyped,
-	objFrom,
 	Enum,
 	isNum,
-	isA0,
-	isA_0,
-	isMath
+	isA_0
 } from './util/forceType.js';
 
 function oraLexer(input) {
@@ -130,18 +127,16 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 			});
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-			if (property != undefined){
+			if (property != undefined)
 				setOnPath({
-					source: source,
+					source,
 					path: [property],
 					value: parseInput(iter, iter.next(), data)
 				});
-			}
 			else throw 'Cannot mod a raw variable to a value!'
 				
 			return source;
 		}
-
 
 		if (typeof(scopeV?.value) === 'function')
 			scopeV = scopeV.value;
@@ -193,9 +188,8 @@ function parseInputToVariable (iter, input, data = {}, functions = true) {
 }
 
 
-const setOnPath = ({ value, path, source, type = 'any' }) => {
+const setOnPath = ({ source, path, value, type = 'any' }) => {
 	for (const sub of path.slice(0, path.length - 1)){
-
 		if (typeof source[sub] !== 'object')
 			source[sub] = { value: source[sub] };
 
@@ -205,9 +199,14 @@ const setOnPath = ({ value, path, source, type = 'any' }) => {
 		source = source[sub];
 	}
 
+
 	const i = path.length > 1 ? path.length - 1 : 0;
-	const result = source[path[i]] ?? { value };
+	source[path[i]] ??= { value }
+
+	const result = source[path[i]];
 	const __type = result?.__type ?? type;
+
+	
 
 	if (!result.hasOwnProperty('__type')){
 		Object.defineProperty(result, '__type', {
@@ -217,11 +216,12 @@ const setOnPath = ({ value, path, source, type = 'any' }) => {
 		});
 	}
 
-	else if (result.__type !== type && type != 'any') return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
+	else if (result.__type !== type && type != 'any')
+		return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
 	
 	if (__type != 'any') result.value = resolveTyped(value, type);
 	
-	if (value != undefined) source[path[i]] = result;
+	if (value != undefined) source[path[i]] = value;
 	else delete source[path[i]];
 }
 
@@ -595,7 +595,7 @@ class Ora {
 
 				const items = parseBlock({ iter, data });
 
-				const func = async (...inputs) => {
+				const func = (...inputs) => {
 					const variables = {};
 
 					for (const [key, value] of Object.entries(data.variables))
@@ -612,13 +612,13 @@ class Ora {
 						}
 					}
 
-					return await handleItems(
+					return handleItems(
 						betterIterable(items, { tracking: true }),
 						{
 							functions: data.functions,
 							variables
 						}
-					).catch(e => console.log('Handle-Items (function) Error: ', e));;
+					)//.catch(e => console.log('Handle-Items (function) Error: ', e));;
 				}
 
 				setOnPath({
@@ -686,20 +686,20 @@ class Ora {
 
 	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
 
-	handleItems = async (iter, data = this) => {
+
+	handleItems = (iter, data = this) => {
 		const { functions, variables } = data;
 		const { keywords: kw } = this;
 
 		for (const method of iter) {
 			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
-
 				if (variables?.hasOwnProperty(method))
 					this.parseInput(iter, { value: method }, data);
 				
 				continue;
 			}
 
-			const response = await functions[kw.match(method)]({
+			const response = functions[kw.match(method)]({
 				iter,
 				data,
 				handleItems: this.handleItems.bind(this)

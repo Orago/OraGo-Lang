@@ -1,15 +1,11 @@
 FUNCTION create_cat (age){
-	SET cat TO OBJECT;
+	LET cat = OBJECT;
 
-	SET cat.age TO age;
-
-	FUNCTION cat.speak () {
-		PRINT "Meow";
-	}
+	cat.age = age;
 
 	RETURN cat;
 }
 
 LET testObj = { a: 1, b: 2, c: 3 };
+
 PRINT testObj & create_cat(4);
-PRINT "gg";
