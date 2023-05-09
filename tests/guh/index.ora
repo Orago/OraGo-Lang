@@ -1,12 +1,8 @@
-FUNCTION create_cat (age){
-	LET cat = OBJECT;
+LET firstObj = { a: 1, b: 2, c: 3 };
 
-	cat.age = age;
+LET secondObj = COPY firstObj;
 
-	RETURN cat;
-}
+secondObj.b = 'bruh';
 
-LET testObj = { a: 1, b: 2, c: 3 };
-
-PRINT testObj;
-PRINT create_cat(50);
+PRINT firstObj & secondObj;
+PRINT secondObj & firstObj;

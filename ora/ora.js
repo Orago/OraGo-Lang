@@ -207,7 +207,7 @@ const setOnPath = ({ source, path, value, type = 'any' }) => {
 	const result = source[path[i]];
 	const __type = result?.__type ?? type;
 
-	if (!result.hasOwnProperty('__type')) Object.defineProperty(result, '__type', {
+	if (typeof result == 'object' && !result.hasOwnProperty('__type')) Object.defineProperty(result, '__type', {
 		enumerable: false,
 		writable: false,
 		value: __type
@@ -297,6 +297,7 @@ const keywordDict = (input) => {
 		as: ['AS'],
 		has: ['HAS'],
 		copy: ['COPY'],
+		using: ['USING'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -347,9 +348,7 @@ const keywordDict = (input) => {
 		return res != undefined ? keywordIDs[res[0]] : null;
 	}
 
-	const is = (search, keywordID) => {
-		return matchUnsafe(search) === keywordID;
-	}
+	const is = (search, keywordID) => matchUnsafe(search) === keywordID;
 
 	return {
 		id: keywordIDs,
@@ -533,10 +532,11 @@ class Ora {
 
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 
+					console.log(toCheck)
+
 					if (toCheck.some(val => val != true)){
-						while (iter.peek()?.done != true){
+						while (iter.peek()?.done != true)
 							iter.next();
-						}
 
 						return;
 					};
@@ -551,7 +551,7 @@ class Ora {
 						{ tracking: true }
 					),
 					data
-				).catch(e => console.log('Handle-Items Error: ', e));
+				)
 			},
 
 			[kw.id.return]: ({ iter: i, data }) => parseInput(i, i.next(), data),
@@ -878,6 +878,7 @@ class Ora {
 		}
 
 		const result = wrapped(input.value);
+		
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
@@ -892,9 +893,24 @@ class Ora {
 			else if (typeof result == 'object') {
 				const keys = Object.keys(result);
 
-				for (let i = 0; i < keys.length; i++)
-					result[keys[i]].value = evalMath(`${result[keys[i]]?.value} ${symbol} ${value}`);
+				for (let i = 0; i < keys.length; i++){
+					if (result[keys[i]]?.value){
+						result[keys[i]].value = evalMath(`${result[keys[i]].value} ${symbol} ${value}`);
+					}
+					else result[keys[i]] = evalMath(`${result[keys[i]]} ${symbol} ${value}`);
+
+				}
 			}
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.using))){
+			const list = wrapped(iter.next().value);
+
+			if (!Array.isArray(list)) throw new Error('Cannot Take From Object Without List Of Items To Take From')
+			
+			return Object.fromEntries(
+				Object.entries(result).filter(([key, value]) => list.includes(key))
+			);
 		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
