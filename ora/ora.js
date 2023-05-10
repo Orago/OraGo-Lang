@@ -418,7 +418,9 @@ class Ora {
 				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push( iter.next().value );
+					path.push(
+						iter.next().value
+					);
 
 				const args = [];
 
@@ -430,36 +432,33 @@ class Ora {
 	
 						args.push(iter.next().value);
 						
-						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
+						if (passes++ > 100)
+							return console.error(
+								new Error('Cannot add more than 100 args on a function')
+							);
 					}
 				}
 
 				const items = parseBlock({ iter, data });
 
 				const func = (...inputs) => {
-					const variables = {};
+					const variables = { ...data.variables };
 
-					for (const [key, value] of Object.entries(data.variables))
-						variables[key] = value;
-
-					for (const [i, value] of Object.entries(args)){
-						if (['object', 'function'].includes(typeof inputs[i])) variables[value] = inputs[i];
-						else {
-							variables[value] = parseInput(
+					for (const [key, value] of Object.entries(args))
+						variables[value] = (
+							['object', 'function'].includes(typeof inputs[key]) ?
+							inputs[key] :
+							parseInput(
 								betterIterable([], { tracking: true }),
-								{ value: inputs[i] },
+								{ value: inputs[key] },
 								data
-							);
-						}
-					}
+							)
+						);
 
 					return handleItems(
 						betterIterable(items, { tracking: true }),
-						{
-							functions: data.functions,
-							variables
-						}
-					)//.catch(e => console.log('Handle-Items (function) Error: ', e));;
+						{ functions: data.functions, variables }
+					);
 				}
 
 				this.setOnPath({
@@ -648,14 +647,9 @@ class Ora {
 			return this.parseInputToVariable(iter, { value }, data);
 		}
 
-		if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
-			return functions[kw.match(value)]({
-				iter,
-				data,
-				handleItems: this.handleItems.bind(this)
-			});
+		
 
-		else if (isString(value)){
+		if (isString(value)){
 			return parseString(value);
 		}
 
@@ -728,6 +722,63 @@ class Ora {
 
 			return Enum(...enumObject);
 		}
+
+		else if (kw.is(value, kw.id.function)){
+			console.log('dwadwadada')
+			const args = [];
+
+			if (iter.disposeIf('(')){
+				let passes = 0;
+		
+				while (!iter.disposeIf(')')){
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+					args.push(iter.next().value);
+					
+					if (passes++ > 100)
+						return console.error(
+							new Error('Cannot add more than 100 args on a function')
+						);
+				}
+			}
+
+			const items = parseBlock({ iter, data });
+
+			const func = (...inputs) => {
+				const variables = { ...data.variables };
+
+				for (const [key, value] of Object.entries(args))
+					variables[value] = (
+						['object', 'function'].includes(typeof inputs[key]) ?
+						inputs[key] :
+						parseInput(
+							betterIterable([], { tracking: true }),
+							{ value: inputs[key] },
+							data
+						)
+					);
+
+				return this.handleItems(
+					betterIterable(items, { tracking: true }),
+					{ functions: data.functions, variables }
+				);
+			}
+
+			return func;
+
+			this.setOnPath({
+				source: data.variables,
+				path,
+				value: func
+			});
+		}
+
+		else if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
+			return functions[kw.match(value)]({
+				iter,
+				data,
+				handleItems: this.handleItems.bind(this)
+			});
 		
 		else if (isNum(value)){
 			return Number(value);

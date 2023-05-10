@@ -37,13 +37,15 @@ func run (){
 }
 
 func add (){
-	body(
-		panel()
-	);
+	#body(
+	#	panel()
+	#);
 }
 
 
 run();
 
-interval(run, 1000);
+interval(func (){
+	print 'test';
+}, 1000);
 interval(add, 500);
