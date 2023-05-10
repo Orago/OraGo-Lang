@@ -1,19 +1,49 @@
-LET body = qs('body');
-body.styles({ background: 'red' });
+let body = qs('body');
 body.append('YOO THIS IS FIRE');
 
+func panel (){
+	let el = n.div;
 
+	el.styles({
+		padding: '5px',
+		borderRadius: '5px',
+		margin: '5px'
+	});
 
-FUNCTION run (){
-	LET c = [Math.random(), Math.random(), Math.random()] * 255;
+	func color (){
+		let c = [Math.random(), Math.random(), Math.random()] * 255;
 
-	LET background = 'rgb('+ c.0 + ',' + c.1 + ',' + c.2 + ')';
+		let background = 'rgb('+ c.0 + ',' + c.1 + ',' + c.2 + ')';
 
+		el.styles({
+			background
+		});
+	}
 
-	PRINT background;
+	interval(color, 200);
+
+	
+	return el.node;
+}
+
+func run (){
+	let c = [Math.random(), Math.random(), Math.random()] * 255;
+
+	let background = 'rgb('+ c.0 + ',' + c.1 + ',' + c.2 + ')';
+
 	body.styles({
 		background
 	});
 }
 
+func add (){
+	body(
+		panel()
+	);
+}
+
+
+run();
+
 interval(run, 1000);
+interval(add, 500);

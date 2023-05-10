@@ -414,7 +414,7 @@ class Ora {
 
 			[kw.id.log_scope]: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
 				
-			[kw.id.function] ({ iter, data, handleItems }) {
+			[kw.id.function]: ({ iter, data, handleItems }) => {
 				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
@@ -642,7 +642,11 @@ class Ora {
 
 	parseValue = (iter, value, data = {}) => {
 		const { variables = {} } = data;
-		const { keywords: kw, parseType, functions } = this;
+		const { keywords: kw, functions } = this;
+
+		if (isA_0(value) && variables.hasOwnProperty(value)){
+			return this.parseInputToVariable(iter, { value }, data);
+		}
 
 		if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
 			return functions[kw.match(value)]({
@@ -724,13 +728,11 @@ class Ora {
 
 			return Enum(...enumObject);
 		}
+		
 		else if (isNum(value)){
 			return Number(value);
 		}
 		
-		else if (isA_0(value) && variables.hasOwnProperty(value)){
-			return this.parseInputToVariable(iter, { value }, data);
-		}
 
 		return value;
 	}
@@ -740,12 +742,9 @@ class Ora {
 
 		const { variables = {} } = data;
 		const { value } = input;
-		let parent = variables;
 
-		const scaleTree = ({ source, property, last }) => {
+		const scaleTree = ({ source, property }) => {
 			let scopeV;
-			
-			// let scopeV = (property != undefined ? source[property] : source);
 
 			if (property != undefined){
 				if (source[property] == undefined) source[property] = {};
@@ -798,13 +797,17 @@ class Ora {
 					}
 				}
 			}
+
 			
+			//* Try Looping on path
 			if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 				return scaleTree({
 					source: scopeV,
 					property: iter.last()
 				});
 
+
+			//* Updating variable if assignment operator comes after
 			if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
 				if (property != undefined)
 					this.setOnPath({
@@ -817,11 +820,15 @@ class Ora {
 				return source;
 			}
 
+			//* Scope Fix
 			if (typeof(scopeV?.value) === 'function')
 				scopeV = scopeV.value;
 
+
+			//* Try Calling Function
 			if (functions && iter.disposeIf('(')){
 
+				//* Validate Function
 				if (typeof(scopeV) === 'function' || isClass){
 					const items = [];
 					let passes = 0;
@@ -847,6 +854,8 @@ class Ora {
 						source: called
 					});
 				}
+
+				//* Fail Function
 				else {
 					console.error('Cannot call function on non-function', property,
 						'\n',
@@ -856,7 +865,8 @@ class Ora {
 					return;
 				}
 			}
-			
+
+			//* Return Result
 			else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 		}
 		
@@ -867,7 +877,7 @@ class Ora {
 	}
 
 	parseInput = (iter, input, data = {}) => {
-		const { keywords: kw, parseType, functions } = this;
+		const { keywords: kw } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -894,10 +904,8 @@ class Ora {
 			}
 
 			let result = value;
-			
-			mathBlock: {
-				if (isNaN(value) || typeof result !== 'number') break mathBlock;
-				
+
+			mathBlock: if (isNum(value) && typeof result === 'number'){
 				const total = forceType.forceNumber(isNum(value) ? value : result);
 				if (total == null) break mathBlock;
 
@@ -907,8 +915,9 @@ class Ora {
 					const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 					const nextItem = iter.next().value;
 
+					//* Check if `nextItem` is A number or variable
 					if (isNaN(nextItem) && !isA_0(nextItem)) continue;
-
+					
 					const variable = this.parseInputToVariable(iter, { value: nextItem }, data);
 					const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
 
@@ -927,34 +936,31 @@ class Ora {
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = wrapped(iter.next().value);
-			// if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
 
+			//* For Arrays
 			if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
 					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
 
-			
-			else if (typeof result == 'object') {
-				const keys = Object.keys(result);
 
-				for (let i = 0; i < keys.length; i++){
-					if (result[keys[i]]?.value){
-						result[keys[i]].value = evalMath(`${result[keys[i]].value} ${symbol} ${value}`);
-					}
-					else result[keys[i]] = evalMath(`${result[keys[i]]} ${symbol} ${value}`);
-
-				}
-			}
+			//* For Objects
+			else if (typeof result == 'object')
+				for (const key of Object.keys(result))
+					result[key] = evalMath(`${result[key]} ${symbol} ${value}`);
 		}
+		
 
-		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than))){
+		//* Greater Than
+		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
 			result = result > wrapped(iter.next().value);
-		}
+		
 
-		if (iter.disposeIf(next => kw.is(next, kw.id.less_than))){
+		//* Less Than
+		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
 			result = result < wrapped(iter.next().value);
-		}
 
+		
+		//* Power Of
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))){
 			const size = forceType.forceNumber(
 				this.parseValue(iter, iter.next().value, data)
@@ -978,6 +984,8 @@ class Ora {
 				result = Math.pow(result, size);
 		}
 
+		
+		//* Using
 		if (iter.disposeIf(next => kw.is(next, kw.id.using))){
 			const list = wrapped(iter.next().value);
 
@@ -988,9 +996,13 @@ class Ora {
 			);
 		}
 
+		
+		//* Equals
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
 			return result == wrapped(iter.next().value);
 
+		
+		//* Has
 		if (iter.disposeIf(next => kw.is(next, kw.id.has)))
 			return result[typeof result == 'array' ? 'includes' : 'hasOwnProperty'](wrapped(iter.next().value));
 		
