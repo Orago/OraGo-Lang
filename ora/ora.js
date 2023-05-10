@@ -146,6 +146,8 @@ const keywordDict = (input) => {
 		multiply: ['*'],
 		divide: ['/'],
 		power: ['^'],
+		greater_than: ['>'],
+		less_than: ['<'],
 		//#endregion //* Operators *//
 
 		//#region //* Types *//
@@ -945,31 +947,35 @@ class Ora {
 			}
 		}
 
+		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than))){
+			result = result > wrapped(iter.next().value);
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.less_than))){
+			result = result < wrapped(iter.next().value);
+		}
+
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))){
 			const size = forceType.forceNumber(
 				this.parseValue(iter, iter.next().value, data)
 			);
 
 			if (Array.isArray(result)){
-				for (let i = 0; i < size; i++){
+				for (let i = 0; i < size; i++)
 					result = [
 						...result,
 						...result
 					];
-				}
 			}
 
 			else if (typeof result === 'string'){
 				const text = result;
 
-				for (let i = 0; i < size; i++){
-					result += text;
-				}
+				for (let i = 0; i < size; i++) result += text;
 			}
 
-			else if (typeof result === 'number'){
+			else if (typeof result === 'number')
 				result = Math.pow(result, size);
-			}
 		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.using))){

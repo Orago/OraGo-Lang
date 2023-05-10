@@ -1,6 +1,3 @@
 
-print 'Hello world! ' ^ 5;
 
-print 20 ^ 4;
-
-print ['cat', 'dog', 'lion'] ^ 3;
+print 5 > 3;
