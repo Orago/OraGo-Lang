@@ -79,7 +79,7 @@ function expectSetVar({ iter, data }) {
 	}
 }
 
-const parseBlock = ({ iter }) => {
+function parseBlock (iter){
 	const items = [];
 
 	if (!iter.disposeIf('{'))
@@ -105,6 +105,27 @@ const parseBlock = ({ iter }) => {
 	else items.pop();
 
 	return items;
+}
+
+function parseArgs (iter){
+	const args = [];
+
+	if (iter.disposeIf('(')){
+		let passes = 0;
+
+		while (!iter.disposeIf(')')){
+			if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+			args.push(iter.next().value);
+			
+			if (passes++ > 100)
+				return console.error(
+					new Error('Cannot add more than 100 args on a function')
+				);
+		}
+	}
+
+	return args;
 }
 
 const keywordDict = (input) => {
@@ -252,9 +273,7 @@ class Ora {
 				};
 		}
 
-		this.variables = {
-			...variables
-		}
+		this.variables = { ...variables };
 
 		this.classes = {
 			...forceType.forceObject(classes)
@@ -387,7 +406,7 @@ class Ora {
 				}
 				else throw new Error('Expected "(" to open IF statement!');
 					
-				const items = parseBlock({ iter, data });
+				const items = parseBlock(iter);
 
 				handleItems(
 					betterIterable(
@@ -422,24 +441,8 @@ class Ora {
 						iter.next().value
 					);
 
-				const args = [];
-
-				if (iter.disposeIf('(')){
-					let passes = 0;
-			
-					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-	
-						args.push(iter.next().value);
-						
-						if (passes++ > 100)
-							return console.error(
-								new Error('Cannot add more than 100 args on a function')
-							);
-					}
-				}
-
-				const items = parseBlock({ iter, data });
+				const args = parseArgs(iter);
+				const items = parseBlock(iter);
 
 				const func = (...inputs) => {
 					const variables = { ...data.variables };
@@ -647,9 +650,7 @@ class Ora {
 			return this.parseInputToVariable(iter, { value }, data);
 		}
 
-		
-
-		if (isString(value)){
+		else if (isString(value)){
 			return parseString(value);
 		}
 
@@ -724,25 +725,9 @@ class Ora {
 		}
 
 		else if (kw.is(value, kw.id.function)){
-			console.log('dwadwadada')
-			const args = [];
+			const args = parseArgs(iter);
 
-			if (iter.disposeIf('(')){
-				let passes = 0;
-		
-				while (!iter.disposeIf(')')){
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-					args.push(iter.next().value);
-					
-					if (passes++ > 100)
-						return console.error(
-							new Error('Cannot add more than 100 args on a function')
-						);
-				}
-			}
-
-			const items = parseBlock({ iter, data });
+			const items = parseBlock(iter);
 
 			const func = (...inputs) => {
 				const variables = { ...data.variables };
@@ -765,12 +750,6 @@ class Ora {
 			}
 
 			return func;
-
-			this.setOnPath({
-				source: data.variables,
-				path,
-				value: func
-			});
 		}
 
 		else if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))

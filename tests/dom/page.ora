@@ -45,7 +45,4 @@ func add (){
 
 run();
 
-interval(func (){
-	print 'test';
-}, 1000);
-interval(add, 500);
+interval(run, 1000);
