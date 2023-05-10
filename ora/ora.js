@@ -11,6 +11,9 @@ import {
 	areSameType
 } from './util/forceType.js';
 
+const random = ( min = 0, max = 50 ) => Math.floor( Math.random() * ( max - min ) + min );
+
+
 function oraLexer(input) {
 	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*{}()-_+"'\\/.;:\[\]\s]|[\uD83C-\uDBFF\uDC00-\uDFFF]+/g);
 
@@ -107,6 +110,25 @@ function parseBlock (iter){
 	return items;
 }
 
+function shuffleArray(arr) { // randomly rearanges the items in an array
+  const result = [];
+  for (let i = arr.length-1; i >= 0; i--) {
+    // picks an integer between 0 and i:
+    const r = Math.floor(Math.random()*(i+1));   // NOTE: use a better RNG if cryptographic security is needed
+    // inserts the arr[i] element in the r-th free space in the shuffled array:
+    for(let j = 0, k = 0; j <= arr.length-1; j++) {
+      if(result[j] === undefined) {
+        if(k === r) {
+          result[j] = arr[i];    // NOTE: if array contains objects, this doesn't clone them! Use a better clone function instead, if that is needed. 
+          break;
+        }
+        k++;
+      }
+    }
+  }
+  return result;
+}
+
 function parseArgs (iter){
 	const args = [];
 
@@ -156,6 +178,8 @@ const keywordDict = (input) => {
 		has: ['has'],
 		copy: ['copy'],
 		using: ['using'],
+		randomize: ['randomize'],
+		split: ['split'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -192,9 +216,7 @@ const keywordDict = (input) => {
 
 	const keywordIDs = Enum(...Object.keys(keywordsToParse));
 
-	const has = (search) => {
-		return Object.values(keywordsToParse).some((value) => value.includes(search));
-	}
+	const has = (search) => Object.values(keywordsToParse).some((value) => value.includes(search));
 
 	const match = (search) => {
 		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
@@ -395,8 +417,6 @@ class Ora {
 
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 
-					console.log(toCheck)
-
 					if (toCheck.some(val => val != true)){
 						while (iter.peek()?.done != true)
 							iter.next();
@@ -548,11 +568,8 @@ class Ora {
 				handleItems: this.handleItems.bind(this)
 			});
 			
-			if (response?.break == true)
-				break;
-
-			if (response)
-				return response;
+			if (response?.break == true) break;
+			if (response)                return response;
 		}
 	}
 
@@ -666,10 +683,13 @@ class Ora {
 				const key = iter.next();
 				if (key.value == undefined || key.value == '}') break;
 
-				const path = [key.value];
+				let path = [key.value];
 
-				while (iter.disposeIf('.') && isA_0(iter.peek().value))
+				while (iter.disposeIf('.') && (isA_0(iter.peek().value)))
 					path.push( iter.next().value );
+
+				path = path.map($ => isString($) ? parseString($) : $);
+				
 
 				this.setOnPath({
 					source: object,
@@ -978,6 +998,13 @@ class Ora {
 				for (const key of Object.keys(result))
 					result[key] = evalMath(`${result[key]} ${symbol} ${value}`);
 		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.as))){
+			if (iter.disposeIf(next => kw.is(next, kw.id.array))){
+				if (typeof result == 'string')
+					result = result.split('');
+			}
+		}
 		
 
 		//* Greater Than
@@ -996,13 +1023,12 @@ class Ora {
 				this.parseValue(iter, iter.next().value, data)
 			);
 
-			if (Array.isArray(result)){
+			if (Array.isArray(result))
 				for (let i = 0; i < size; i++)
 					result = [
 						...result,
 						...result
 					];
-			}
 
 			else if (typeof result === 'string'){
 				const text = result;
@@ -1012,6 +1038,25 @@ class Ora {
 
 			else if (typeof result === 'number')
 				result = Math.pow(result, size);
+		}
+
+
+		//* Randomize
+		if (iter.disposeIf(next => kw.is(next, kw.id.randomize))){
+			if (Array.isArray(result)){
+				result = shuffleArray(result);
+			}
+			else if (typeof result === 'string'){
+				result = shuffleArray(result.split('')).join('');
+			}
+
+			else if (typeof result === 'number'){
+				const size = forceType.forceNumber(
+					this.parseValue(iter, iter.next().value, data)
+				);
+
+				result = random(result, size);
+			}
 		}
 
 		
