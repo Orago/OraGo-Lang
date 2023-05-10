@@ -180,6 +180,7 @@ const keywordDict = (input) => {
 		using: ['using'],
 		randomize: ['randomize'],
 		split: ['split'],
+		global: ['global'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -196,8 +197,8 @@ const keywordDict = (input) => {
 		//#endregion //* Operators *//
 
 		//#region //* Types *//
-		number: ['NUMBER'],
 		string: ['STRING'],
+		number: ['NUMBER'],
 		boolean: ['BOOLEAN'],
 		object: ['OBJECT'],
 		array: ['ARRAY'],
@@ -418,8 +419,7 @@ class Ora {
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 
 					if (toCheck.some(val => val != true)){
-						while (iter.peek()?.done != true)
-							iter.next();
+						parseBlock(iter);
 
 						return;
 					};
@@ -756,7 +756,7 @@ class Ora {
 					variables[value] = (
 						['object', 'function'].includes(typeof inputs[key]) ?
 						inputs[key] :
-						parseInput(
+						this.parseInput(
 							betterIterable([], { tracking: true }),
 							{ value: inputs[key] },
 							data
@@ -857,18 +857,20 @@ class Ora {
 				});
 
 
-			//* Updating variable if assignment operator comes after
-			if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-				if (property != undefined)
-					this.setOnPath({
-						source,
-						path: [property],
-						value: parseInput(iter, iter.next(), data)
-					});
-				else throw 'Cannot mod a raw variable to a value!'
+			// //* Updating variable if assignment operator comes after
+			// if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+			// 	console.log(source, property);
+
+			// 	if (property != undefined)
+			// 		this.setOnPath({
+			// 			source: variables,
+			// 			path: [property],
+			// 			value: parseInput(iter, iter.next(), data)
+			// 		});
+			// 	else throw 'Cannot mod a raw variable to a value!'
 					
-				return source;
-			}
+			// 	return source;
+			// }
 
 			//* Scope Fix
 			if (typeof(scopeV?.value) === 'function')
@@ -927,7 +929,7 @@ class Ora {
 	}
 
 	parseInput = (iter, input, data = {}) => {
-		const { keywords: kw } = this;
+		const { keywords: kw, variables } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -939,7 +941,6 @@ class Ora {
 		const wrapped = (value) => {
 			value = this.parseValue(iter, value, data);
 			
-			
 			if (kw.is(iter.peek().value, kw.id.add)){
 				let stringResult = value;
 
@@ -949,7 +950,6 @@ class Ora {
 					stringResult += w;
 				}
 
-				
 				return stringResult;
 			}
 
@@ -1004,7 +1004,30 @@ class Ora {
 				if (typeof result == 'string')
 					result = result.split('');
 			}
+
+			else if (iter.disposeIf(next => kw.is(next, kw.id.string))){
+				if (Array.isArray(result))
+					result = result.join('');
+
+				else if (typeof result == 'object')
+					result = JSON.stringify(result);
+			}
+
+
 		}
+
+		//* Updating variable if assignment operator comes after
+		// if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+		// 	if (property != undefined)
+		// 		this.setOnPath({
+		// 			source: variables,
+		// 			path: [property],
+		// 			value: parseInput(iter, iter.next(), data)
+		// 		});
+		// 	else throw 'Cannot mod a raw variable to a value!'
+				
+		// 	return source;
+		// }
 		
 
 		//* Greater Than

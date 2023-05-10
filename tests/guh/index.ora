@@ -1,3 +1,3 @@
-let players = { orago: 50, cat: 5, dog: 1, tomb: 22 };
+let players: ARRAY = [];
 
 print players * 5;

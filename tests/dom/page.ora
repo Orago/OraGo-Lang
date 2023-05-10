@@ -1,3 +1,4 @@
+
 let body = qs('body')
 	.styles({
 		transition: '5s'
@@ -38,16 +39,26 @@ body(
 				textAlign: 'center'
 			})
 			.on('mouseover', func (){
+				if (window has 'interval'){
+					window.interval.kill();
+				};
+
 				let window.interval = interval(func (){
 
-					node.text(
-					);
+					let text = node.node.dataset.value as ARRAY;
+					let rand = text randomize;
+					node.text(rand as STRING);
+
+
+					if (iteration > node.node.dataset.value.length){
+						window.interval.kill();
+					};
 				}, 30);
 
-				
-
-				print window.interval;
-
+				timeout(func (){
+					window.interval.kill();
+					node.text(node.node.dataset.value);
+				}, 500);
 
 			})
 		})
