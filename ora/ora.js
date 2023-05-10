@@ -145,6 +145,7 @@ const keywordDict = (input) => {
 		subtract: ['-'],
 		multiply: ['*'],
 		divide: ['/'],
+		power: ['^'],
 		//#endregion //* Operators *//
 
 		//#region //* Types *//
@@ -592,8 +593,6 @@ class Ora {
 				throw new Error('Invalid Typing');
 		}
 
-
-
 		
 		if (value != undefined) source[p] = value;
 		else delete source[p];
@@ -722,6 +721,9 @@ class Ora {
 			}
 
 			return Enum(...enumObject);
+		}
+		else if (isNum(value)){
+			return Number(value);
 		}
 		
 		else if (isA_0(value) && variables.hasOwnProperty(value)){
@@ -890,8 +892,6 @@ class Ora {
 			}
 
 			let result = value;
-
-			
 			
 			mathBlock: {
 				if (isNaN(value) || typeof result !== 'number') break mathBlock;
@@ -920,17 +920,17 @@ class Ora {
 			return result;
 		}
 
-		const result = wrapped(input.value);
+		let result = wrapped(input.value);
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = wrapped(iter.next().value);
-
 			// if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
 
 			if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
 					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
+
 			
 			else if (typeof result == 'object') {
 				const keys = Object.keys(result);
@@ -942,6 +942,33 @@ class Ora {
 					else result[keys[i]] = evalMath(`${result[keys[i]]} ${symbol} ${value}`);
 
 				}
+			}
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.power))){
+			const size = forceType.forceNumber(
+				this.parseValue(iter, iter.next().value, data)
+			);
+
+			if (Array.isArray(result)){
+				for (let i = 0; i < size; i++){
+					result = [
+						...result,
+						...result
+					];
+				}
+			}
+
+			else if (typeof result === 'string'){
+				const text = result;
+
+				for (let i = 0; i < size; i++){
+					result += text;
+				}
+			}
+
+			else if (typeof result === 'number'){
+				result = Math.pow(result, size);
 			}
 		}
 

@@ -1,3 +1,6 @@
-let firstObj: ARRAY = ['e51adwdawdwda', 50];
 
-print firstObj * 3;
+print 'Hello world! ' ^ 5;
+
+print 20 ^ 4;
+
+print ['cat', 'dog', 'lion'] ^ 3;
