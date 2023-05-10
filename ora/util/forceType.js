@@ -11,6 +11,9 @@ const forceType = {
 }
 
 const resolveTyped = (input, type = 'any') => {
+
+	if (Array.isArray(type)) return forceType.forceArray(input);
+
   switch (type){
     case null:
     case 'null':    return forceType.forceNull(input);
@@ -26,11 +29,10 @@ const resolveTyped = (input, type = 'any') => {
     case String:
     case 'string':  return forceType.forceString(input);
 
+    case 'array':   return forceType.forceArray(input);
+
     case Object:
     case 'object':  return forceType.forceObject(input);
-
-    case Array:
-    case 'array':   return forceType.forceArray(input);
 		
     case 'any':
     default:        return input;
@@ -52,14 +54,22 @@ function objFrom (obj, keys){
 
 const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
 
-const isNum = (num) => !isNaN(num);
+const isNum = num => !isNaN(num);
 
-const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
-const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
+const isA0  = x => x != undefined && /[a-z0-9]/i.test(x);
+const isA_0 = x => x != undefined && /[a-z0-9_]/i.test(x);
 const isString = input => strReg.test(input);
 
 const strReg = /(['"])(.*?)\1/;
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
+
+function areSameType(a, b) {
+	const test = [Array.isArray(a), Array.isArray(b)];
+	
+  if (test.includes(true)) return !test.includes(false); // both are arrays
+  
+  return typeof a === typeof b; // same primitive data type
+}
 
 export {
 	forceType,
@@ -70,5 +80,6 @@ export {
 	isA0,
 	isA_0,
 	isString,
-	isMath
+	isMath,
+	areSameType
 }

@@ -7,7 +7,8 @@ import {
 	resolveTyped,
 	Enum,
 	isNum,
-	isA_0
+	isA_0,
+	areSameType
 } from './util/forceType.js';
 
 function oraLexer(input) {
@@ -55,171 +56,7 @@ const strReg = /(['"])(.*?)\1/;
 const isString = input => strReg.test(input);
 const parseString = input => strReg.exec(input)?.[2];
 
-function parseInputToVariable (iter, input, data = {}, functions = true) {
-	const { parseInput, keywords: kw } = this;
 
-	const { variables = {} } = data;
-	const { value } = input;
-	let parent = variables;
-
-	const scaleTree = ({ source, property, last }) => {
-		let scopeV;
-		
-		// let scopeV = (property != undefined ? source[property] : source);
-
-		if (property != undefined){
-			if (source[property] == undefined) source[property] = {};
-
-			scopeV = source[property];
-		}
-		else scopeV = source;
-			
-		const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
-
-		if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function')
-			scopeV = scopeV?.bind(source);
-
-		if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
-			if (typeof scopeV == 'function' && !isClass){
-				const toBind = forceType.forceObject(
-					parseInput(iter, iter.next(), data)
-				);
-				
-				scopeV = scopeV.bind(toBind);
-			}
-			else if (typeof scopeV == 'object'){
-				if (iter.disposeIf('(')){
-					const toBind = [];
-					let passes = 0;
-
-					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',')) continue;
-
-						toBind.push(
-							parseInput(iter, iter.next(), data)
-						);
-						
-						if (passes++ > 100)
-							return console.error(
-								new Error('Cannot run more than 100 args on a function')
-							);
-							
-						if (iter.peek(1).value == undefined) break;
-					}
-
-					scopeV = Object.assign(scopeV, ...toBind);
-				}
-				else {
-					const toBind = forceType.forceObject(
-						parseInput(iter, iter.next(), data, false)
-					);
-
-					scopeV = Object.assign(scopeV, toBind);
-				}
-			}
-		}
-		
-		if (iter.disposeIf('.') && iter.disposeIf(isA_0))
-			return scaleTree({
-				source: scopeV,
-				property: iter.last()
-			});
-
-		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-			if (property != undefined)
-				setOnPath({
-					source,
-					path: [property],
-					value: parseInput(iter, iter.next(), data)
-				});
-			else throw 'Cannot mod a raw variable to a value!'
-				
-			return source;
-		}
-
-		if (typeof(scopeV?.value) === 'function')
-			scopeV = scopeV.value;
-
-		if (functions && iter.disposeIf('(')){
-
-			if (typeof(scopeV) === 'function' || isClass){
-				const items = [];
-				let passes = 0;
-		
-				while (!iter.disposeIf(')')){
-					if (iter.disposeIf(',')) continue;
-
-					items.push(
-						parseInput(iter, iter.next(), data)
-					);
-					
-					if (passes++ > 100)
-						return console.error(
-							new Error('Cannot run more than 100 args on a function')
-						);
-						
-					if (iter.peek(1).value == null) break;
-				}
-				
-				const called = isClass ? new scopeV(...items) : scopeV(...items);
-
-				return scaleTree({
-					source: called
-				});
-			}
-			else {
-				console.error('Cannot call function on non-function', property,
-					'\n',
-					iter.stack()
-				);
-
-				return;
-			}
-		}
-		
-		else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
-	}
-	
-	return scaleTree({
-		property: value,
-		source: variables
-	});
-}
-
-
-const setOnPath = ({ source, path, value, type = 'any' }) => {
-	for (const sub of path.slice(0, path.length - 1)){
-		if (typeof source[sub] !== 'object')
-			source[sub] = { value: source[sub] };
-
-		if (source[sub].value == null)
-			delete source[sub].value;
-
-		source = source[sub];
-	}
-
-
-	const i = path.length > 1 ? path.length - 1 : 0;
-
-	source[path[i]] ??= { value }
-
-	const result = source[path[i]];
-	const __type = result?.__type ?? type;
-
-	if (typeof result == 'object' && !result.hasOwnProperty('__type')) Object.defineProperty(result, '__type', {
-		enumerable: false,
-		writable: false,
-		value: __type
-	});
-
-	else if (result.__type !== type && type != 'any')
-		return console.log(`[Ora] Cannot Change Type on (${path.join('.')}), Nothing Happened`);
-	
-	if (__type != 'any') result.value = resolveTyped(value, type);
-	
-	if (value != undefined) source[path[i]] = value;
-	else delete source[path[i]];
-}
 
 function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
@@ -264,6 +101,7 @@ const parseBlock = ({ iter }) => {
 
 	if (items[items.length - 1] !== '}')
 		throw new Error('Missing Closing \'}\' at end of function');
+
 	else items.pop();
 
 	return items;
@@ -272,31 +110,31 @@ const parseBlock = ({ iter }) => {
 const keywordDict = (input) => {
 	const keywordsToParse = {
 		//#region //* Commands *//
-		comment: ['COMMENT'],
-		set: ['SET', 'LET'],
-		assign: ['TO', '='],
-		delete: ['DELETE'],
-		print: ['PRINT'],
-		loop: ['LOOP'],
-		for: ['FOR'],
-		if: ['IF'],
-		equals: ['EQUALS'],
-		return: ['RETURN'],
-		class: ['CLASS'],
-		function: ['FUNCTION'],
-		exit: ['EXIT'],
-		push: ['PUSH'],
-		pop: ['POP'],
-		shift: ['SHIFT'],
-		await: ['AWAIT'],
-		sleep: ['SLEEP'],
-		and: ['AND', '&'],
-		from: ['FROM'],
-		bind: ['BIND'],
-		as: ['AS'],
-		has: ['HAS'],
-		copy: ['COPY'],
-		using: ['USING'],
+		comment: ['comment', '#'],
+		set: ['set', 'let'],
+		assign: ['to', '='],
+		delete: ['delete'],
+		print: ['print'],
+		loop: ['loop'],
+		for: ['for'],
+		if: ['if'],
+		equals: ['equals'],
+		return: ['return'],
+		class: ['class'],
+		function: ['func'],
+		exit: ['exit'],
+		push: ['push'],
+		pop: ['pop'],
+		shift: ['shift'],
+		await: ['await'],
+		sleep: ['sleep'],
+		and: ['and', '&'],
+		from: ['from'],
+		bind: ['bind'],
+		as: ['as', ':'],
+		has: ['has'],
+		copy: ['copy'],
+		using: ['using'],
 		//#endregion //* Commands *//
 
 		log_variables: ['LOG_VARIABLES'],
@@ -365,7 +203,6 @@ class Ora {
 	functions;
 
 	utils = {
-		setOnPath,
 		chunkLexed,
 		isA_0,
 		isNum,
@@ -386,8 +223,6 @@ class Ora {
 		} = forceType.forceObject(settings);
 
 		this.settings = {};
-
-
 
 		this.utils.parseInput = this.parseInput;
 
@@ -438,16 +273,18 @@ class Ora {
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push( iter.next().value );
+
+				let type = 'any';
+				
+
+				if (iter.disposeIf(next => kw.is(next, kw.id.as))){
+					type = this.parseType(iter.next().value).type
+				}
 				
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
-					let type = 'any';
 
-					if (iter.disposeIf(next => kw.is(next, kw.id.as))){
-						type = this.parseType(iter.next().value).type
-					}
-
-					setOnPath({
+					this.setOnPath({
 						source: variables,
 						path,
 						type,
@@ -471,7 +308,7 @@ class Ora {
 					);
 
 				if (isA_0(path[0]))
-					setOnPath({
+					this.setOnPath({
 						source: variables,
 						path
 					});
@@ -622,7 +459,7 @@ class Ora {
 					)//.catch(e => console.log('Handle-Items (function) Error: ', e));;
 				}
 
-				setOnPath({
+				this.setOnPath({
 					source: data.variables,
 					path,
 					value: func
@@ -645,7 +482,7 @@ class Ora {
 					const variable = expectSetVar.bind(this)({ iter, data });
 					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 
-					setOnPath({
+					this.setOnPath({
 						source: variables,
 						path: variable.path,
 						value: [...variable.data, ...items]
@@ -714,6 +551,54 @@ class Ora {
 		}
 	}
 
+	setOnPath ({ source, path, value, type = 'any' }) {
+		for (const sub of path.slice(0, path.length - 1)){
+			if (typeof source[sub] !== 'object')
+				source[sub] = { value: source[sub] };
+
+			if (source[sub].value == null)
+				delete source[sub].value;
+
+			source = source[sub];
+		}
+
+		const p = path[
+			path.length > 1 ? path.length - 1 : 0
+		]
+
+		source[p] ??= { value }
+
+		const __type = source[p]?.__type ?? type;
+
+
+		if (typeof value == 'object' && !value.hasOwnProperty('__type'))
+			Object.defineProperty(value, '__type', {
+				enumerable: false,
+				writable: false,
+				value: __type
+			});
+
+		else if (__type !== type && __type != 'any')
+			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')})`);
+
+		if (__type != 'any'){
+			const e = value;
+
+			value = resolveTyped(value, type);
+
+			// console.log(e, value, 'poolio')
+
+			if (!areSameType(e, value))
+				throw new Error('Invalid Typing');
+		}
+
+
+
+		
+		if (value != undefined) source[p] = value;
+		else delete source[p];
+	}
+
 	parseType = (value) => {
 		const { keywords: kw } = this;
 		const kIs = (key) => kw.is(value, kw.id[key]);
@@ -725,6 +610,9 @@ class Ora {
 		}
 		else if (kIs('false')){
 			type = false;
+		}
+		else if (kIs('string')){
+			type = '';
 		}
 		else if (kIs('object')){
 			type = {};
@@ -783,7 +671,7 @@ class Ora {
 				while (iter.disposeIf('.') && isA_0(iter.peek().value))
 					path.push( iter.next().value );
 
-				setOnPath({
+				this.setOnPath({
 					source: object,
 					path,
 					value: this.parseValue(
@@ -794,7 +682,7 @@ class Ora {
 				});
 			}
 
-			return parseInputToVariable.bind(this)(iter, { }, { variables: object });
+			return this.parseInputToVariable(iter, { }, { variables: object });
 		}
 
 		else if (value == '['){
@@ -809,7 +697,7 @@ class Ora {
 
 				if (nextItem.value == undefined) break;
 
-				array.push( wrapped(nextItem.value) );
+				array.push( this.parseValue(iter, nextItem.value, data) );
 			}
 
 			return array;
@@ -837,14 +725,144 @@ class Ora {
 		}
 		
 		else if (isA_0(value) && variables.hasOwnProperty(value)){
-			return parseInputToVariable.bind(this)(iter, { value }, data);
+			return this.parseInputToVariable(iter, { value }, data);
 		}
 
 		return value;
 	}
 
-	parseInput = (iter, input, data = {}) => {
+	parseInputToVariable (iter, input, data = {}, functions = true) {
+		const { parseInput, keywords: kw } = this;
+
 		const { variables = {} } = data;
+		const { value } = input;
+		let parent = variables;
+
+		const scaleTree = ({ source, property, last }) => {
+			let scopeV;
+			
+			// let scopeV = (property != undefined ? source[property] : source);
+
+			if (property != undefined){
+				if (source[property] == undefined) source[property] = {};
+
+				scopeV = source[property];
+			}
+			else scopeV = source;
+				
+			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+
+			if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function')
+				scopeV = scopeV?.bind(source);
+
+			if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
+				if (typeof scopeV == 'function' && !isClass){
+					const toBind = forceType.forceObject(
+						parseInput(iter, iter.next(), data)
+					);
+					
+					scopeV = scopeV.bind(toBind);
+				}
+				else if (typeof scopeV == 'object'){
+					if (iter.disposeIf('(')){
+						const toBind = [];
+						let passes = 0;
+
+						while (!iter.disposeIf(')')){
+							if (iter.disposeIf(',')) continue;
+
+							toBind.push(
+								parseInput(iter, iter.next(), data)
+							);
+							
+							if (passes++ > 100)
+								return console.error(
+									new Error('Cannot run more than 100 args on a function')
+								);
+								
+							if (iter.peek(1).value == undefined) break;
+						}
+
+						scopeV = Object.assign(scopeV, ...toBind);
+					}
+					else {
+						const toBind = forceType.forceObject(
+							parseInput(iter, iter.next(), data, false)
+						);
+
+						scopeV = Object.assign(scopeV, toBind);
+					}
+				}
+			}
+			
+			if (iter.disposeIf('.') && iter.disposeIf(isA_0))
+				return scaleTree({
+					source: scopeV,
+					property: iter.last()
+				});
+
+			if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+				if (property != undefined)
+					this.setOnPath({
+						source,
+						path: [property],
+						value: parseInput(iter, iter.next(), data)
+					});
+				else throw 'Cannot mod a raw variable to a value!'
+					
+				return source;
+			}
+
+			if (typeof(scopeV?.value) === 'function')
+				scopeV = scopeV.value;
+
+			if (functions && iter.disposeIf('(')){
+
+				if (typeof(scopeV) === 'function' || isClass){
+					const items = [];
+					let passes = 0;
+			
+					while (!iter.disposeIf(')')){
+						if (iter.disposeIf(',')) continue;
+
+						items.push(
+							parseInput(iter, iter.next(), data)
+						);
+						
+						if (passes++ > 100)
+							return console.error(
+								new Error('Cannot run more than 100 args on a function')
+							);
+							
+						if (iter.peek(1).value == null) break;
+					}
+					
+					const called = isClass ? new scopeV(...items) : scopeV(...items);
+
+					return scaleTree({
+						source: called
+					});
+				}
+				else {
+					console.error('Cannot call function on non-function', property,
+						'\n',
+						iter.stack()
+					);
+
+					return;
+				}
+			}
+			
+			else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
+		}
+		
+		return scaleTree({
+			property: value,
+			source: variables
+		});
+	}
+
+	parseInput = (iter, input, data = {}) => {
 		const { keywords: kw, parseType, functions } = this;
 
 		const mathSymbols = {
@@ -855,10 +873,8 @@ class Ora {
 		};
 
 		const wrapped = (value) => {
-			const { type } = parseType(value);
-			if (type !== 'any') return type;
-
 			value = this.parseValue(iter, value, data);
+			
 			
 			if (kw.is(iter.peek().value, kw.id.add)){
 				let stringResult = value;
@@ -868,6 +884,7 @@ class Ora {
 
 					stringResult += w;
 				}
+
 				
 				return stringResult;
 			}
@@ -877,8 +894,8 @@ class Ora {
 			
 			
 			mathBlock: {
-				if (isNaN(value) && typeof result !== 'number') break mathBlock;
-
+				if (isNaN(value) || typeof result !== 'number') break mathBlock;
+				
 				const total = forceType.forceNumber(isNum(value) ? value : result);
 				if (total == null) break mathBlock;
 
@@ -890,7 +907,7 @@ class Ora {
 
 					if (isNaN(nextItem) && !isA_0(nextItem)) continue;
 
-					const variable = parseInputToVariable.bind(this)(iter, { value: nextItem }, data);
+					const variable = this.parseInputToVariable(iter, { value: nextItem }, data);
 					const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
 
 					mathString += ` ${symbol} ${num}`;
@@ -900,18 +917,16 @@ class Ora {
 			}
 
 			if (value === 'CURRENT_DATE') return Date.now();
-
 			return result;
 		}
 
 		const result = wrapped(input.value);
-		
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = wrapped(iter.next().value);
 
-			if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
+			// if (typeof value !== 'number') throw new Error('Cannot apply math non-numbers to object or array');
 
 			if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
@@ -943,7 +958,7 @@ class Ora {
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
 			return result == wrapped(iter.next().value);
 
-		else if (iter.disposeIf(next => kw.is(next, kw.id.has)))
+		if (iter.disposeIf(next => kw.is(next, kw.id.has)))
 			return result[typeof result == 'array' ? 'includes' : 'hasOwnProperty'](wrapped(iter.next().value));
 		
 		else return result;

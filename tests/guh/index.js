@@ -4,7 +4,7 @@ import ora from '../../ora/esm.js';
 const run = async (code) => {
 	const instance = ora({
 		variables: {
-			cat: 'test'
+			cat: 'testa'
 		}
 	});
 	
