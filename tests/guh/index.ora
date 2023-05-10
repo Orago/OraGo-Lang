@@ -1,3 +1,2 @@
-LET firstObj = { a: 1, b: 2, c: 3 };
 
-LOG_VARIABLES;
+PRINT ''.join;

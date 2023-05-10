@@ -751,6 +751,98 @@ class Ora {
 		return { type };
 	}
 
+	parseValue = (iter, value, data = {}) => {
+		const { variables = {} } = data;
+		const { keywords: kw, parseType, functions } = this;
+
+		if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
+			return functions[kw.match(value)]({
+				iter,
+				data,
+				handleItems: this.handleItems.bind(this)
+			});
+
+		else if (isString(value)){
+			return parseString(value);
+		}
+
+		else if (value == '{'){
+			const object = {};
+
+			let tries = 0;
+
+			while (true){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+				const key = iter.next();
+				if (key.value == undefined || key.value == '}') break;
+
+				const path = [key.value];
+
+				while (iter.disposeIf('.') && isA_0(iter.peek().value))
+					path.push( iter.next().value );
+
+				setOnPath({
+					source: object,
+					path,
+					value: this.parseValue(
+						iter,
+						(iter.disposeIf(':') ? iter.next() : key).value,
+						data
+					)
+				});
+			}
+
+			return parseInputToVariable.bind(this)(iter, { }, { variables: object });
+		}
+
+		else if (value == '['){
+			const array = [];
+			let tries = 0;
+
+			while (!iter.disposeIf(']')){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
+				if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+				const nextItem = iter.next();
+
+				if (nextItem.value == undefined) break;
+
+				array.push( wrapped(nextItem.value) );
+			}
+
+			return array;
+		}
+
+		else if (kw.is(value, kw.id.enum)){
+			if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
+
+			const enumObject = [];
+
+			let tries = 0;
+
+			while (!iter.disposeIf('}')){
+				if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
+
+				if (iter.disposeIf(next => kw.is(next, kw.id.and)) && iter.disposeIfNot(isA_0)) continue;
+
+				const key = iter.next();
+				if (key.value == undefined) break;
+
+				enumObject.push(wrapped(key.value));
+			}
+
+			return Enum(...enumObject);
+		}
+		
+		else if (isA_0(value) && variables.hasOwnProperty(value)){
+			return parseInputToVariable.bind(this)(iter, { value }, data);
+		}
+
+		return value;
+	}
+
 	parseInput = (iter, input, data = {}) => {
 		const { variables = {} } = data;
 		const { keywords: kw, parseType, functions } = this;
@@ -766,91 +858,23 @@ class Ora {
 			const { type } = parseType(value);
 			if (type !== 'any') return type;
 
-			if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
-				return functions[kw.match(value)]({
-					iter,
-					data,
-					handleItems: this.handleItems.bind(this)
-				});
+			value = this.parseValue(iter, value, data);
 			
-			if (value == '{'){
-				const object = {};
+			if (kw.is(iter.peek().value, kw.id.add)){
+				let stringResult = value;
 
-				let tries = 0;
+				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek().value != null){
+					const w = this.parseValue(iter, iter.next().value, data);
 
-				while (true){
-					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an object');
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-					const key = iter.next();
-					if (key.value == undefined || key.value == '}') break;
-
-					const path = [key.value];
-
-					while (iter.disposeIf('.') && isA_0(iter.peek().value))
-						path.push( iter.next().value );
-
-					setOnPath({
-						source: object,
-						path,
-						value: wrapped((iter.disposeIf(':') ? iter.next() : key).value)
-					});
-				}
-
-				return parseInputToVariable.bind(this)(iter, { }, { variables: object });
-			}
-			else if (value == '['){
-				const array = [];
-				let tries = 0;
-
-				while (!iter.disposeIf(']')){
-					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
-					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-
-					const nextItem = iter.next();
-
-					if (nextItem.value == undefined) break;
-
-					array.push( wrapped(nextItem.value) );
-				}
-
-				return array;
-			}
-			else if (kw.is(iter.peek().value, kw.id.add)){
-				let stringResult = parseString(value);
-
-				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek(1).value != null){
-					stringResult += wrapped(iter.next().value);
+					stringResult += w;
 				}
 				
 				return stringResult;
 			}
-			else if (kw.is(value, kw.id.enum)){
-				if (!iter.disposeIf('{')) throw new Error('Expected "{" after ENUM');
 
-				const enumObject = [];
+			let result = value;
 
-				let tries = 0;
-
-				while (!iter.disposeIf('}')){
-					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an enum');
-
-					if (iter.disposeIf(next => kw.is(next, kw.id.and)) && iter.disposeIfNot(isA_0)) continue;
-
-					const key = iter.next();
-					if (key.value == undefined) break;
-
-					enumObject.push(wrapped(key.value));
-				}
-
-				return Enum(...enumObject);
-			}
-
-			let result;
-
-			if (isA_0(value) && variables.hasOwnProperty(value)){
-				result = parseInputToVariable.bind(this)(iter, { value }, data);
-			}
+			
 			
 			mathBlock: {
 				if (isNaN(value) && typeof result !== 'number') break mathBlock;

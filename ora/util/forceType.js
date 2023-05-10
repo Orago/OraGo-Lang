@@ -56,7 +56,9 @@ const isNum = (num) => !isNaN(num);
 
 const isA0  = (x) => x != undefined && /[a-z0-9]/i.test(x);
 const isA_0 = (x) => x != undefined && /[a-z0-9_]/i.test(x);
+const isString = input => strReg.test(input);
 
+const strReg = /(['"])(.*?)\1/;
 const isMath = input => /^(~\w+|[\d\s+\-*/()]+)+$/.test(input);
 
 export {
@@ -67,5 +69,6 @@ export {
 	isNum,
 	isA0,
 	isA_0,
+	isString,
 	isMath
 }
