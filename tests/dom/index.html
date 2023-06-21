@@ -16,11 +16,6 @@
 		<!--[if lt IE 7]>
 			<p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
 		<![endif]-->
-		<style>
-			* {
-				transition: 1s;
-			}
-		</style>
 		
 		<script type="module">
 			import ora from '../../ora/ora.js';
@@ -42,13 +37,32 @@
 				}
 			}
 
+			const timeout = (func, time) => {
+				const id = setTimeout(
+					() => {
+						func();
+					},
+					time
+				);
+
+				const kill = () => clearTimeout(id);
+
+				return {
+					id,
+					kill
+				}
+			}
+
 			const oraInstance = new ora({
 				variables: {
 					n,
 					qs,
 					Math,
 					Date,
-					interval
+					interval,
+					timeout,
+					window,
+					
 				}
 			});
 

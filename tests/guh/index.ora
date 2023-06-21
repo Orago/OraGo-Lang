@@ -1,1 +1,3 @@
-loop 5 print 'hi';
+let players: ARRAY = [];
+
+print players * 5;
