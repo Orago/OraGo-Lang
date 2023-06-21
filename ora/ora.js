@@ -1,63 +1,12 @@
 import betterIterable from './util/betterIterables.js';
 import evalMath from './util/evalMath.js';
 import deepClone from './util/deepClone.js';
-
-import {
-	forceType,
-	resolveTyped,
-	Enum,
-	isNum,
-	isA_0,
-	areSameType
-} from './util/forceType.js';
-
-function oraLexer(input) {
-	const output = input.match(/(['"])(.*?)\1|\w+|(?!\\)[~!@#$%^&*{}()-_+"'\\/.;:\[\]\s]|[\uD83C-\uDBFF\uDC00-\uDFFF]+/g);
-
-	if (output == null) throw 'This is a blank file!';
-
-	while (output.indexOf(' ') != -1) output.splice(output.indexOf(' '), 1);
-
-	return output;
-}
-
-function chunkLexed(lexed) {
-	const chunks = [];
-	let chunk = [];
-
-	let scopeDepth = 0;
-
-	for (const item of lexed){
-		if (item === '{'){
-			scopeDepth++;
-			chunk.push(item);
-			continue;
-		}
-		else if (item === '}'){
-			scopeDepth--;
-			chunk.push(item);
-			continue;
-		}
-
-		if (item === ';') {
-			if (scopeDepth == 0){
-				chunks.push(chunk);
-				chunk = [];
-			}
-			else chunk.push(item)
-		}
-		else if (item !== '\n' && item !== '\t' && item !== '\r') chunk.push(item);
-	}
-
-	return chunks;
-}
-
-const strReg = /(['"])(.*?)\1/;
-const isString = input => strReg.test(input);
-const parseString = input => strReg.exec(input)?.[2];
-
-
-
+import { keywordDict } from './util/keyword.js';
+import { forceType, resolveTyped, Enum, isNum, isA_0, areSameType } from './util/forceType.js';
+import { isString, parseString, parseBlock } from './util/parseTools.js';
+import { oraLexer, chunkLexed } from './util/lexer.js';
+import defaultFunctions from './util/defaultFunctions.js';
+import loggingFunctions from './util/functions/logging.js';
 function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
 		this.parseInput(iter.clone(), iter.peek(1), data)
@@ -77,126 +26,6 @@ function expectSetVar({ iter, data }) {
 		path,
 		data: varData
 	}
-}
-
-const parseBlock = ({ iter }) => {
-	const items = [];
-
-	if (!iter.disposeIf('{'))
-		throw new Error('Missing Opening \'{\' after parameters');
-
-	let openBrackets = 1;
-	let closedBrackets = 0;
-	
-	for (const item of iter){
-		if (item === '{') openBrackets++;
-		else if (item === '}') closedBrackets++;
-
-		if (item == '\r') continue;
-		
-		items.push(item);
-
-		if (openBrackets == closedBrackets && openBrackets > 0) break;
-	}
-
-	if (items[items.length - 1] !== '}')
-		throw new Error('Missing Closing \'}\' at end of function');
-
-	else items.pop();
-
-	return items;
-}
-
-const keywordDict = (input) => {
-	const keywordsToParse = {
-		//#region //* Commands *//
-		comment: ['comment', '#'],
-		set: ['set', 'let'],
-		assign: ['to', '='],
-		delete: ['delete'],
-		print: ['print'],
-		loop: ['loop'],
-		for: ['for'],
-		if: ['if'],
-		equals: ['equals'],
-		return: ['return'],
-		class: ['class'],
-		function: ['func'],
-		exit: ['exit'],
-		push: ['push'],
-		pop: ['pop'],
-		shift: ['shift'],
-		await: ['await'],
-		sleep: ['sleep'],
-		and: ['and', '&'],
-		from: ['from'],
-		bind: ['bind'],
-		as: ['as', ':'],
-		has: ['has'],
-		copy: ['copy'],
-		using: ['using'],
-		//#endregion //* Commands *//
-
-		log_variables: ['LOG_VARIABLES'],
-		log_scope: ['LOG_SCOPE'],
-
-		//#region //* Operators *//
-		add: ['+'],
-		subtract: ['-'],
-		multiply: ['*'],
-		divide: ['/'],
-		power: ['^'],
-		greater_than: ['>'],
-		less_than: ['<'],
-		//#endregion //* Operators *//
-
-		//#region //* Types *//
-		number: ['NUMBER'],
-		string: ['STRING'],
-		boolean: ['BOOLEAN'],
-		object: ['OBJECT'],
-		array: ['ARRAY'],
-		enum: ['ENUM'],
-		true: ['TRUE'],
-		false: ['FALSE'],
-		null: ['NULL'],
-		undefined: ['UNDEFINED'],
-		NaN: ['NAN'],
-		Infinity: ['INFINITY'],
-		negativeInfinity: ['NEGATIVE_INFINITY'],
-		//#endregion //* Types *//
-		
-		...input
-	};
-
-	const keywordIDs = Enum(...Object.keys(keywordsToParse));
-
-	const has = (search) => {
-		return Object.values(keywordsToParse).some((value) => value.includes(search));
-	}
-
-	const match = (search) => {
-		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
-
-		if (res == undefined) throw new Error(`Keyword ${search} not found in dictionary`);
-		else return keywordIDs[res[0]];
-	}
-
-	const matchUnsafe = (search) => {
-		const res = Object.entries(keywordsToParse).find(([key, value]) => value.includes(search));
-
-		return res != undefined ? keywordIDs[res[0]] : null;
-	}
-
-	const is = (search, keywordID) => matchUnsafe(search) === keywordID;
-
-	return {
-		id: keywordIDs,
-		match,
-		matchUnsafe,
-		has,
-		is
-	};
 }
 
 class Ora {
@@ -239,31 +68,29 @@ class Ora {
 		});
 	}
 
+	iterable (...args){
+		return betterIterable(...args);
+	}
+
 	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator, variables }){
-		this.keywords = keywordDict(overrideDictionary);
+		this.keywords = new keywordDict(overrideDictionary);
 
 		if (typeof functionGenerator === 'function'){
 			const gen = functionGenerator(this);
 
 			if (typeof gen === 'object' && gen !== null)
-				functions = {
-					...functions,
-					...gen
-				};
+				functions = { ...functions, ...gen };
 		}
 
-		this.variables = {
-			...variables
-		}
-
-		this.classes = {
-			...forceType.forceObject(classes)
-		};
+		this.variables = variables;
+		this.classes = forceType.forceObject(classes);
 
 		const { keywords: kw, parseInput } = this;
 
 		this.functions = {
 			...forceType.forceObject(functions),
+			...defaultFunctions({ kw }),
+			...loggingFunctions({ kw }),
 
 			[kw.id.comment]: () => ({ break: true }),
 
@@ -275,22 +102,17 @@ class Ora {
 					throw `Cannot set variable to function name: ${path[0]}`;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push( iter.next().value );
+					path.push(
+						iter.next().value
+					);
 
-				let type = 'any';
-				
-
-				if (iter.disposeIf(next => kw.is(next, kw.id.as))){
-					type = this.parseType(iter.next().value).type
-				}
-				
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
 
 					this.setOnPath({
 						source: variables,
 						path,
-						type,
+						type: iter.disposeIf(next => kw.is(next, kw.id.as)) ? this.parseType(iter.next().value).type : 'any',
 						value
 					});
 				}
@@ -319,40 +141,6 @@ class Ora {
 				else throw `Invalid Variable Name: (${path[0]})`;
 			},
 
-			[kw.id.print] ({ iter, data }) {
-				const input = iter.next();
-				if (!input.value) return;
-
-				const results = [parseInput(iter, input, data)];
-
-				while (iter.disposeIf(next => kw.is(next, kw.id.and)) && !iter.peek().done){
-					const res = parseInput(iter, iter.next(), data);
-
-					results.push(res);
-				}
-
-				results.length > 0 && console.log(...results);
-			},
-
-			[kw.id.loop]: ({ iter, handleItems }) => {
-				const input = iter.next().value, 
-							items = [...iter];
-
-				if (!isNaN(input)) {
-					const timesToRun = forceType.forceNumber(input);
-
-					for (let i = 0; i < timesToRun; i++)
-						handleItems(
-							betterIterable(
-								items,
-								{ tracking: true }
-							),
-							this
-						);
-				}
-				else throw 'Cannot Find Loop Status';
-			},
-
 			[kw.id.for] ({ iter, data, handleItems, maxCalls = 100 }) {
 				const input = iter.next();
 				const items = [...iter];
@@ -376,8 +164,6 @@ class Ora {
 
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 
-					console.log(toCheck)
-
 					if (toCheck.some(val => val != true)){
 						while (iter.peek()?.done != true)
 							iter.next();
@@ -387,11 +173,9 @@ class Ora {
 				}
 				else throw new Error('Expected "(" to open IF statement!');
 					
-				const items = parseBlock({ iter, data });
-
 				handleItems(
 					betterIterable(
-						items,
+						parseBlock({ iter, data }), // Items
 						{ tracking: true }
 					),
 					data
@@ -406,14 +190,9 @@ class Ora {
 
 				for (const item of iter) items.push(item);
 
-				if (isA_0(className))
-					data.classes[className] = { items, data };
+				if (isA_0(className)) data.classes[className] = { items, data };
 			},
 
-			[kw.id.log_variables]: ({ data }) => console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n'),
-
-			[kw.id.log_scope]: ({ data }) => console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n'),
-				
 			[kw.id.function]: ({ iter, data, handleItems }) => {
 				const path = [iter.next().value];
 
@@ -443,14 +222,14 @@ class Ora {
 						variables[key] = value;
 
 					for (const [i, value] of Object.entries(args)){
-						if (['object', 'function'].includes(typeof inputs[i])) variables[value] = inputs[i];
-						else {
-							variables[value] = parseInput(
-								betterIterable([], { tracking: true }),
-								{ value: inputs[i] },
-								data
-							);
-						}
+						if (['object', 'function'].includes(typeof inputs[i]))
+							variables[value] = inputs[i];
+
+						else variables[value] = parseInput(
+							betterIterable([], { tracking: true }),
+							{ value: inputs[i] },
+							data
+						);
 					}
 
 					return handleItems(
@@ -522,6 +301,10 @@ class Ora {
 			...forceType.forceObject(overrideFunctions),
 		}
 
+		this.functions = Object.fromEntries(
+			Object.entries(this.functions).map(([keywordID, func]) => [keywordID, func.bind(this)])
+		);
+
 		delete this.init;
 	}
 
@@ -533,12 +316,11 @@ class Ora {
 		const { keywords: kw } = this;
 
 		for (const method of iter) {
-			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
+			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method)))
 				if (variables?.hasOwnProperty(method))
 					this.parseInput(iter, { value: method }, data);
 				
-				continue;
-			}
+				else continue;
 
 			const response = functions[kw.match(method)]({
 				iter,
@@ -546,11 +328,8 @@ class Ora {
 				handleItems: this.handleItems.bind(this)
 			});
 			
-			if (response?.break == true)
-				break;
-
-			if (response)
-				return response;
+			if (response?.break == true) break;
+			if (response) return response;
 		}
 	}
 
@@ -573,7 +352,6 @@ class Ora {
 
 		const __type = source[p]?.__type ?? type;
 
-
 		if (typeof value == 'object' && !value.hasOwnProperty('__type'))
 			Object.defineProperty(value, '__type', {
 				enumerable: false,
@@ -588,8 +366,6 @@ class Ora {
 			const e = value;
 
 			value = resolveTyped(value, type);
-
-			// console.log(e, value, 'poolio')
 
 			if (!areSameType(e, value))
 				throw new Error('Invalid Typing');
@@ -644,9 +420,8 @@ class Ora {
 		const { variables = {} } = data;
 		const { keywords: kw, functions } = this;
 
-		if (isA_0(value) && variables.hasOwnProperty(value)){
+		if (isA_0(value) && variables.hasOwnProperty(value))
 			return this.parseInputToVariable(iter, { value }, data);
-		}
 
 		if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
 			return functions[kw.match(value)]({
@@ -655,9 +430,7 @@ class Ora {
 				handleItems: this.handleItems.bind(this)
 			});
 
-		else if (isString(value)){
-			return parseString(value);
-		}
+		else if (isString(value)) return parseString(value);
 
 		else if (value == '{'){
 			const object = {};
@@ -702,7 +475,9 @@ class Ora {
 
 				if (nextItem.value == undefined) break;
 
-				array.push( this.parseValue(iter, nextItem.value, data) );
+				array.push(
+					this.parseValue(iter, nextItem.value, data)
+				);
 			}
 
 			return array;
@@ -729,10 +504,7 @@ class Ora {
 			return Enum(...enumObject);
 		}
 		
-		else if (isNum(value)){
-			return Number(value);
-		}
-		
+		else if (isNum(value)) return Number(value);
 
 		return value;
 	}
@@ -889,17 +661,12 @@ class Ora {
 		const wrapped = (value) => {
 			value = this.parseValue(iter, value, data);
 			
-			
 			if (kw.is(iter.peek().value, kw.id.add)){
 				let stringResult = value;
 
-				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek().value != null){
-					const w = this.parseValue(iter, iter.next().value, data);
+				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek().value != null)
+					stringResult += this.parseValue(iter, iter.next().value, data);
 
-					stringResult += w;
-				}
-
-				
 				return stringResult;
 			}
 
@@ -928,6 +695,7 @@ class Ora {
 			}
 
 			if (value === 'CURRENT_DATE') return Date.now();
+
 			return result;
 		}
 
@@ -966,41 +734,35 @@ class Ora {
 				this.parseValue(iter, iter.next().value, data)
 			);
 
-			if (Array.isArray(result)){
+			if (Array.isArray(result))
 				for (let i = 0; i < size; i++)
 					result = [
 						...result,
 						...result
 					];
-			}
 
-			else if (typeof result === 'string'){
-				const text = result;
-
-				for (let i = 0; i < size; i++) result += text;
-			}
-
+			else if (typeof result === 'string')
+				result = result.repeat(size);
+			
 			else if (typeof result === 'number')
 				result = Math.pow(result, size);
 		}
 
-		
 		//* Using
 		if (iter.disposeIf(next => kw.is(next, kw.id.using))){
 			const list = wrapped(iter.next().value);
 
-			if (!Array.isArray(list)) throw new Error('Cannot Take From Object Without List Of Items To Take From')
+			if (!Array.isArray(list))
+				throw new Error('Cannot Take From Object Without List Of Items To Take From')
 			
 			return Object.fromEntries(
-				Object.entries(result).filter(([key, value]) => list.includes(key))
+				Object.entries(result).filter(([ key ]) => list.includes(key))
 			);
 		}
 
-		
 		//* Equals
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals))) 
 			return result == wrapped(iter.next().value);
-
 		
 		//* Has
 		if (iter.disposeIf(next => kw.is(next, kw.id.has)))

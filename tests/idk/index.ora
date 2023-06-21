@@ -8,5 +8,16 @@ w.cat = 'dsfef' ~ STRING;
 
 PRINT h & w & obj;
 
+//LOG_VARIABLES;
+
+set h to"hello";
+set w to'world';
+set w.cat 'dsfef' as STRING;
+set obj to { w } as OBJECT;
+
+set obj to { cool: 'heh' };
+
+
+PRINT h and w and obj;
 
 //LOG_VARIABLES;
