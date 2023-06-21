@@ -107,6 +107,14 @@ class Ora {
 					path.push(
 						iter.next().value
 					);
+				
+				let type = 'any';
+				
+
+				if (iter.disposeIf(next => kw.is(next, kw.id.as)))
+					type = this.parseType(iter.next().value).type;
+
+				console.log('TYPE::',type)
 
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
@@ -114,7 +122,7 @@ class Ora {
 					this.setOnPath({
 						source: variables,
 						path,
-						type: iter.disposeIf(next => kw.is(next, kw.id.as)) ? this.parseType(iter.next().value).type : 'any',
+						type,
 						value
 					});
 				}
@@ -167,8 +175,7 @@ class Ora {
 					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
 
 					if (toCheck.some(val => val != true)){
-						while (iter.peek()?.done != true)
-							iter.next();
+						parseBlock(iter);
 
 						return;
 					};
@@ -361,8 +368,10 @@ class Ora {
 				value: __type
 			});
 
-		else if (__type !== type && __type != 'any')
+		else if (__type !== type && __type != 'any'){
+			console.log('From', __type, 'to', type)
 			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')})`);
+		}
 
 		if (__type != 'any'){
 			const e = value;
@@ -413,6 +422,9 @@ class Ora {
 		}
 		else if (kIs('negativeInfinity')){
 			type = -Infinity;
+		}
+		else if (kIs('number')){
+			type = 0;
 		}
 
 		return { type };
@@ -581,18 +593,18 @@ class Ora {
 				});
 
 
-			//* Updating variable if assignment operator comes after
-			if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-				if (property != undefined)
-					this.setOnPath({
-						source,
-						path: [property],
-						value: parseInput(iter, iter.next(), data)
-					});
-				else throw 'Cannot mod a raw variable to a value!'
+			// //* Updating variable if assignment operator comes after
+			// if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+			// 	if (property != undefined)
+			// 		this.setOnPath({
+			// 			source,
+			// 			path: [property],
+			// 			value: parseInput(iter, iter.next(), data)
+			// 		});
+			// 	else throw 'Cannot mod a raw variable to a value!'
 					
-				return source;
-			}
+			// 	return source;
+			// }
 
 			//* Scope Fix
 			if (typeof(scopeV?.value) === 'function')
@@ -651,7 +663,7 @@ class Ora {
 	}
 
 	parseInput = (iter, input, data = {}) => {
-		const { keywords: kw } = this;
+		const { keywords: kw, variables } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -717,6 +729,21 @@ class Ora {
 			else if (typeof result == 'object')
 				for (const key of Object.keys(result))
 					result[key] = evalMath(`${result[key]} ${symbol} ${value}`);
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.as))){
+			if (iter.disposeIf(next => kw.is(next, kw.id.array))){
+				if (typeof result == 'string')
+					result = result.split('');
+			}
+
+			else if (iter.disposeIf(next => kw.is(next, kw.id.string))){
+				if (Array.isArray(result))
+					result = result.join('');
+
+				else if (typeof result == 'object')
+					result = JSON.stringify(result);
+			}
 		}
 		
 
