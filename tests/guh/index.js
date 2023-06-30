@@ -1,7 +1,7 @@
 import fs from 'fs';
 import ora from '../../ora/esm.js';
 
-const run = async (code) => {
+const run = (code) => {
 	const instance = ora({
 		variables: {
 			cat: 'testa'
@@ -11,10 +11,10 @@ const run = async (code) => {
 	return instance.run(code);
 };
 
-const runPath = async (path) => {
+const runPath = (path) => {
 	try {
 		run(
-			await fs.promises.readFile(path, 'utf8').catch((err) => { throw err; })
+			fs.readFileSync(path, 'utf8')
 		);
 	}
 

@@ -93,6 +93,24 @@ class keywordDict {
 	get id (){
 		return this.keywordIDs;
 	}
+
+	deleteKeyword (keywordID){
+		for (const [keyword, options] of Object.entries(this.keywords)){
+			if (!options.includes(keywordID)) continue;
+
+			options.splice(options.indexOf(keywordID));
+
+			if (options.length == 0){
+				delete this.keywords[keyword];
+
+				this.keywordIDs = { ...this.keywordIDs };
+
+				delete this.keywordIDs[keyword];
+
+				this.keywordIDs = Object.freeze(this.keywordIDs);
+			}
+		}
+	}
 }
 
 export {

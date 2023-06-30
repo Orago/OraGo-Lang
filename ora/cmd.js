@@ -7,8 +7,8 @@ const run = (code) => {
 	return oraInstance.run(code);
 }
 
-const runPath = async (path) => {
-	const data = await fs.promises.readFile(path, 'utf8').catch((err) => { throw err; });
+const runPath = (path) => {
+	const data = fs.readFileSync(path, 'utf8');
 
 	return run(data);
 }

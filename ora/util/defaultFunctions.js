@@ -1,20 +1,25 @@
-function handleLoop ({ iter, handleItems }){
-	const input = iter.next().value, 
-				items = [...iter];
+import { parseBlock } from './parseTools.js';
+
+function handleLoop ({ iter, data, handleItems }){
+	const input = iter.next().value;
 
 	if (!isNaN(input)) {
 		const timesToRun = this.utils.forceType.forceNumber(input);
+		const parsed = parseBlock({ iter, data });
 
-		for (let i = 0; i < timesToRun; i++)
+
+		for (let i = 0; i < timesToRun; i++){
+			
 			handleItems(
-				this.iterable(
-					items,
-					{ tracking: true }
-				),
-				this
-			);
+					this.iterable(
+						parsed, // Items
+						{ tracking: true }
+					),
+					data
+				)
+		}
 	}
-	else throw 'Cannot Find Loop Status';
+	else throw 'A number has to come after a loop then the code block';
 };
 
 

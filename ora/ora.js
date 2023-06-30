@@ -100,7 +100,7 @@ class Ora {
 				const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 				const path = [iter.next().value];
 				
-				if (data.functions.hasOwnProperty(path[0]))
+				if (kw.has(path[0]))
 					throw `Cannot set variable to function name: ${path[0]}`;
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
@@ -130,9 +130,8 @@ class Ora {
 			[kw.id.delete] ({ iter, data }) {
 				const variables = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
 				const path = [iter.next().value];
-				
-				if (data.functions.hasOwnProperty(path[0]))
-					throw `Cannot set variable to function name: ${path[0]}`;
+
+				if (kw.has(path[0])) kw.deleteKeyword(path[0]);
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
 					path.push(
@@ -142,7 +141,8 @@ class Ora {
 				if (isA_0(path[0]))
 					this.setOnPath({
 						source: variables,
-						path
+						path,
+						$delete: true
 					});
 
 				else throw `Invalid Variable Name: (${path[0]})`;
@@ -176,6 +176,7 @@ class Ora {
 						return parseBlock(iter);
 					};
 				}
+				
 				else throw new Error('Expected "(" to open IF statement!');
 					
 				handleItems(
@@ -338,7 +339,7 @@ class Ora {
 		}
 	}
 
-	setOnPath ({ source, path, value, type = 'any' }) {
+	setOnPath ({ source, path, value, type = 'any', $delete = false }) {
 		for (const sub of path.slice(0, path.length - 1)){
 			if (typeof source[sub] !== 'object')
 				source[sub] = { value: source[sub] };
@@ -352,6 +353,9 @@ class Ora {
 		const p = path[
 			path.length > 1 ? path.length - 1 : 0
 		];
+
+		if ($delete === true)
+			delete source[p];
 
 		source[p] ??= { value };
 
