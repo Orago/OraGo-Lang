@@ -169,12 +169,11 @@ class Ora {
 					while (iter.disposeIf(next => kw.is(next, kw.id.and)) && isA_0(iter.peek().value))
 						toCheck.push( parseInput(iter, iter.next(), data) );
 
-					if (!iter.disposeIf(')')) throw new Error('Expected ")" to close BIND statement!');
+					if (!iter.disposeIf(')'))
+						throw new Error('Expected ")" to close BIND statement!');
 
 					if (toCheck.some(val => val != true)){
-						parseBlock(iter);
-
-						return;
+						return parseBlock(iter);
 					};
 				}
 				else throw new Error('Expected "(" to open IF statement!');
@@ -633,7 +632,7 @@ class Ora {
 	}
 
 	parseInput = (iter, input, data = {}) => {
-		const { keywords: kw, variables } = this;
+		const { keywords: kw } = this;
 
 		const mathSymbols = {
 			[kw.id.add]: '+',
@@ -726,6 +725,15 @@ class Ora {
 		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
 			result = result < wrapped(iter.next().value);
 
+		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))){
+			const size = forceType.forceNumber(
+				this.parseValue(iter, iter.next().value, data)
+			);
+			
+			if (typeof result === 'string')
+				result = result.repeat(size);
+		}
+
 		
 		//* Power Of
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))){
@@ -735,13 +743,7 @@ class Ora {
 
 			if (Array.isArray(result))
 				for (let i = 0; i < size; i++)
-					result = [
-						...result,
-						...result
-					];
-
-			else if (typeof result === 'string')
-				result = result.repeat(size);
+					result = [ ...result, ...result ];
 			
 			else if (typeof result === 'number')
 				result = Math.pow(result, size);
@@ -764,10 +766,26 @@ class Ora {
 			return result == wrapped(iter.next().value);
 		
 		//* Has
-		if (iter.disposeIf(next => kw.is(next, kw.id.has)))
-			return result[typeof result == 'array' ? 'includes' : 'hasOwnProperty'](wrapped(iter.next().value));
+		if (iter.disposeIf(next => kw.is(next, kw.id.has))){
+			const resType = typeof result;
+			const nextWrapped = wrapped(iter.next().value);
+
+			switch (resType){
+				case 'string':
+				case 'array': 
+					return result.includes(nextWrapped);
+
+				case 'object':
+						return result.hasOwnProperty(nextWrapped);
+
+				case 'number':
+						return typeof nextWrapped == 'number' && result > nextWrapped;
+
+				default: return false;
+			}
+		}
 		
-		else return result;
+		return result;
 	}
 
 	run (codeInput){

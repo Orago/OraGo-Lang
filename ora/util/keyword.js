@@ -1,4 +1,5 @@
 import { Enum } from './forceType.js';
+
 const defaultKeywords = {
 	//#region //* Commands *//
 	comment: ['comment', '#'],
@@ -9,7 +10,7 @@ const defaultKeywords = {
 	loop: ['loop'],
 	for: ['for'],
 	if: ['if'],
-	equals: ['equals'],
+	equals: ['equals', 'is'],
 	return: ['return'],
 	class: ['class'],
 	function: ['func'],
