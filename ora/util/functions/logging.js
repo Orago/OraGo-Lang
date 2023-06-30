@@ -2,6 +2,7 @@ export default function ({ kw }){
 	return {
 		[kw.id.print] ({ iter, data }) {
 			const input = iter.next();
+			
 			if (!input.value) return;
 
 			const results = [this.parseInput(iter, input, data)];

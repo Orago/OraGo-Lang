@@ -71,7 +71,7 @@ class Ora {
 	}
 
 	iterable (...args){
-		return betterIterable(...args);
+		return new betterIterable(...args);
 	}
 
 	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator, variables }){
@@ -109,12 +109,9 @@ class Ora {
 					);
 				
 				let type = 'any';
-				
 
 				if (iter.disposeIf(next => kw.is(next, kw.id.as)))
-					type = this.parseType(iter.next().value).type;
-
-				console.log('TYPE::',type)
+					type = this.parseType(iter.next().value);
 
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
@@ -160,7 +157,7 @@ class Ora {
 					if (calls++ >= maxCalls) return console.log('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
-						betterIterable(items, { tracking: true })
+						new betterIterable(items, { tracking: true })
 					);
 				}
 			},
@@ -183,7 +180,7 @@ class Ora {
 				else throw new Error('Expected "(" to open IF statement!');
 					
 				handleItems(
-					betterIterable(
+					new betterIterable(
 						parseBlock({ iter, data }), // Items
 						{ tracking: true }
 					),
@@ -235,14 +232,14 @@ class Ora {
 							variables[value] = inputs[i];
 
 						else variables[value] = parseInput(
-							betterIterable([], { tracking: true }),
+							new betterIterable([], { tracking: true }),
 							{ value: inputs[i] },
 							data
 						);
 					}
 
 					return handleItems(
-						betterIterable(items, { tracking: true }),
+						new betterIterable(items, { tracking: true }),
 						{
 							functions: data.functions,
 							variables
@@ -355,79 +352,52 @@ class Ora {
 
 		const p = path[
 			path.length > 1 ? path.length - 1 : 0
-		]
+		];
 
-		source[p] ??= { value }
+		source[p] ??= { value };
 
 		const __type = source[p]?.__type ?? type;
 
-		if (typeof value == 'object' && !value.hasOwnProperty('__type'))
-			Object.defineProperty(value, '__type', {
+		if (typeof source[p] == 'object' && !source[p].hasOwnProperty('__type'))
+			Object.defineProperty(source[p], '__type', {
 				enumerable: false,
 				writable: false,
 				value: __type
 			});
 
-		else if (__type !== type && __type != 'any'){
-			console.log('From', __type, 'to', type)
-			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')})`);
-		}
+		else if (__type !== type && __type != 'any')
+			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')}) from [${__type}] to [${type}]`);
 
 		if (__type != 'any'){
 			const e = value;
 
 			value = resolveTyped(value, type);
 
-			if (!areSameType(e, value))
-				throw new Error('Invalid Typing');
+			if (!areSameType(e, value)) throw new Error('Invalid Typing');
 		}
-
 		
-		if (value != undefined) source[p] = value;
-		else delete source[p];
+		if (value == undefined) delete source[p];
 	}
 
 	parseType = (value) => {
 		const { keywords: kw } = this;
 		const kIs = (key) => kw.is(value, kw.id[key]);
 		
-		let type = 'any'
+		switch (true){
+			case kIs('true'):             return true;
+			case kIs('false'):            return false;
+			case kIs('string'):           return '';
+			case kIs('object'):           return {};
+			case kIs('array'):            return [];
+			case kIs('null'):             return null;
+			case kIs('undefined'):        return undefined;
+			case kIs('nan'):              return NaN;
+			case kIs('Infinity'):         return Infinity;
+			case kIs('negativeInfinity'): return -Infinity;
+			case kIs('number'):           return 0;
 
-		if   	  (kIs('true')){
-			type = true;
+			default: return 'any';
 		}
-		else if (kIs('false')){
-			type = false;
-		}
-		else if (kIs('string')){
-			type = '';
-		}
-		else if (kIs('object')){
-			type = {};
-		}
-		else if (kIs('array')){
-			type = [];
-		}
-		else if (kIs('null')){
-			type = null;
-		}
-		else if (kIs('undefined')){
-			type = undefined;
-		}
-		else if (kIs('nan')){
-			type = NaN;
-		}
-		else if (kIs('Infinity')){
-			type = Infinity;
-		}
-		else if (kIs('negativeInfinity')){
-			type = -Infinity;
-		}
-		else if (kIs('number')){
-			type = 0;
-		}
-
-		return { type };
 	}
 
 	parseValue = (iter, value, data = {}) => {
@@ -806,7 +776,7 @@ class Ora {
 
 		for (const chunk of chunks){
 			const response = this.handleItems(
-				betterIterable(
+				new betterIterable(
 					chunk,
 					{ tracking: true }
 				)

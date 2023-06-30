@@ -1,0 +1,3 @@
+set cat to hi
+print test
+print 'hello world';
