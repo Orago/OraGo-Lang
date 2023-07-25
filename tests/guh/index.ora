@@ -1,3 +1,11 @@
-let e = { cat: 'hi' };
+let a = {
+	cat: 'meow',
+	dog: 'woof',
+	mouse: 'squeak',
+	cow: 'moo',
+	lion: 'rawr',
+	me: 'hehe'
+};
 
-print e.cat.value;
+
+print a.cat;

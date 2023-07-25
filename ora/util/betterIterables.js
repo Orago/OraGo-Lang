@@ -120,7 +120,7 @@ class betterIterable {
 		}
 	};
 
-	peek = (amount = 0) => ({
+	peek = (amount = 1) => ({
 		value: this.items[amount - 1],
 		done: 1 > this.items
 	});

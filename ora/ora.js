@@ -31,7 +31,9 @@ function expectSetVar({ iter, data }) {
 }
 
 class Ora {
-	//#region //* Attributes *//
+	settings = {};
+
+	//* Attributes *//
 	variables;
 	classes;
 	functions;
@@ -44,7 +46,6 @@ class Ora {
 		evalMath,
 		expectSetVar
 	}
-	//#endregion //* Attributes *//
 
 	constructor (settings = {}) {
 		const {
@@ -55,8 +56,6 @@ class Ora {
 			functionGenerator,
 			variables
 		} = forceType.forceObject(settings);
-
-		this.settings = {};
 
 		this.utils.parseInput = this.parseInput;
 
@@ -340,15 +339,10 @@ class Ora {
 	}
 
 	setOnPath ({ source, path, value, type = 'any', $delete = false }) {
-		for (const sub of path.slice(0, path.length - 1)){
-			if (typeof source[sub] !== 'object')
-				source[sub] = { value: source[sub] };
+		if (!Array.isArray(path) || !path?.length) return;
 
-			if (source[sub].value == null)
-				delete source[sub].value;
-
+		for (const sub of path.slice(0, path.length - 1))
 			source = source[sub];
-		}
 
 		const p = path[
 			path.length > 1 ? path.length - 1 : 0
@@ -357,7 +351,7 @@ class Ora {
 		if ($delete === true)
 			delete source[p];
 
-		source[p] ??= { value };
+		source[p] ??= value;
 
 		const __type = source[p]?.__type ?? type;
 
@@ -498,21 +492,14 @@ class Ora {
 
 	parseInputToVariable (iter, input, data = {}, functions = true) {
 		const { parseInput, keywords: kw } = this;
-
 		const { variables = {} } = data;
 		const { value } = input;
 
 		const scaleTree = ({ source, property }) => {
-			let scopeV;
-
-			if (property != undefined){
-				if (source[property] == undefined) source[property] = {};
-
-				scopeV = source[property];
-			}
-			else scopeV = source;
-				
+			let scopeV = property != null ? source[property]  : source;
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
+
+			// console.log('scoepvee', scopeV, property)
 
 			if (!isClass && typeof scopeV == 'function' && typeof scopeV?.bind == 'function')
 				scopeV = scopeV?.bind(source);
@@ -557,14 +544,12 @@ class Ora {
 				}
 			}
 
-			
 			//* Try Looping on path
 			if (iter.disposeIf('.') && iter.disposeIf(isA_0))
 				return scaleTree({
 					source: scopeV,
 					property: iter.last()
 				});
-
 
 			// //* Updating variable if assignment operator comes after
 			// if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
@@ -580,42 +565,13 @@ class Ora {
 			// }
 
 			//* Scope Fix
-			if (typeof(scopeV?.value) === 'function')
-				scopeV = scopeV.value;
-
+			if (typeof scopeV?.value === 'function') scopeV = scopeV.value;
 
 			//* Try Calling Function
 			if (functions && iter.disposeIf('(')){
-
 				//* Validate Function
-				if (typeof(scopeV) === 'function' || isClass){
-					const items = [];
-					let passes = 0;
-			
-					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',')) continue;
-
-						items.push(
-							parseInput(iter, iter.next(), data)
-						);
-						
-						if (passes++ > 100)
-							return console.error(
-								new Error('Cannot run more than 100 args on a function')
-							);
-							
-						if (iter.peek(1).value == null) break;
-					}
-					
-					const called = isClass ? new scopeV(...items) : scopeV(...items);
-
-					return scaleTree({
-						source: called
-					});
-				}
-
-				//* Fail Function
-				else {
+				if (!(typeof scopeV === 'function' || isClass)){
+					//* Fail Function
 					console.error('Cannot call function on non-function', property,
 						'\n',
 						iter.stack()
@@ -623,10 +579,33 @@ class Ora {
 
 					return;
 				}
+
+				const items = [];
+				let passes = 0;
+		
+				while (!iter.disposeIf(')')){
+					if (iter.disposeIf(',')) continue;
+
+					items.push(
+						parseInput(iter, iter.next(), data)
+					);
+					
+					if (passes++ > 100)
+						return console.error(
+							new Error('Cannot run more than 100 args on a function')
+						);
+						
+					if (iter.peek(1).value == null) break;
+				}
+				
+				return scaleTree({
+					source: isClass ? new scopeV(...items) : scopeV(...items)
+				});
 			}
 
+
 			//* Return Result
-			else if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
+			if (scopeV != undefined) return scopeV?.hasOwnProperty('value') ? scopeV.value : scopeV;
 		}
 		
 		return scaleTree({
@@ -664,6 +643,7 @@ class Ora {
 				if (total == null) break mathBlock;
 
 				let mathString = total + '';
+
 				
 				while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 					const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
@@ -686,7 +666,9 @@ class Ora {
 			return result;
 		}
 
+
 		let result = wrapped(input.value);
+
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
@@ -724,7 +706,6 @@ class Ora {
 		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
 			result = result > wrapped(iter.next().value);
 		
-
 		//* Less Than
 		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
 			result = result < wrapped(iter.next().value);
@@ -738,16 +719,20 @@ class Ora {
 				result = result.repeat(size);
 		}
 
-		
 		//* Power Of
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))){
 			const size = forceType.forceNumber(
 				this.parseValue(iter, iter.next().value, data)
 			);
 
-			if (Array.isArray(result))
+			if (Array.isArray(result)){
+				let newRes = [];
+
 				for (let i = 0; i < size; i++)
-					result = [ ...result, ...result ];
+					newRes = [ ...newRes, ...result ];
+				
+				result = newRes;
+			}
 			
 			else if (typeof result === 'number')
 				result = Math.pow(result, size);
@@ -776,14 +761,17 @@ class Ora {
 
 			switch (resType){
 				case 'string':
-				case 'array': 
 					return result.includes(nextWrapped);
 
-				case 'object':
-						return result.hasOwnProperty(nextWrapped);
+				case 'object': {
+					if (Array.isArray(result))
+						return result.includes(nextWrapped);
+
+					return result.hasOwnProperty(nextWrapped);
+				}
 
 				case 'number':
-						return typeof nextWrapped == 'number' && result > nextWrapped;
+						return typeof nextWrapped == 'number' && result >= nextWrapped;
 
 				default: return false;
 			}
