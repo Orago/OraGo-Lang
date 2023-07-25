@@ -6,8 +6,6 @@ const parseString = input => strReg.exec(input)?.[2];
 function parseBlock ({ iter }) {
 	const items = [];
 
-	console.log(iter.items)
-
 	if (!iter.disposeIf('{'))
 		throw new Error('Missing Opening \'{\' after parameters');
 

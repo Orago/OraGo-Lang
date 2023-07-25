@@ -1,3 +1,3 @@
-loop 5 {
-	print 'hi';
-};
+let e = { cat: 'hi' };
+
+print e.cat.value;

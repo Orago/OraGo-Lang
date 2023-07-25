@@ -1,15 +1,15 @@
+function applyMath(symbol, first, second) {
+	switch (symbol) {
+		case '+': return second + first;
+		case '-': return second - first;
+		case '*': return second * first;
+		case '/': return second / first;
+		case '^': return second ** first;
+	}
+}
+
 function evalMath(mathString) {
 	try {
-		let applyMath = (symbol, a, b) => {
-			switch (symbol) {
-				case '+': return b + a;
-				case '-': return b - a;
-				case '*': return b * a;
-				case '/': return b / a;
-				case '^': return b ** a;
-			}
-		}
-
 		// using a stack and a postfix notation algorithm to evaluate the math string
 		const operators = ['+', '-', '*', '/', '^'];
 		const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };

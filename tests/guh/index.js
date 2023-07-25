@@ -3,9 +3,7 @@ import ora from '../../ora/esm.js';
 
 const run = (code) => {
 	const instance = ora({
-		variables: {
-			cat: 'testa'
-		}
+		variables: { cat: 'testa' }
 	});
 	
 	return instance.run(code);
