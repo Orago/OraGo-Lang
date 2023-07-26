@@ -1,9 +1,27 @@
 import fs from 'fs';
-import ora from '../../ora/esm.js';
+import ora from '../../ora/ora.js';
+import logging from '../../ora/util/functions/logging.js';
+import loops from '../../ora/util/functions/loops.js';
+import { customFunction, customKeyword } from '../../ora/util/extensions.js';
+
+const vars = new customFunction('teehee', function ({ data }){
+	console.log('\n', `ORA LANG SCOPE:`, '\n', data.variables, '\n')
+})
 
 const run = (code) => {
-	const instance = ora({
-		variables: { cat: 'testa' }
+	const instance = new ora({
+		variables: { cat: 'testa' },
+		overrideDictionary: {
+			require: ['REQUIRE'],
+		},
+		keywords: [
+			new customKeyword('teehee', ['5', '3'])
+		],
+		customFunctions: [
+			logging,
+			loops,
+			vars
+		]
 	});
 	
 	return instance.run(code);

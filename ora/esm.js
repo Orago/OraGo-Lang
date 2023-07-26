@@ -3,7 +3,7 @@ import ora from './ora.js';
 import pathModule from 'path';
 
 function esmOra (data) {
-	const customFunctions = {};
+	data.customFunctions ??= {};
 	const cjsDict = {
 		require: ['REQUIRE'],
 		import: ['IMPORT'],
@@ -50,7 +50,7 @@ function esmOra (data) {
 		// 	}
 		// };
 
-		customFunctions[kw.id.export] = ({ iter, data }) => {
+		data.customFunctions[kw.id.export] = ({ iter, data }) => {
 			const value = data.utils.parseInput(iter, iter.next(), data);
 
 			return {
@@ -59,7 +59,7 @@ function esmOra (data) {
 			}
 		};
 
-		customFunctions[kw.id.import] = function ({ iter, data }){
+		data.customFunctions[kw.id.import] = function ({ iter, data }){
 			try {
 				let { variables } = data;
 
@@ -104,7 +104,7 @@ function esmOra (data) {
 	}
 
 	return new ora({
-		customFunctions,
+		customFunctions: data.customFunctions,
 		functionGenerator,
 		...data,
 		overrideDictionary: {

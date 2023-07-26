@@ -55,5 +55,28 @@ export default function (){
 				delete variable.data[keys[keys.length - 1]];
 			}
 		},
+
+		[kw.id.push] ({ iter, data }) {
+				const items = [this.parseInput(iter, iter.next(), data)];
+
+				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
+					items.push(
+						parseInput(iter, iter.next(), data)
+					);
+
+				const nextSeq = iter.next();
+
+				if (nextSeq.done || !kw.is(nextSeq.value, kw.id.assign) || !isA_0(iter.peek(1).value))
+					return;
+				
+				const variable = this.expectSetVar.bind(this)({ iter, data });
+				const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
+
+				this.setOnPath({
+					source: variables,
+					path: variable.path,
+					value: [...variable.data, ...items]
+				});
+			},
 	};
 };

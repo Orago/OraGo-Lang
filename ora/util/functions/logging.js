@@ -1,4 +1,6 @@
-export default function (){
+import { customFunctionContainer } from '../extensions.js';
+
+function loggingUtil (){
 	const { keywords: kw } = this;
 
 	return {
@@ -15,14 +17,8 @@ export default function (){
 				);
 
 			results.length > 0 && console.log(...results.map(e => this.trueValue(e)));
-		},
-
-		[kw.id.log_variables] ({ data }) {
-			console.log('\n', `ORA LANG VARIABLES:`, '\n',  data.variables, '\n')
-		},
-
-		[kw.id.log_scope] ({ data }) {
-			console.log('\n', `ORA LANG SCOPE:`, '\n', data, '\n')
-		},
+		}
 	};
 };
+
+export default new customFunctionContainer(loggingUtil)

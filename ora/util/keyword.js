@@ -64,12 +64,21 @@ class keywordDict {
 
 	constructor (input){
 		this.keywords = { ...this.keywords, ...input };
+		this.refreshKeywordIDs();
+	}
+
+	refreshKeywordIDs (){
 		this.keywordIDs = Enum(...Object.keys(this.keywords));
 	}
 
 	has (search){
 		return Object.values(this.keywords).some((value) => value.includes(search))
 	}
+
+	hasID (id){
+		return this.keywords.hasOwnProperty(id);
+	}
+
 
 	match (search){
 		const res = Object.entries(this.keywords).find(([key, value]) => value.includes(search));
@@ -102,14 +111,15 @@ class keywordDict {
 
 			if (options.length == 0){
 				delete this.keywords[keyword];
-
-				this.keywordIDs = { ...this.keywordIDs };
-
-				delete this.keywordIDs[keyword];
-
-				this.keywordIDs = Object.freeze(this.keywordIDs);
+				this.refreshKeywordIDs();
 			}
 		}
+	}
+
+	addKeyword (id, keywords){
+		this.keywords[id] = keywords;
+
+		this.refreshKeywordIDs();
 	}
 }
 

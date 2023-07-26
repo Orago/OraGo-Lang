@@ -1,4 +1,5 @@
 import { parseBlock } from '../parseTools.js';
+import { customFunctionContainer } from '../extensions.js';
 
 function handleLoop ({ iter, data, handleItems }){
 	const input = iter.next().value;
@@ -16,8 +17,8 @@ function handleLoop ({ iter, data, handleItems }){
 	else throw 'A number has to come after a loop then the code block';
 };
 
-export default function (){
+export default new customFunctionContainer(function (){
 	return {
 		[this.keywords.id.loop]: handleLoop,
 	};
-};
+});

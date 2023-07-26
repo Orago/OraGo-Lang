@@ -10,7 +10,7 @@ let scores = {
 };
 
 let userlist = [orago, cat, hehe, lol];
-pop scores;
-pop userlist;
+
+push 'bruhdamn' to userlist;
 
 print scores & userlist;

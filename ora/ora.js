@@ -1,15 +1,14 @@
 import betterIterable from './util/betterIterables.js';
 import evalMath from './util/evalMath.js';
-import deepClone from './util/deepClone.js';
 import { keywordDict } from './util/keyword.js';
-import { forceType, resolveTyped, Enum, isNum, isA_0, areSameType } from './util/forceType.js';
+import { forceType, isNum, isA_0 } from './util/forceType.js';
 import { isString, parseString, parseBlock } from './util/parseTools.js';
 import { oraLexer, chunkLexed } from './util/lexer.js';
 
 import defaultFunctions from './util/functions/default.js';
-import loggingFunctions from './util/functions/logging.js';
-import loopingFunctions from './util/functions/loops.js';
+
 import OraType from './util/DataTypes.js';
+import { customFunctionContainer, customFunction, customKeyword } from './util/extensions.js';
 
 function getValue (variable, property){
 	if (variable instanceof OraType.any)
@@ -60,6 +59,7 @@ class Ora {
 			overrideFunctions,
 			overrideDictionary,
 			functionGenerator,
+			keywords: customKeywords,
 			variables
 		} = forceType.forceObject(settings);
 
@@ -74,6 +74,7 @@ class Ora {
 			overrideFunctions,
 			overrideDictionary,
 			functionGenerator,
+			customKeywords,
 			variables
 		});
 	}
@@ -82,8 +83,25 @@ class Ora {
 		return new betterIterable(...args);
 	}
 
-	init ({ functions, classes, overrideFunctions, overrideDictionary, functionGenerator, variables }){
+	init (initData){
+		const {
+			functions, classes, customKeywords,
+			overrideFunctions, overrideDictionary,
+			functionGenerator, variables
+		} = initData;
+
 		this.keywords = new keywordDict(overrideDictionary);
+
+		if (Array.isArray(customKeywords)){
+			if (customKeywords.some(e => e instanceof customKeyword != true))
+				throw 'Invalid custom keyword';
+
+			for (const custom of customKeywords){
+				this.keywords.addKeyword(
+					...custom.bound(this)
+				);
+			}
+		}
 
 		if (typeof functionGenerator === 'function'){
 			const gen = functionGenerator(this);
@@ -91,7 +109,6 @@ class Ora {
 			if (typeof gen === 'object' && gen !== null)
 				functions = { ...functions, ...gen };
 		}
-		
 
 		this.variables = variables;
 		this.classes = forceType.forceObject(classes);
@@ -99,11 +116,12 @@ class Ora {
 		const { keywords: kw } = this;
 		const parseInput = this.parseInput.bind(this);
 
+		if (functions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
+			throw 'Invalid custom function input';
+
 		this.functions = {
-			...forceType.forceObject(functions),
+			...Object.assign({}, ...functions.map(custom => custom.bound(this))),
 			...defaultFunctions.bind(this)(),
-			...loggingFunctions.bind(this)(),
-			...loopingFunctions.bind(this)(),
 
 			[kw.id.delete] ({ iter, data }) {
 				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
@@ -170,7 +188,7 @@ class Ora {
 				if (isA_0(className)) data.classes[className] = { items, data };
 			},
 
-			[kw.id.function]: ({ iter, data, handleItems }) => {
+			[kw.id.function] ({ iter, data, handleItems }) {
 				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
@@ -225,37 +243,6 @@ class Ora {
 				});
 			},
 
-			[kw.id.exit]: () => process.exit(),
-
-			[kw.id.push]: ({ iter, data }) =>  {
-				const items = [parseInput(iter, iter.next(), data)];
-
-				while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), data) != null)
-					items.push(
-						parseInput(iter, iter.next(), data)
-					);
-
-				const nextSeq = iter.next();
-
-				if (!nextSeq.done && kw.is(nextSeq.value, kw.id.assign) && isA_0(iter.peek(1).value)){
-					const variable = this.expectSetVar.bind(this)({ iter, data });
-					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
-
-					this.setOnPath({
-						source: variables,
-						path: variable.path,
-						value: [...variable.data, ...items]
-					});
-				}
-			},
-
-			[kw.id.await]: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
-
-			async [kw.id.sleep] ({ iter, data }) {
-				const time = parseInput(iter, iter.next(), data);
-
-				return new Promise(resolve => setTimeout(resolve, time));
-			},
 
 			...forceType.forceObject(overrideFunctions),
 		}
@@ -352,12 +339,12 @@ class Ora {
 		const kIs = (key) => kw.is(value, kw.id[key]);
 
 		switch (true){
-			case kIs('true'):             return OraType.bool;
-			case kIs('false'):            return OraType.bool;
-			case kIs('string'):           return OraType.string;
-			case kIs('object'):           return OraType.object;
-			case kIs('array'):            return OraType.array;
-			case kIs('number'):           return OraType.number;
+			case kIs('true'):   return OraType.bool;
+			case kIs('false'):  return OraType.bool;
+			case kIs('string'): return OraType.string;
+			case kIs('object'): return OraType.object;
+			case kIs('array'):  return OraType.array;
+			case kIs('number'): return OraType.number;
 
 			default: return OraType.any;
 		}
@@ -392,7 +379,7 @@ class Ora {
 			varData = forceType.forceArray(varData);
 
 		const name = iter.next().value;
-		const path = [name, this.getPath({ iter, data })];
+		const path = [name, ...this.getPath({ iter, data })];
 
 		if (data.functions.hasOwnProperty(name))
 			throw `Cannot set variable to function name: ${name}`;
