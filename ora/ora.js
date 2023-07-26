@@ -128,7 +128,7 @@ class Ora {
 			...loopingFunctions.bind(this)(),
 
 			[kw.id.delete] ({ iter, data }) {
-				const variables = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
+				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
 				const path = [iter.next().value];
 
 				if (kw.has(path[0])) kw.deleteKeyword(path[0]);
@@ -140,7 +140,7 @@ class Ora {
 
 				if (isA_0(path[0]))
 					this.setOnPath({
-						source: variables,
+						source,
 						path,
 						$delete: true
 					});
@@ -350,8 +350,11 @@ class Ora {
 			path.length > 1 ? path.length - 1 : 0
 		];
 
+
 		if ($delete === true){
-			delete source[p];
+			if (source instanceof OraType.any)
+				delete source.value?.[p];
+			else delete source[p];
 
 			return;
 		}
@@ -365,7 +368,6 @@ class Ora {
 			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')}) from [${this.typeToKeyword(source[p]?.constructor)}] to [${this.typeToKeyword(type)}]`);
 
 		source[p] = new type(value);
-
 		
 		if (value == undefined) delete source[p];
 	}

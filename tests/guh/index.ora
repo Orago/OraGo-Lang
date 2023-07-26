@@ -6,4 +6,6 @@ let scores = {
 	guh: 3
 };
 
+delete scores.cat;
+
 print scores * 3;
