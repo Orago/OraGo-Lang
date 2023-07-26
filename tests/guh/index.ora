@@ -1,11 +1,13 @@
-let a = {
+let a: OBJECT = {
 	cat: 'meow',
 	dog: 'woof',
 	mouse: 'squeak',
-	cow: 'moo',
+	hehe: {
+		bruh: 'this is a test orifeoisj'
+	},
 	lion: 'rawr',
 	me: 'hehe'
 };
 
 
-print a.cat;
+print a.['hehe', 'bruh'];
