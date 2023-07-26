@@ -1,4 +1,4 @@
-import { parseBlock } from './parseTools.js';
+import { parseBlock } from '../parseTools.js';
 
 function handleLoop ({ iter, data, handleItems }){
 	const input = iter.next().value;
@@ -16,9 +16,8 @@ function handleLoop ({ iter, data, handleItems }){
 	else throw 'A number has to come after a loop then the code block';
 };
 
-export default function ({ kw }){
+export default function (){
 	return {
-		[kw.id.comment]: () => ({ break: true }),
-		[kw.id.loop]: handleLoop,
+		[this.keywords.id.loop]: handleLoop,
 	};
 };

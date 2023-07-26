@@ -1,4 +1,6 @@
-export default function ({ kw }){
+export default function (){
+	const { keywords: kw } = this;
+
 	return {
 		[kw.id.print] ({ iter, data }) {
 			const input = iter.next();

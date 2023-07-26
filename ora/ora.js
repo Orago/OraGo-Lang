@@ -6,8 +6,10 @@ import { forceType, resolveTyped, Enum, isNum, isA_0, areSameType } from './util
 import { isString, parseString, parseBlock } from './util/parseTools.js';
 import { oraLexer, chunkLexed } from './util/lexer.js';
 
-import defaultFunctions from './util/defaultFunctions.js';
+import defaultFunctions from './util/functions/default.js';
 import loggingFunctions from './util/functions/logging.js';
+import loopingFunctions from './util/functions/loops.js';
+import OraType from './util/DataTypes.js';
 
 function expectSetVar({ iter, data }) {
 	const varData = forceType.forceArray(
@@ -30,93 +32,8 @@ function expectSetVar({ iter, data }) {
 	}
 }
 
-class anyTypeValue {
-	#value;
-
-	constructor (value){
-		this.value = value;
-	}
-
-	validate (){
-		return true;
-	}
-
-	sanitize (value){
-		return value;
-	}
-
-	error (){
-		return 'Failed to set value';
-	}
-
-	get value (){
-		return this.#value;
-	}
-
-	set value (newValue){
-		if (this.validate(newValue) != true)
-			throw this.error(newValue);
-
-		this.#value = newValue;
-	}
-}
-
-class numberTypeValue extends anyTypeValue {
-	error (){
-		return 'Input is not an number';
-	}
-
-	sanitize (value){
-		return Number(value);
-	}
-
-	validate (value){
-		return !isNaN(value);
-	}
-}
-
-class stringTypeValue extends anyTypeValue {
-	error (){
-		return 'Input is not an string';
-	}
-
-	validate (value){
-		return typeof value == 'string';
-	}
-}
-
-class arrayTypeValue extends anyTypeValue {
-	error (){
-		return 'Input is not an array';
-	}
-
-	validate (value){
-		return Array.isArray(value);
-	}
-}
-
-class objectTypeValue extends anyTypeValue {
-	error (){
-		return 'Input is not an object';
-	}
-
-	validate (value){
-		return typeof value == 'object';
-	}
-}
-
-class boolTypeValue extends anyTypeValue {
-	error (){
-		return 'Input is not an boolean';
-	}
-
-	validate (value){
-		return typeof value == 'boolean';
-	}
-}
-
 function getValue (variable, property){
-	if (variable instanceof anyTypeValue)
+	if (variable instanceof OraType.any)
 		variable = variable.value;
 
 	if (property != null){
@@ -155,10 +72,13 @@ class Ora {
 		expectSetVar
 	}
 
+	DataType = OraType;
+
 	constructor (settings = {}) {
 		const {
 			customFunctions,
 			customClasses,
+			customTypes,
 			overrideFunctions,
 			overrideDictionary,
 			functionGenerator,
@@ -166,6 +86,9 @@ class Ora {
 		} = forceType.forceObject(settings);
 
 		this.utils.parseInput = this.parseInput;
+
+		if (typeof customTypes == 'object')
+			this.DataType = { ...this.DataType, ...customTypes };
 
 		this.init({
 			functions: customFunctions,
@@ -190,49 +113,19 @@ class Ora {
 			if (typeof gen === 'object' && gen !== null)
 				functions = { ...functions, ...gen };
 		}
+		
 
 		this.variables = variables;
 		this.classes = forceType.forceObject(classes);
 
-		const { keywords: kw, parseInput } = this;
+		const { keywords: kw } = this;
+		const parseInput = this.parseInput.bind(this);
 
 		this.functions = {
 			...forceType.forceObject(functions),
-			...defaultFunctions({ kw }),
-			...loggingFunctions({ kw }),
-
-			[kw.id.comment]: () => ({ break: true }),
-
-			[kw.id.set]: ({ iter, data }) => {
-				const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
-				const path = [iter.next().value];
-				
-				if (kw.has(path[0]))
-					throw `Cannot set variable to function name: ${path[0]}`;
-
-				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push(
-						iter.next().value
-					);
-				
-				let type = anyTypeValue;
-
-				if (iter.disposeIf(next => kw.is(next, kw.id.as)))
-					type = this.keywordToType(iter.next().value);
-
-				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
-					const value = parseInput(iter, iter.next(), data);
-
-					this.setOnPath({
-						source: variables,
-						path,
-						type,
-						value
-					});
-				}
-
-				else throw `Invalid Variable Name: (${path[0]}), or next sequence (${iter.stack()[0]})`;
-			},
+			...defaultFunctions.bind(this)(),
+			...loggingFunctions.bind(this)(),
+			...loopingFunctions.bind(this)(),
 
 			[kw.id.delete] ({ iter, data }) {
 				const variables = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
@@ -447,7 +340,7 @@ class Ora {
 		}
 	}
 
-	setOnPath ({ source, path, value, type = anyTypeValue, $delete = false }) {
+	setOnPath ({ source, path, value, type = OraType.any, $delete = false }) {
 		if (!Array.isArray(path) || !path?.length) return;
 
 		for (const sub of path.slice(0, path.length - 1))
@@ -465,7 +358,7 @@ class Ora {
 
 		source[p] ??= new type(value);
 
-		if (!source[p] instanceof anyTypeValue)
+		if (!source[p] instanceof OraType.any)
 			throw 'aoiudahujdawiufdhugrrii 🎟🎭🎟🎉👔👕';
 
 		if (source[p]?.constructor != type)
@@ -479,11 +372,11 @@ class Ora {
 
 	typeToKeyword (type){
 		switch (true){
-			case type === objectTypeValue: return 'OBJECT';
-			case type === arrayTypeValue: return 'ARRAY';
-			case type === stringTypeValue: return 'STRING';
-			case type === numberTypeValue: return 'NUMBER';
-			case type === boolTypeValue: return 'BOOLEAN';
+			case type === OraType.object: return 'OBJECT';
+			case type === OraType.array: return 'ARRAY';
+			case type === OraType.string: return 'STRING';
+			case type === OraType.number: return 'NUMBER';
+			case type === OraType.bool: return 'BOOLEAN';
 
 			default: return 'ANY';
 		}
@@ -491,12 +384,12 @@ class Ora {
 
 	valueToType (value){
 		switch (true){
-			case Array.isArray(value): return arrayTypeValue;
-			case typeof value == 'object': return objectTypeValue;
-			case typeof value == 'string': return stringTypeValue;
-			case typeof value == 'number': return numberTypeValue;
-			case typeof value == 'boolean': return boolTypeValue;
-			default: return anyTypeValue;
+			case Array.isArray(value): return OraType.array;
+			case typeof value == 'object': return OraType.object;
+			case typeof value == 'string': return OraType.string;
+			case typeof value == 'number': return OraType.number;
+			case typeof value == 'boolean': return OraType.bool;
+			default: return OraType.any;
 		}
 	}
 
@@ -505,14 +398,14 @@ class Ora {
 		const kIs = (key) => kw.is(value, kw.id[key]);
 
 		switch (true){
-			case kIs('true'):             return boolTypeValue;
-			case kIs('false'):            return boolTypeValue;
-			case kIs('string'):           return stringTypeValue;
-			case kIs('object'):           return objectTypeValue;
-			case kIs('array'):            return arrayTypeValue;
-			case kIs('number'):           return numberTypeValue;
+			case kIs('true'):             return OraType.bool;
+			case kIs('false'):            return OraType.bool;
+			case kIs('string'):           return OraType.string;
+			case kIs('object'):           return OraType.object;
+			case kIs('array'):            return OraType.array;
+			case kIs('number'):           return OraType.number;
 
-			default: return anyTypeValue;
+			default: return OraType.any;
 		}
 	}
 
@@ -589,6 +482,8 @@ class Ora {
 				data,
 				handleItems: this.handleItems.bind(this)
 			});
+
+		if (value === 'CURRENT_DATE') return Date.now();
 
 		return value;
 	}
@@ -725,21 +620,23 @@ class Ora {
 	}
 
 	trueValue (input){
-		if (input instanceof anyTypeValue)
+		if (input instanceof OraType.any)
 			input = input.value;
 
-		if (typeof input == 'object')
+		if (Array.isArray(input))
+			input = input.map(item => this.trueValue(item));
+
+		else if (typeof input == 'object')
 			input = Object.fromEntries(
 				Object.entries(input).map(e => this.trueValueEntryMap(...e))
 			);
 
-		if (typeof input == 'array')
-			input = input.map(item => this.trueValue(item));
+
 
 		return input;
 	}
 
-	_parseInput = (iter, input, data = {}) => {
+	parseInput (iter, input, data = {}) {
 		const { keywords: kw } = this;
 
 		const mathSymbols = {
@@ -749,46 +646,14 @@ class Ora {
 			[kw.id.divide]: '/',
 		};
 
-		const wrapped = (value) => {
-			value = this.parseValue(iter, value, data);
+		const getValue = (iterIn) => this.parseValue(iter, iterIn.value, data); 
 
-			let result = value;
-
-			mathBlock: if (isNum(value) && typeof result === 'number') {
-				const total = forceType.forceNumber(isNum(value) ? value : result);
-				if (total == null) break mathBlock;
-
-				let mathString = total + '';
-
-
-				while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
-					const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
-					const nextItem = iter.next().value;
-
-					//* Check if `nextItem` is A number or variable
-					if (isNaN(nextItem) && !isA_0(nextItem)) continue;
-
-					const variable = this.parseInputToVariable(iter, { value: nextItem }, data);
-					const num = forceType.forceNumber(isNum(nextItem) ? nextItem : variable);
-
-					mathString += ` ${symbol} ${num}`;
-				}
-
-				return evalMath(mathString);
-			}
-
-			if (value === 'CURRENT_DATE') return Date.now();
-
-			return result;
-		};
-
-
-		let result = wrapped(input.value);
+		let result = getValue(input);
 
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
-			const value = wrapped(iter.next().value);
+			const value = getValue(iter.next());
 
 			if (typeof result == 'string'){
 				switch (symbol){
@@ -797,6 +662,10 @@ class Ora {
 					case '*': throw 'Not a feature yet';
 					case '/': result = result.replaceAll(value, ''); break;
 				}
+			}
+
+			if (typeof result == 'number'){
+				result = evalMath(`${result} ${symbol} ${value}`);
 			}
 
 			//* For Arrays
@@ -831,11 +700,11 @@ class Ora {
 
 		//* Greater Than
 		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
-			result = result > wrapped(iter.next().value);
+			result = result > getValue(iter.next());
 
 		//* Less Than
 		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
-			result = result < wrapped(iter.next().value);
+			result = result < getValue(iter.next());
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {
 			const size = forceType.forceNumber(
@@ -867,7 +736,7 @@ class Ora {
 
 		//* Using
 		if (iter.disposeIf(next => kw.is(next, kw.id.using))) {
-			const list = wrapped(iter.next().value);
+			const list = getValue(iter.next());
 
 			if (!Array.isArray(list))
 				throw new Error('Cannot Take From Object Without List Of Items To Take From');
@@ -879,26 +748,22 @@ class Ora {
 
 		//* Equals
 		if (iter.disposeIf(next => kw.is(next, kw.id.equals)))
-			return result == wrapped(iter.next().value);
+			return result == getValue(iter.next());
 
 		//* Has
 		if (iter.disposeIf(next => kw.is(next, kw.id.has))) {
-			const resType = typeof result;
-			const nextWrapped = wrapped(iter.next().value);
+			const nextValue = getValue(iter.next());
 
-			switch (resType) {
+			switch (typeof result) {
 				case 'string':
-					return result.includes(nextWrapped);
+					return result.includes(nextValue);
 
 				case 'object': {
-					if (Array.isArray(result))
-						return result.includes(nextWrapped);
-
-					return result.hasOwnProperty(nextWrapped);
+					return Array.isArray(result) ? result.includes(nextValue) : result.hasOwnProperty(nextValue);
 				}
 
 				case 'number':
-					return typeof nextWrapped == 'number' && result >= nextWrapped;
+					return typeof nextValue == 'number' && result >= nextValue;
 
 				default: return false;
 			}
@@ -906,12 +771,6 @@ class Ora {
 
 		return result;
 	};
-	get parseInput() {
-		return this._parseInput;
-	}
-	set parseInput(value) {
-		this._parseInput = value;
-	}
 
 	run (codeInput){
 		const lexed = oraLexer(codeInput);
