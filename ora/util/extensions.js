@@ -56,7 +56,6 @@ class customKeyword {
 	}
 
 	bound ({ keywords }){
-		console.log(this.#id)
 		if (keywords.hasID(this.#id))
 			throw `Keyword already exists (#${this.#id})`;
 

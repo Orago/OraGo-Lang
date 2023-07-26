@@ -53,11 +53,10 @@ class Ora {
 
 	constructor (settings = {}) {
 		const {
-			customFunctions,
+			functions: customFunctions,
 			customClasses,
 			customTypes,
 			overrideFunctions,
-			overrideDictionary,
 			functionGenerator,
 			keywords: customKeywords,
 			variables
@@ -69,10 +68,9 @@ class Ora {
 			this.DataType = { ...this.DataType, ...customTypes };
 
 		this.init({
-			functions: customFunctions,
+			customFunctions,
 			classes: customClasses,
 			overrideFunctions,
-			overrideDictionary,
 			functionGenerator,
 			customKeywords,
 			variables
@@ -85,12 +83,12 @@ class Ora {
 
 	init (initData){
 		const {
-			functions, classes, customKeywords,
-			overrideFunctions, overrideDictionary,
+			customFunctions, classes, customKeywords,
+			overrideFunctions,
 			functionGenerator, variables
 		} = initData;
 
-		this.keywords = new keywordDict(overrideDictionary);
+		this.keywords = new keywordDict();
 
 		if (Array.isArray(customKeywords)){
 			if (customKeywords.some(e => e instanceof customKeyword != true))
@@ -107,20 +105,26 @@ class Ora {
 			const gen = functionGenerator(this);
 
 			if (typeof gen === 'object' && gen !== null)
-				functions = { ...functions, ...gen };
+				customFunctions = { ...customFunctions, ...gen };
 		}
 
-		this.variables = variables;
+		this.variables = {...variables};
 		this.classes = forceType.forceObject(classes);
 
 		const { keywords: kw } = this;
 		const parseInput = this.parseInput.bind(this);
 
-		if (functions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
-			throw 'Invalid custom function input';
+		let mappedFunctions = {};
+
+		if (Array.isArray(customFunctions)){
+			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
+				throw 'Invalid custom function input';
+
+			mappedFunctions = Object.assign({}, ...customFunctions.map(custom => custom.bound(this)));
+		}
 
 		this.functions = {
-			...Object.assign({}, ...functions.map(custom => custom.bound(this))),
+			...mappedFunctions,
 			...defaultFunctions.bind(this)(),
 
 			[kw.id.delete] ({ iter, data }) {

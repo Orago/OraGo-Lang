@@ -62,7 +62,7 @@ const defaultKeywords = {
 class keywordDict {
 	keywords = { ...defaultKeywords };
 
-	constructor (input){
+	constructor (input = {}){
 		this.keywords = { ...this.keywords, ...input };
 		this.refreshKeywordIDs();
 	}

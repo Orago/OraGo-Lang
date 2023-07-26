@@ -10,14 +10,10 @@ const vars = new customFunction('teehee', function ({ data }){
 
 const run = (code) => {
 	const instance = new ora({
-		variables: { cat: 'testa' },
-		overrideDictionary: {
-			require: ['REQUIRE'],
-		},
 		keywords: [
 			new customKeyword('teehee', ['5', '3'])
 		],
-		customFunctions: [
+		functions: [
 			logging,
 			loops,
 			vars
