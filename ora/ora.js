@@ -11,27 +11,6 @@ import loggingFunctions from './util/functions/logging.js';
 import loopingFunctions from './util/functions/loops.js';
 import OraType from './util/DataTypes.js';
 
-function expectSetVar({ iter, data }) {
-	const varData = forceType.forceArray(
-		this.parseInput(iter.clone(), iter.peek(1), data)
-	);
-
-	const name = iter.next().value;
-	const path = [name];
-
-	while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-		path.push( iter.next().value );
-
-	if (data.functions.hasOwnProperty(name))
-		throw `Cannot set variable to function name: ${name}`;
-
-	return {
-		name,
-		path,
-		data: varData
-	}
-}
-
 function getValue (variable, property){
 	if (variable instanceof OraType.any)
 		variable = variable.value;
@@ -68,8 +47,7 @@ class Ora {
 		isA_0,
 		isNum,
 		forceType,
-		evalMath,
-		expectSetVar
+		evalMath
 	}
 
 	DataType = OraType;
@@ -133,12 +111,10 @@ class Ora {
 
 				if (kw.has(varname)) kw.deleteKeyword(varname);
 
-				const extensionPath = this.getPath({ iter, data });
-
 				if (isA_0(varname))
 					this.setOnPath({
 						source,
-						path: [varname, ...extensionPath],
+						path: [varname, ...this.getPath({ iter, data })],
 						$delete: true
 					});
 
@@ -184,8 +160,6 @@ class Ora {
 					data
 				)
 			},
-
-			[kw.id.return]: ({ iter: i, data }) => parseInput(i, i.next(), data),
 
 			[kw.id.class] ({ iter, data }) {
 				const className = iter.next().value;
@@ -264,7 +238,7 @@ class Ora {
 				const nextSeq = iter.next();
 
 				if (!nextSeq.done && kw.is(nextSeq.value, kw.id.assign) && isA_0(iter.peek(1).value)){
-					const variable = expectSetVar.bind(this)({ iter, data });
+					const variable = this.expectSetVar.bind(this)({ iter, data });
 					const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : data);
 
 					this.setOnPath({
@@ -275,30 +249,12 @@ class Ora {
 				}
 			},
 
-			[kw.id.shift]: ({ iter, data }) => {
-				const variable = expectSetVar.bind(this)({ iter, data });
-
-				variable.data.shift();
-			},
-
-			[kw.id.pop]: ({ iter, data }) => {
-				const variable = expectSetVar.bind(this)({ iter, data });
-
-				variable.data.pop();
-			},
-
 			[kw.id.await]: async ({ iter, data }) => await parseInput(iter, iter.next(), data),
 
 			async [kw.id.sleep] ({ iter, data }) {
 				const time = parseInput(iter, iter.next(), data);
 
 				return new Promise(resolve => setTimeout(resolve, time));
-			},
-
-			[kw.id.copy]: ({ iter, data }) => {
-				const variable = deepClone(parseInput(iter, iter.next(), data));
-
-				return variable;
 			},
 
 			...forceType.forceObject(overrideFunctions),
@@ -312,7 +268,6 @@ class Ora {
 	}
 
 	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
-
 
 	handleItems (iter, data = this) {
 		const { functions, variables } = data;
@@ -350,7 +305,7 @@ class Ora {
 		if ($delete === true){
 			if (source instanceof OraType.any)
 				delete source.value?.[p];
-				
+
 			else delete source?.[p];
 
 			return;
@@ -428,6 +383,25 @@ class Ora {
 		cylce();
 
 		return path;
+	}
+
+	expectSetVar ({ iter, data }, arrayForce = true){
+		let varData = this.parseInput(iter.clone(), iter.peek(1), data);
+
+		if (arrayForce)
+			varData = forceType.forceArray(varData);
+
+		const name = iter.next().value;
+		const path = [name, this.getPath({ iter, data })];
+
+		if (data.functions.hasOwnProperty(name))
+			throw `Cannot set variable to function name: ${name}`;
+
+		return {
+			name,
+			path,
+			data: varData
+		}
 	}
 
 	parseValueBasic (iter, value, data = {}){

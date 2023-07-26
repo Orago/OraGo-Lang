@@ -9,6 +9,8 @@ let scores = {
 	guh: 3
 };
 
-delete scores.['cat', 'meow'];
+let userlist = [orago, cat, hehe, lol];
+pop scores;
+pop userlist;
 
-print scores;
+print scores & userlist;
