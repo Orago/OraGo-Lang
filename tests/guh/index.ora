@@ -1,13 +1,5 @@
-let a: OBJECT = {
-	cat: 'meow',
-	dog: 'woof',
-	mouse: 'squeak',
-	hehe: {
-		bruh: 'this is a test orifeoisj'
-	},
-	lion: 'rawr',
-	me: 'hehe'
+func testo (t){
+	return 'hello world' + '';
 };
 
-
-print a.['hehe', 'bruh'];
+print testo();

@@ -13,7 +13,7 @@ const defaultKeywords = {
 	equals: ['equals', 'is'],
 	return: ['return'],
 	class: ['class'],
-	function: ['func'],
+	function: ['func', 'fn'],
 	exit: ['exit'],
 	push: ['push'],
 	pop: ['pop'],

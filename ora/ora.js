@@ -431,11 +431,12 @@ class Ora {
 		const { keywords: kw } = this;
 
 		for (const method of iter) {
-			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method)))
+			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
 				if (variables?.hasOwnProperty(method))
 					this.parseInput(iter, { value: method }, data);
 				
-				else continue;
+				continue;
+			}
 
 			const response = functions[kw.match(method)]({
 				iter,
@@ -685,7 +686,7 @@ class Ora {
 						
 					if (iter.peek(1).value == null) break;
 				}
-				
+
 				return scaleTree({
 					source: isClass ? new scopeV(...items) : scopeV(...items)
 				});
