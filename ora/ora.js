@@ -129,23 +129,20 @@ class Ora {
 
 			[kw.id.delete] ({ iter, data }) {
 				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
-				const path = [iter.next().value];
+				const varname = iter.next().value;
 
-				if (kw.has(path[0])) kw.deleteKeyword(path[0]);
+				if (kw.has(varname)) kw.deleteKeyword(varname);
 
-				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push(
-						iter.next().value
-					);
+				const extensionPath = this.getPath({ iter, data });
 
-				if (isA_0(path[0]))
+				if (isA_0(varname))
 					this.setOnPath({
 						source,
-						path,
+						path: [varname, ...extensionPath],
 						$delete: true
 					});
 
-				else throw `Invalid Variable Name: (${path[0]})`;
+				else throw `Invalid Variable Name: (${varname})`;
 			},
 
 			[kw.id.for] ({ iter, data, handleItems, maxCalls = 100 }) {
@@ -344,17 +341,17 @@ class Ora {
 		if (!Array.isArray(path) || !path?.length) return;
 
 		for (const sub of path.slice(0, path.length - 1))
-			source = source[sub];
+			source = source instanceof OraType.any ? source.value?.[sub] : source[sub];
 
 		const p = path[
 			path.length > 1 ? path.length - 1 : 0
 		];
 
-
 		if ($delete === true){
 			if (source instanceof OraType.any)
 				delete source.value?.[p];
-			else delete source[p];
+				
+			else delete source?.[p];
 
 			return;
 		}
@@ -409,6 +406,28 @@ class Ora {
 
 			default: return OraType.any;
 		}
+	}
+
+	getPath ({ iter, data }){
+		const path = [];
+
+		const cylce = () => {
+			if (iter.disposeIf('.')){
+				const next = this.parseValueBasic(iter, iter.next().value, data);
+
+				if (Array.isArray(next))
+					path.push(...next.filter(isA_0));
+
+				else if (isA_0(next))
+					path.push(next);
+
+				cylce();
+			}
+		}
+
+		cylce();
+
+		return path;
 	}
 
 	parseValueBasic (iter, value, data = {}){
@@ -466,6 +485,8 @@ class Ora {
 		}
 
 		if (isNum(value)) return Number(value);
+
+		if (isA_0(value)) return value;
 	}
 
 	parseValue (iter, value, data = {}) {
