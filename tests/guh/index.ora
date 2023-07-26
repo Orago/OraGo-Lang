@@ -1,5 +1,13 @@
-func testo (t){
-	return 'hello world' + '';
+let scores = {
+	orago: 50,
+	cat: 20,
+	king: 63,
+	john: 32,
+	michael: 16
 };
 
-print testo();
+let scores = {
+	cat: 'test'
+};
+
+print scores;

@@ -9,10 +9,10 @@ export default function ({ kw }){
 
 			while (iter.disposeIf(next => kw.is(next, kw.id.and)) && !iter.peek().done)
 				results.push(
-					this.parseInput(iter, iter.next(), data)
+						this.parseInput(iter, iter.next(), data)
 				);
 
-			results.length > 0 && console.log(...results);
+			results.length > 0 && console.log(...results.map(e => this.trueValue(e)));
 		},
 
 		[kw.id.log_variables] ({ data }) {

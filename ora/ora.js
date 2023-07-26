@@ -115,11 +115,9 @@ class boolTypeValue extends anyTypeValue {
 	}
 }
 
-
 function getValue (variable, property){
 	if (variable instanceof anyTypeValue)
 		variable = variable.value;
-
 
 	if (property != null){
 
@@ -220,7 +218,7 @@ class Ora {
 				let type = anyTypeValue;
 
 				if (iter.disposeIf(next => kw.is(next, kw.id.as)))
-					type = this.parseType(iter.next().value);
+					type = this.keywordToType(iter.next().value);
 
 				if (isA_0(path[0]) && iter.disposeIf(next => kw.is(next, kw.id.assign))){
 					const value = parseInput(iter, iter.next(), data);
@@ -471,26 +469,47 @@ class Ora {
 			throw 'aoiudahujdawiufdhugrrii 🎟🎭🎟🎉👔👕';
 
 		if (source[p]?.constructor != type)
-			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')}) from [${source[p]?.constructor}] to [${type}]`);
+			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')}) from [${this.typeToKeyword(source[p]?.constructor)}] to [${this.typeToKeyword(type)}]`);
+
+		source[p] = new type(value);
+
 		
 		if (value == undefined) delete source[p];
 	}
 
-	parseType (value) {
+	typeToKeyword (type){
+		switch (true){
+			case type === objectTypeValue: return 'OBJECT';
+			case type === arrayTypeValue: return 'ARRAY';
+			case type === stringTypeValue: return 'STRING';
+			case type === numberTypeValue: return 'NUMBER';
+			case type === boolTypeValue: return 'BOOLEAN';
+
+			default: return 'ANY';
+		}
+	}
+
+	valueToType (value){
+		switch (true){
+			case Array.isArray(value): return arrayTypeValue;
+			case typeof value == 'object': return objectTypeValue;
+			case typeof value == 'string': return stringTypeValue;
+			case typeof value == 'number': return numberTypeValue;
+			case typeof value == 'boolean': return boolTypeValue;
+			default: return anyTypeValue;
+		}
+	}
+
+	keywordToType (value) {
 		const { keywords: kw } = this;
 		const kIs = (key) => kw.is(value, kw.id[key]);
-		
+
 		switch (true){
 			case kIs('true'):             return boolTypeValue;
 			case kIs('false'):            return boolTypeValue;
 			case kIs('string'):           return stringTypeValue;
 			case kIs('object'):           return objectTypeValue;
 			case kIs('array'):            return arrayTypeValue;
-			// case kIs('null'):             return null;
-			// case kIs('undefined'):        return undefined;
-			// case kIs('nan'):              return NaN;
-			// case kIs('Infinity'):         return Infinity;
-			// case kIs('negativeInfinity'): return -Infinity;
 			case kIs('number'):           return numberTypeValue;
 
 			default: return anyTypeValue;
@@ -580,8 +599,6 @@ class Ora {
 		const { value } = input;
 
 		const scaleTree = ({ source, property }) => {
-			// console.log('PROPER', source, property)
-			// const propTest = this.parseValueBasic(iter, property, data);
 			let scopeV = getValue(source, property);
 
 			const isClass = scopeV?.prototype?.constructor?.toString()?.substring(0, 5) === 'class';
@@ -703,6 +720,25 @@ class Ora {
 		});
 	}
 
+	trueValueEntryMap (key, value){
+		return [key, this.trueValue(value)];
+	}
+
+	trueValue (input){
+		if (input instanceof anyTypeValue)
+			input = input.value;
+
+		if (typeof input == 'object')
+			input = Object.fromEntries(
+				Object.entries(input).map(e => this.trueValueEntryMap(...e))
+			);
+
+		if (typeof input == 'array')
+			input = input.map(item => this.trueValue(item));
+
+		return input;
+	}
+
 	_parseInput = (iter, input, data = {}) => {
 		const { keywords: kw } = this;
 
@@ -715,15 +751,6 @@ class Ora {
 
 		const wrapped = (value) => {
 			value = this.parseValue(iter, value, data);
-
-			if (kw.is(iter.peek().value, kw.id.add)) {
-				let stringResult = value;
-
-				while (iter.disposeIf(next => kw.is(next, kw.id.add)) && iter.peek().value != null)
-					stringResult += this.parseValue(iter, iter.next().value, data);
-
-				return stringResult;
-			}
 
 			let result = value;
 
@@ -755,6 +782,7 @@ class Ora {
 			return result;
 		};
 
+
 		let result = wrapped(input.value);
 
 
@@ -762,15 +790,27 @@ class Ora {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = wrapped(iter.next().value);
 
+			if (typeof result == 'string'){
+				switch (symbol){
+					case '+': result = result.concat(value); break;
+					case '-': result = result.replace(value, ''); break;
+					case '*': throw 'Not a feature yet';
+					case '/': result = result.replaceAll(value, ''); break;
+				}
+			}
+
 			//* For Arrays
-			if (Array.isArray(result))
+			else if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
 					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
 
 			//* For Objects
-			else if (typeof result == 'object')
+			else if (typeof result == 'object'){
+				result = this.trueValue(result);
+
 				for (const key of Object.keys(result))
 					result[key] = evalMath(`${result[key]} ${symbol} ${value}`);
+			}
 		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.as))) {
