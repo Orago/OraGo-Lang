@@ -6,6 +6,7 @@ import { isString, parseString, parseBlock } from './util/parseTools.js';
 import { oraLexer, chunkLexed } from './util/lexer.js';
 
 import defaultFunctions from './util/functions/default.js';
+import logging from './util/functions/logging.js';
 
 import OraType from './util/DataTypes.js';
 import { customFunctionContainer, customFunction, customKeyword } from './util/extensions.js';
@@ -17,14 +18,15 @@ function getValue (variable, property){
 	if (property != null){
 
 		if (Array.isArray(property)){
-			if (variable.hasOwnProperty(property[0])){
+			if (variable?.[property[0]] != null){
 				return getValue(variable[property.shift()], property.length > 0 ? property : undefined);
 			}
 			
 			return undefined;
 		}
+
 		
-		if (variable.hasOwnProperty(property))
+		if (variable?.[property] != null)
 			return getValue(variable[property]);
 
 		return undefined;
@@ -81,7 +83,7 @@ class Ora {
 
 	init (initData){
 		const {
-			customFunctions, classes, customKeywords,
+			customFunctions = [], classes, customKeywords,
 			variables
 		} = initData;
 
@@ -107,6 +109,7 @@ class Ora {
 
 		let mappedFunctions = {};
 
+		customFunctions.push(logging);
 
 		if (Array.isArray(customFunctions)){
 			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
@@ -140,7 +143,7 @@ class Ora {
 				let calls = 0;
 
 				while (val = parseInput(iter, input, data) == true) {
-					if (calls++ >= maxCalls) return console.log('Call Stack Exceeded Maximum Amount');
+					if (calls++ >= maxCalls) return console.error('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
 						new betterIterable(items, { tracking: true })
@@ -159,11 +162,13 @@ class Ora {
 						throw new Error('Expected ")" to close BIND statement!');
 
 					if (toCheck.some(val => val != true)){
-						return parseBlock(iter);
+
+						return parseBlock({ iter });
 					};
 				}
 				
 				else throw new Error('Expected "(" to open IF statement!');
+
 					
 				handleItems(
 					new betterIterable(
@@ -440,6 +445,52 @@ class Ora {
 			return array;
 		}
 
+		if (this.keywords.is(value, this.keywords.id.function)){
+				const args = [];
+
+				if (iter.disposeIf('(')){
+					let passes = 0;
+			
+					while (!iter.disposeIf(')')){
+						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+	
+						args.push(iter.next().value);
+						
+						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
+					}
+				}
+
+				const items = parseBlock({ iter, data });
+
+				const func = (...inputs) => {
+					const variables = {};
+
+					for (const [key, value] of Object.entries(data.variables))
+						variables[key] = value;
+
+					for (const [i, value] of Object.entries(args)){
+						if (['object', 'function'].includes(typeof inputs[i]))
+							variables[value] = inputs[i];
+
+						else variables[value] = parseInput(
+							new betterIterable([], { tracking: true }),
+							{ value: inputs[i] },
+							data
+						);
+					}
+
+					return this.handleItems(
+						new betterIterable(items, { tracking: true }),
+						{
+							functions: data.functions,
+							variables
+						}
+					)
+				}
+
+			return func;
+		}
+
 		if (isNum(value)) return Number(value);
 
 		if (isA_0(value)) return value;
@@ -466,6 +517,8 @@ class Ora {
 
 		return value;
 	}
+
+	
 
 	parseInputToVariable (iter, input, data = {}, functions = true) {
 		const { parseInput, keywords: kw } = this;
@@ -554,7 +607,7 @@ class Ora {
 					//* Fail Function
 					console.error('Cannot call function on non-function', property,
 						'\n',
-						iter.stack()
+						iter.stack
 					);
 
 					return;
@@ -566,8 +619,9 @@ class Ora {
 				while (!iter.disposeIf(')')){
 					if (iter.disposeIf(',')) continue;
 
+
 					items.push(
-						parseInput(iter, iter.next(), data)
+						this.parseInput(iter, iter.next(), data)
 					);
 					
 					if (passes++ > 100)
@@ -629,7 +683,6 @@ class Ora {
 
 		let result = getValue(input);
 
-
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = getValue(iter.next());
@@ -675,7 +728,6 @@ class Ora {
 					result = JSON.stringify(result);
 			}
 		}
-
 
 		//* Greater Than
 		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
@@ -746,6 +798,10 @@ class Ora {
 
 				default: return false;
 			}
+		}
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.jsver))){
+			return this.trueValue(result);
 		}
 
 		return result;

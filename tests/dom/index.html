@@ -19,6 +19,12 @@
 		
 		<script type="module">
 			import ora from '../../ora/ora.js';
+			import { customFunction, customKeyword } from '../../ora/util/extensions.js';
+
+			const vars = new customFunction('teehee', function ({ data }){
+				console.log('\n', `ORA LANG SCOPE:`, '\n', data.variables, '\n')
+			})
+
 			import { newNode as n, qs } from './dom.js';
 
 			const interval = (func, time) => {
@@ -54,6 +60,9 @@
 			}
 
 			const oraInstance = new ora({
+				keywords: [
+			new customKeyword('teehee', ['logga'])
+		],
 				variables: {
 					n,
 					qs,
@@ -62,8 +71,11 @@
 					interval,
 					timeout,
 					window,
-					
-				}
+					log: idn => console.log(idn)
+				},
+				functions: [
+					vars
+				]
 			});
 
 			async function load () {

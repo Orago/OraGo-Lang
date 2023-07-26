@@ -1,4 +1,3 @@
-
 IMPORT cat from "./test.ora";
 
 let scores = {

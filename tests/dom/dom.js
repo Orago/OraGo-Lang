@@ -225,6 +225,7 @@ const elUtils = {
     },
 
     wrapper(run){
+
       run (this);
 
       return this;

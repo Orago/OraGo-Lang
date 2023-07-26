@@ -27,6 +27,7 @@ const defaultKeywords = {
 	has: ['has'],
 	copy: ['copy'],
 	using: ['using'],
+	jsver: ['JSVER'],
 	//#endregion //* Commands *//
 
 	log_variables: ['LOG_VARIABLES'],

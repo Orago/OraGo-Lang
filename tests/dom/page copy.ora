@@ -40,9 +40,11 @@ body(
 				};
 
 				let window.interval = interval(func (){
+
 					let text = node.node.dataset.value as ARRAY;
 					let rand = text randomize;
 					node.text(rand as STRING);
+
 
 					if (iteration > node.node.dataset.value.length){
 						window.interval.kill();
