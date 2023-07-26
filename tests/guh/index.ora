@@ -1,3 +1,6 @@
+
+IMPORT cat from "./test.ora";
+
 let scores = {
 	orago: 50,
 	tomb: 162,
@@ -13,4 +16,4 @@ let userlist = [orago, cat, hehe, lol];
 
 push 'bruhdamn' to userlist;
 
-print scores & userlist;
+print scores & userlist & cat;

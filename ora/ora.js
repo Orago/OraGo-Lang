@@ -35,6 +35,8 @@ function getValue (variable, property){
 
 class Ora {
 	settings = {};
+	customKeywords;
+	customFunctions;
 
 	//* Attributes *//
 	variables;
@@ -56,8 +58,6 @@ class Ora {
 			functions: customFunctions,
 			customClasses,
 			customTypes,
-			overrideFunctions,
-			functionGenerator,
 			keywords: customKeywords,
 			variables
 		} = forceType.forceObject(settings);
@@ -70,8 +70,6 @@ class Ora {
 		this.init({
 			customFunctions,
 			classes: customClasses,
-			overrideFunctions,
-			functionGenerator,
 			customKeywords,
 			variables
 		});
@@ -84,37 +82,31 @@ class Ora {
 	init (initData){
 		const {
 			customFunctions, classes, customKeywords,
-			overrideFunctions,
-			functionGenerator, variables
+			variables
 		} = initData;
 
 		this.keywords = new keywordDict();
+		this.customKeywords = customKeywords;
+		this.customFunctions = customFunctions;
+
 
 		if (Array.isArray(customKeywords)){
 			if (customKeywords.some(e => e instanceof customKeyword != true))
 				throw 'Invalid custom keyword';
 
-			for (const custom of customKeywords){
-				this.keywords.addKeyword(
-					...custom.bound(this)
-				);
-			}
+
+			for (const custom of customKeywords)
+				this.keywords.addKeyword( ...custom.bound(this) );
 		}
 
-		if (typeof functionGenerator === 'function'){
-			const gen = functionGenerator(this);
-
-			if (typeof gen === 'object' && gen !== null)
-				customFunctions = { ...customFunctions, ...gen };
-		}
-
-		this.variables = {...variables};
+		this.variables = forceType.forceObject(variables);
 		this.classes = forceType.forceObject(classes);
 
 		const { keywords: kw } = this;
 		const parseInput = this.parseInput.bind(this);
 
 		let mappedFunctions = {};
+
 
 		if (Array.isArray(customFunctions)){
 			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
@@ -124,7 +116,6 @@ class Ora {
 		}
 
 		this.functions = {
-			...mappedFunctions,
 			...defaultFunctions.bind(this)(),
 
 			[kw.id.delete] ({ iter, data }) {
@@ -248,7 +239,7 @@ class Ora {
 			},
 
 
-			...forceType.forceObject(overrideFunctions),
+			...mappedFunctions,
 		}
 
 		this.functions = Object.fromEntries(
@@ -774,8 +765,14 @@ class Ora {
 
 			if (response?.exit == true) return response?.value;
 		}
+	}
 
-		return this;
+	reInstance (){
+		return new Ora({
+			functions: this.customFunctions,
+			keywords: this.customKeywords,
+			settings: this.settings
+		});
 	}
 }
 
