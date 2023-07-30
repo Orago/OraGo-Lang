@@ -28,6 +28,7 @@ const defaultKeywords = {
 	copy: ['copy'],
 	using: ['using'],
 	jsver: ['JSVER'],
+	random: ['random'],
 	//#endregion //* Commands *//
 
 	log_variables: ['LOG_VARIABLES'],

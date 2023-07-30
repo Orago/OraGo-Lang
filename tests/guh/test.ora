@@ -1,1 +1,1 @@
-EXPORT 'hello wurld';
+export 'hello wurld';

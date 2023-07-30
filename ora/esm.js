@@ -4,8 +4,8 @@ import pathModule from 'path';
 import { customFunction, customKeyword } from './util/extensions.js';
 import { isA_0 } from './util/forceType.js';
 
-const exportKW = new customKeyword('export', ['EXPORT']);
-const importKW = new customKeyword('import', ['IMPORT']);
+const exportKW = new customKeyword('export', ['export']);
+const importKW = new customKeyword('import', ['import']);
 
 const exportFunc = new customFunction('export', function ({ iter, data }) {
 	const value = this.parseInput(iter, iter.next(), data);

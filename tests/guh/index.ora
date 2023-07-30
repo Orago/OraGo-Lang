@@ -1,4 +1,4 @@
-IMPORT cat from "./test.ora";
+import cat from './test.ora';
 
 let scores = {
 	orago: 50,
