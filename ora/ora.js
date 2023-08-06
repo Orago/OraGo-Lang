@@ -496,6 +496,10 @@ class Ora {
 		if (isA_0(value)) return value;
 	}
 
+	parseNext (iter, data){
+		return this.parseValue(iter, iter.next().value, data);
+	}
+
 	parseValue (iter, value, data = {}) {
 		const { variables = {} } = data;
 		const { keywords: kw, functions } = this;
@@ -517,8 +521,6 @@ class Ora {
 
 		return value;
 	}
-
-	
 
 	parseInputToVariable (iter, input, data = {}, functions = true) {
 		const { parseInput, keywords: kw } = this;
@@ -664,8 +666,6 @@ class Ora {
 				Object.entries(input).map(e => this.trueValueEntryMap(...e))
 			);
 
-
-
 		return input;
 	}
 
@@ -738,18 +738,17 @@ class Ora {
 			result = result < getValue(iter.next());
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {
-			const size = forceType.forceNumber(
-				this.parseValue(iter, iter.next().value, data)
-			);
-
 			if (typeof result === 'string')
-				result = result.repeat(size);
+				result = result.repeat(
+					// Size (if item isn't a number it will fallback to blank text)
+					this.parseNext(iter, data)
+				);
 		}
 
 		//* Power Of
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))) {
 			const size = forceType.forceNumber(
-				this.parseValue(iter, iter.next().value, data)
+				this.parseNext(iter, data)
 			);
 
 			if (Array.isArray(result)) {
@@ -786,23 +785,15 @@ class Ora {
 			const nextValue = getValue(iter.next());
 
 			switch (typeof result) {
-				case 'string':
-					return result.includes(nextValue);
-
-				case 'object': {
-					return Array.isArray(result) ? result.includes(nextValue) : result.hasOwnProperty(nextValue);
-				}
-
-				case 'number':
-					return typeof nextValue == 'number' && result >= nextValue;
-
-				default: return false;
+				case 'string': return result.includes(nextValue);
+				case 'object': return Array.isArray(result) ? result.includes(nextValue) : result.hasOwnProperty(nextValue);
+				case 'number': return typeof nextValue == 'number' && result >= nextValue;
+				default:       return false;
 			}
 		}
 
-		if (iter.disposeIf(next => kw.is(next, kw.id.jsver))){
+		if (iter.disposeIf(next => kw.is(next, kw.id.jsver)))
 			return this.trueValue(result);
-		}
 
 		return result;
 	};
