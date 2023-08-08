@@ -1,9 +1,10 @@
 
 class anyTypeValue {
 	#value;
+	static default;
 
 	constructor (value){
-		this.value = value;
+		this.value = value ?? this.default;
 	}
 
 	validate (){
@@ -31,6 +32,8 @@ class anyTypeValue {
 }
 
 class numberTypeValue extends anyTypeValue {
+	static default = 0;
+
 	error (){
 		return 'Input is not an number';
 	}
@@ -45,6 +48,8 @@ class numberTypeValue extends anyTypeValue {
 }
 
 class stringTypeValue extends anyTypeValue {
+	static default = '';
+
 	error (){
 		return 'Input is not an string';
 	}
@@ -55,6 +60,8 @@ class stringTypeValue extends anyTypeValue {
 }
 
 class arrayTypeValue extends anyTypeValue {
+	static default = [];
+
 	error (){
 		return 'Input is not an array';
 	}
@@ -65,6 +72,8 @@ class arrayTypeValue extends anyTypeValue {
 }
 
 class objectTypeValue extends anyTypeValue {
+	static default = {};
+	
 	error (){
 		return 'Input is not an object';
 	}
@@ -75,6 +84,8 @@ class objectTypeValue extends anyTypeValue {
 }
 
 class boolTypeValue extends anyTypeValue {
+	static default = false;
+
 	error (){
 		return 'Input is not an boolean';
 	}

@@ -1,6 +1,4 @@
-import cat from './test.ora';
-
-let scores = {
+let scores as OBJECT = {
 	orago: 50,
 	tomb: 162,
 	cat: {
@@ -11,8 +9,8 @@ let scores = {
 	guh: 3
 };
 
-let userlist = [orago, cat, hehe, lol];
+let cat as NUMBER;
 
-push 'bruhdamn' to userlist;
+cat = 5;
 
-print scores & userlist & cat;
+print cat & scores;

@@ -35,6 +35,21 @@ function getValue (variable, property){
 	return variable;
 }
 
+class OraScopeVariables {};
+
+class OraScope {
+	parent;
+	data = {};
+	variables = OraScopeVariables;
+
+	constructor (parent, data){
+		this.parent = parent;
+
+		if (typeof data == 'object')
+			this.data = data;
+	}
+}
+
 class Ora {
 	settings = {};
 	customKeywords;
@@ -44,6 +59,7 @@ class Ora {
 	variables;
 	classes;
 	functions;
+	mainScope = new OraScope(this);
 
 	utils = {
 		chunkLexed,
@@ -121,8 +137,8 @@ class Ora {
 		this.functions = {
 			...defaultFunctions.bind(this)(),
 
-			[kw.id.delete] ({ iter, data }) {
-				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : data.variables;
+			[kw.id.delete] ({ iter, scope }) {
+				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : scope.variables;
 				const varname = iter.next().value;
 
 				if (kw.has(varname)) kw.deleteKeyword(varname);
@@ -130,19 +146,19 @@ class Ora {
 				if (isA_0(varname))
 					this.setOnPath({
 						source,
-						path: [varname, ...this.getPath({ iter, data })],
+						path: [varname, ...this.getPath({ iter, scope })],
 						$delete: true
 					});
 
 				else throw `Invalid Variable Name: (${varname})`;
 			},
 
-			[kw.id.for] ({ iter, data, handleItems, maxCalls = 100 }) {
+			[kw.id.for] ({ iter, scope, handleItems, maxCalls = 100 }) {
 				const input = iter.next();
 				const items = [...iter];
 				let calls = 0;
 
-				while (val = parseInput(iter, input, data) == true) {
+				while (val = parseInput(iter, input, scope) == true) {
 					if (calls++ >= maxCalls) return console.error('Call Stack Exceeded Maximum Amount');
 
 					handleItems(
@@ -151,12 +167,12 @@ class Ora {
 				}
 			},
 
-			[kw.id.if] ({ iter, data, handleItems }) {
+			[kw.id.if] ({ iter, scope, handleItems }) {
 				if (iter.disposeIf('(')){
-					const toCheck = [parseInput(iter, iter.next(), data)];
+					const toCheck = [parseInput(iter, iter.next(), scope)];
 
 					while (iter.disposeIf(next => kw.is(next, kw.id.and)) && isA_0(iter.peek().value))
-						toCheck.push( parseInput(iter, iter.next(), data) );
+						toCheck.push( parseInput(iter, iter.next(), scope) );
 
 					if (!iter.disposeIf(')'))
 						throw new Error('Expected ")" to close BIND statement!');
@@ -166,29 +182,29 @@ class Ora {
 						return parseBlock({ iter });
 					};
 				}
-				
 				else throw new Error('Expected "(" to open IF statement!');
 
 					
 				handleItems(
 					new betterIterable(
-						parseBlock({ iter, data }), // Items
+						parseBlock({ iter, scope }), // Items
 						{ tracking: true }
 					),
-					data
+					scope
 				)
 			},
 
-			[kw.id.class] ({ iter, data }) {
+			[kw.id.class] ({ iter, scope }) {
 				const className = iter.next().value;
 				const items = [];
 
 				for (const item of iter) items.push(item);
 
-				if (isA_0(className)) data.classes[className] = { items, data };
+				if (isA_0(className))
+					scope.classes[className] = { items, scope };
 			},
 
-			[kw.id.function] ({ iter, data, handleItems }) {
+			[kw.id.function] ({ iter, scope, handleItems }) {
 				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
@@ -208,12 +224,12 @@ class Ora {
 					}
 				}
 
-				const items = parseBlock({ iter, data });
+				const items = parseBlock({ iter, scope });
 
 				const func = (...inputs) => {
 					const variables = {};
 
-					for (const [key, value] of Object.entries(data.variables))
+					for (const [key, value] of Object.entries(scope.variables))
 						variables[key] = value;
 
 					for (const [i, value] of Object.entries(args)){
@@ -223,21 +239,21 @@ class Ora {
 						else variables[value] = parseInput(
 							new betterIterable([], { tracking: true }),
 							{ value: inputs[i] },
-							data
+							scope
 						);
 					}
 
 					return handleItems(
 						new betterIterable(items, { tracking: true }),
 						{
-							functions: data.functions,
+							functions: scope.functions,
 							variables
 						}
 					)
 				}
 
 				this.setOnPath({
-					source: data.variables,
+					source: scope.variables,
 					path,
 					value: func
 				});
@@ -255,22 +271,28 @@ class Ora {
 	}
 
 	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
+	
+	createScope (scopeData = {}){
+		return new OraScope(this, scopeData);
+	}
 
-	handleItems (iter, data = this) {
-		const { functions, variables } = data;
+	handleItems (iter, scope = this.mainScope) {
+		const {  variables } = scope;
+		const { functions } = this;
 		const { keywords: kw } = this;
 
 		for (const method of iter) {
 			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
+				
 				if (variables?.hasOwnProperty(method))
-					this.parseInput(iter, { value: method }, data);
+					this.parseInput(iter, { value: method }, scope);
 				
 				continue;
 			}
 
 			const response = functions[kw.match(method)]({
 				iter,
-				data,
+				scope,
 				handleItems: this.handleItems.bind(this)
 			});
 			
@@ -280,6 +302,7 @@ class Ora {
 	}
 
 	setOnPath ({ source, path, value, type = OraType.any, $delete = false }) {
+		// console.log('SET SOURCE', source)
 		if (!Array.isArray(path) || !path?.length) return;
 
 		for (const sub of path.slice(0, path.length - 1))
@@ -300,10 +323,12 @@ class Ora {
 
 		source[p] ??= new type(value);
 
-		if (!source[p] instanceof OraType.any)
+		if (source[p] instanceof OraType.any != true)
 			throw 'aoiudahujdawiufdhugrrii 🎟🎭🎟🎉👔👕';
 
-		if (source[p]?.constructor != type)
+		const valueType = source[p]?.constructor;
+
+		if (valueType != type && valueType != this.valueToType(value))
 			throw new Error(`[Ora] Cannot Change Type on (${path.join('.')}) from [${this.typeToKeyword(source[p]?.constructor)}] to [${this.typeToKeyword(type)}]`);
 
 		source[p] = new type(value);
@@ -350,12 +375,12 @@ class Ora {
 		}
 	}
 
-	getPath ({ iter, data }){
+	getPath ({ iter, scope }){
 		const path = [];
 
 		const cylce = () => {
 			if (iter.disposeIf('.')){
-				const next = this.parseValueBasic(iter, iter.next().value, data);
+				const next = this.parseValueBasic(iter, iter.next().value, scope);
 
 				if (Array.isArray(next))
 					path.push(...next.filter(isA_0));
@@ -372,14 +397,14 @@ class Ora {
 		return path;
 	}
 
-	expectSetVar ({ iter, data }, arrayForce = true){
-		let varData = this.parseInput(iter.clone(), iter.peek(1), data);
+	expectSetVar ({ iter, scope }, arrayForce = true){
+		let varData = this.parseInput(iter.clone(), iter.peek(1), scope);
 
 		if (arrayForce)
 			varData = forceType.forceArray(varData);
 
 		const name = iter.next().value;
-		const path = [name, ...this.getPath({ iter, data })];
+		const path = [name, ...this.getPath({ iter, scope })];
 
 		if (data.functions.hasOwnProperty(name))
 			throw `Cannot set variable to function name: ${name}`;
@@ -391,7 +416,7 @@ class Ora {
 		}
 	}
 
-	parseValueBasic (iter, value, data = {}){
+	parseValueBasic (iter, value, scope = {}){
 		if (isString(value)) return parseString(value);
 
 		if (value == '{'){
@@ -417,7 +442,7 @@ class Ora {
 					value: this.parseValue(
 						iter,
 						(iter.disposeIf(':') ? iter.next() : key).value,
-						data
+						scope
 					)
 				});
 			}
@@ -438,7 +463,7 @@ class Ora {
 				if (nextItem.value == undefined) break;
 
 				array.push(
-					this.parseValue(iter, nextItem.value, data)
+					this.parseValue(iter, nextItem.value, scope)
 				);
 			}
 
@@ -460,12 +485,12 @@ class Ora {
 					}
 				}
 
-				const items = parseBlock({ iter, data });
+				const items = parseBlock({ iter, scope });
 
 				const func = (...inputs) => {
 					const variables = {};
 
-					for (const [key, value] of Object.entries(data.variables))
+					for (const [key, value] of Object.entries(scope.variables))
 						variables[key] = value;
 
 					for (const [i, value] of Object.entries(args)){
@@ -475,14 +500,14 @@ class Ora {
 						else variables[value] = parseInput(
 							new betterIterable([], { tracking: true }),
 							{ value: inputs[i] },
-							data
+							scope
 						);
 					}
 
 					return this.handleItems(
 						new betterIterable(items, { tracking: true }),
 						{
-							functions: data.functions,
+							functions: scope.functions,
 							variables
 						}
 					)
@@ -491,29 +516,31 @@ class Ora {
 			return func;
 		}
 
-		if (isNum(value)) return Number(value);
+		if (isNum(value))
+			return Number(value);
 
-		if (isA_0(value)) return value;
+		if (isA_0(value))
+			return value;
 	}
 
-	parseNext (iter, data){
-		return this.parseValue(iter, iter.next().value, data);
+	parseNext (iter, scope){
+		return this.parseValue(iter, iter.next().value, scope);
 	}
 
-	parseValue (iter, value, data = {}) {
-		const { variables = {} } = data;
+	parseValue (iter, value, scope = {}) {
+		const { variables } = scope;
 		const { keywords: kw, functions } = this;
 
 		if (isA_0(value) && variables.hasOwnProperty(value))
-			return this.parseInputToVariable(iter, { value }, data);
+			return this.parseInputToVariable(iter, { value }, scope);
 
-		const basicRes = this.parseValueBasic(iter, value, data);
+		const basicRes = this.parseValueBasic(iter, value, scope);
 		if (basicRes != null) return basicRes;
 
 		if (kw.has(value) && functions.hasOwnProperty(kw.match(value)))
 			return functions[kw.match(value)]({
 				iter,
-				data,
+				scope,
 				handleItems: this.handleItems.bind(this)
 			});
 
@@ -522,9 +549,9 @@ class Ora {
 		return value;
 	}
 
-	parseInputToVariable (iter, input, data = {}, functions = true) {
+	parseInputToVariable (iter, input, scope = {}, functions = true) {
 		const { parseInput, keywords: kw } = this;
-		const { variables = {} } = data;
+		const { variables = {} } = scope;
 		const { value } = input;
 
 		const scaleTree = ({ source, property }) => {
@@ -538,7 +565,7 @@ class Ora {
 			if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
 				if (typeof scopeV == 'function' && !isClass){
 					const toBind = forceType.forceObject(
-						parseInput(iter, iter.next(), data)
+						parseInput(iter, iter.next(), scope)
 					);
 					
 					scopeV = scopeV.bind(toBind);
@@ -552,7 +579,7 @@ class Ora {
 							if (iter.disposeIf(',')) continue;
 
 							toBind.push(
-								parseInput(iter, iter.next(), data)
+								parseInput(iter, iter.next(), scope)
 							);
 							
 							if (passes++ > 100)
@@ -567,7 +594,7 @@ class Ora {
 					}
 					else {
 						const toBind = forceType.forceObject(
-							parseInput(iter, iter.next(), data, false)
+							parseInput(iter, iter.next(), scope, false)
 						);
 
 						scopeV = Object.assign(scopeV, toBind);
@@ -623,7 +650,7 @@ class Ora {
 
 
 					items.push(
-						this.parseInput(iter, iter.next(), data)
+						this.parseInput(iter, iter.next(), scope)
 					);
 					
 					if (passes++ > 100)
@@ -669,7 +696,7 @@ class Ora {
 		return input;
 	}
 
-	parseInput (iter, input, data = {}) {
+	parseInput (iter, input, scope = {}) {
 		const { keywords: kw } = this;
 
 		const mathSymbols = {
@@ -679,7 +706,7 @@ class Ora {
 			[kw.id.divide]: '/',
 		};
 
-		const getValue = (iterIn) => this.parseValue(iter, iterIn.value, data); 
+		const getValue = (iterIn) => this.parseValue(iter, iterIn.value, scope); 
 
 		let result = getValue(input);
 
@@ -696,9 +723,8 @@ class Ora {
 				}
 			}
 
-			if (typeof result == 'number'){
+			if (typeof result == 'number')
 				result = evalMath(`${result} ${symbol} ${value}`);
-			}
 
 			//* For Arrays
 			else if (Array.isArray(result))
@@ -737,18 +763,19 @@ class Ora {
 		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
 			result = result < getValue(iter.next());
 
+		//* String repeater
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {
 			if (typeof result === 'string')
 				result = result.repeat(
 					// Size (if item isn't a number it will fallback to blank text)
-					this.parseNext(iter, data)
+					this.parseNext(iter, scope)
 				);
 		}
 
 		//* Power Of
 		if (iter.disposeIf(next => kw.is(next, kw.id.power))) {
 			const size = forceType.forceNumber(
-				this.parseNext(iter, data)
+				this.parseNext(iter, scope)
 			);
 
 			if (Array.isArray(result)) {
@@ -822,6 +849,5 @@ class Ora {
 		});
 	}
 }
-
 
 export default Ora;

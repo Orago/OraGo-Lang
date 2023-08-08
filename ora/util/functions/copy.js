@@ -5,12 +5,12 @@ export default function (){
 	const { keywords: kw } = this;
 
 	return {
-		[kw.id.copy] ({ iter, data }) {
-			return deepClone(this.parseInput(iter, iter.next(), data));
+		[kw.id.copy] ({ iter, scope }) {
+			return deepClone(this.parseInput(iter, iter.next(), scope));
 		},
 
-		[kw.id.random] ({ iter, data }) {
-			const nextResult = this.parseInput(iter, iter.next(), data);
+		[kw.id.random] ({ iter, scope }) {
+			const nextResult = this.parseInput(iter, iter.next(), scope);
 
 			if (Array.isArray(result)){
 				// result = shuffleArray(result);
