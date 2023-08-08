@@ -40,13 +40,16 @@ class OraScopeVariables {};
 class OraScope {
 	parent;
 	data = {};
-	variables = OraScopeVariables;
+	variables = new OraScopeVariables;
 
-	constructor (parent, data){
+	constructor (parent, { data, variables } = {}){
 		this.parent = parent;
 
 		if (typeof data == 'object')
 			this.data = data;
+
+		if (typeof variables == 'object')
+			this.variables = variables;
 	}
 }
 
@@ -224,14 +227,15 @@ class Ora {
 					}
 				}
 
-				const items = parseBlock({ iter, scope });
+				const variables = {};
+
+				for (const [key, value] of Object.entries(scope.variables))
+					variables[key] = value;
+
+				const nestedScope = this.createScope();
+				const items = parseBlock({ iter, scope: nestedScope });
 
 				const func = (...inputs) => {
-					const variables = {};
-
-					for (const [key, value] of Object.entries(scope.variables))
-						variables[key] = value;
-
 					for (const [i, value] of Object.entries(args)){
 						if (['object', 'function'].includes(typeof inputs[i]))
 							variables[value] = inputs[i];
@@ -239,16 +243,13 @@ class Ora {
 						else variables[value] = parseInput(
 							new betterIterable([], { tracking: true }),
 							{ value: inputs[i] },
-							scope
+							nestedScope
 						);
 					}
 
 					return handleItems(
 						new betterIterable(items, { tracking: true }),
-						{
-							functions: scope.functions,
-							variables
-						}
+						nestedScope
 					)
 				}
 
@@ -272,8 +273,8 @@ class Ora {
 
 	includesFunction = name => this.dictionary.find($ => $[0].includes(name)) != null;
 	
-	createScope (scopeData = {}){
-		return new OraScope(this, scopeData);
+	createScope (data, variables){
+		return new OraScope(this, { data, variables });
 	}
 
 	handleItems (iter, scope = this.mainScope) {
@@ -284,7 +285,7 @@ class Ora {
 		for (const method of iter) {
 			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
 				
-				if (variables?.hasOwnProperty(method))
+				// if (variables?.hasOwnProperty(method))
 					this.parseInput(iter, { value: method }, scope);
 				
 				continue;
@@ -302,11 +303,14 @@ class Ora {
 	}
 
 	setOnPath ({ source, path, value, type = OraType.any, $delete = false }) {
-		// console.log('SET SOURCE', source)
 		if (!Array.isArray(path) || !path?.length) return;
 
-		for (const sub of path.slice(0, path.length - 1))
+		for (const sub of path.slice(0, path.length - 1)){
+			// Scaffolding a new object if nothing
+			source[sub] ??= {};
+
 			source = source instanceof OraType.any ? source.value?.[sub] : source[sub];
+		}
 
 		const p = path[
 			path.length > 1 ? path.length - 1 : 0
@@ -320,6 +324,8 @@ class Ora {
 
 			return;
 		}
+
+		console.log(source, 'soiurce')
 
 		source[p] ??= new type(value);
 
@@ -380,13 +386,17 @@ class Ora {
 
 		const cylce = () => {
 			if (iter.disposeIf('.')){
-				const next = this.parseValueBasic(iter, iter.next().value, scope);
+				const next = iter.next().value;
+				const parsed = this.parseValueBasic(iter, next, scope);
 
-				if (Array.isArray(next))
-					path.push(...next.filter(isA_0));
+				// if (parsed == null && isA_0(next))
+				// 	path.push(parsed);
 
-				else if (isA_0(next))
-					path.push(next);
+				if (Array.isArray(parsed))
+					path.push(...parsed.filter(isA_0));
+
+				else if (isA_0(parsed))
+					path.push(parsed);
 
 				cylce();
 			}
@@ -519,7 +529,7 @@ class Ora {
 		if (isNum(value))
 			return Number(value);
 
-		if (isA_0(value))
+	if (isA_0(value))
 			return value;
 	}
 
@@ -530,6 +540,20 @@ class Ora {
 	parseValue (iter, value, scope = {}) {
 		const { variables } = scope;
 		const { keywords: kw, functions } = this;
+
+		const extendedPath = this.getPath({ iter, scope });
+
+		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+			if (value != undefined)
+				this.setOnPath({
+					source: variables,
+					path: [value, ...extendedPath],
+					value: this.parseInput(iter, iter.next(), scope)
+				});
+			else throw 'Cannot mod a raw variable to a value!'
+				
+			return variables;
+		}
 
 		if (isA_0(value) && variables.hasOwnProperty(value))
 			return this.parseInputToVariable(iter, { value }, scope);
@@ -546,10 +570,12 @@ class Ora {
 
 		if (value === 'CURRENT_DATE') return Date.now();
 
+		
+
 		return value;
 	}
 
-	parseInputToVariable (iter, input, scope = {}, functions = true) {
+	parseInputToVariable (iter, input, scope, functions = true) {
 		const { parseInput, keywords: kw } = this;
 		const { variables = {} } = scope;
 		const { value } = input;
@@ -619,7 +645,7 @@ class Ora {
 			// 		this.setOnPath({
 			// 			source,
 			// 			path: [property],
-			// 			value: parseInput(iter, iter.next(), data)
+			// 			value: this.parseInput(iter, iter.next(), scope)
 			// 		});
 			// 	else throw 'Cannot mod a raw variable to a value!'
 					

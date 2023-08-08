@@ -1,16 +1,13 @@
-let scores as OBJECT = {
-	orago: 50,
-	tomb: 162,
-	cat: {
-		meow: 'hehe',
-		mew: 'meoawowaood'
-	},
-	meow: 12,
-	guh: 3
-};
+
 
 let cat as NUMBER;
 
-cat = 5;
+cat = 150;
 
-print cat & scores;
+fn test (){
+	cheese.touch = 5;
+
+	return cheese;
+};
+
+print cat & test() & cheese;
