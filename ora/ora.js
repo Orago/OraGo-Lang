@@ -227,20 +227,21 @@ class Ora {
 					}
 				}
 
-				const variables = {};
-
-				for (const [key, value] of Object.entries(scope.variables))
-					variables[key] = value;
-
-				const nestedScope = this.createScope();
-				const items = parseBlock({ iter, scope: nestedScope });
+				const items = parseBlock({ iter, scope });
 
 				const func = (...inputs) => {
+					const variables = {};
+
+					for (const [key, value] of Object.entries(scope.variables))
+						variables[key] = value;
+
+					const nestedScope = this.createScope({ variables });
+					
 					for (const [i, value] of Object.entries(args)){
 						if (['object', 'function'].includes(typeof inputs[i]))
-							variables[value] = inputs[i];
+							nestedScope.variables[value] = inputs[i];
 
-						else variables[value] = parseInput(
+						else nestedScope.variables[value] = parseInput(
 							new betterIterable([], { tracking: true }),
 							{ value: inputs[i] },
 							nestedScope
@@ -324,8 +325,6 @@ class Ora {
 
 			return;
 		}
-
-		console.log(source, 'soiurce')
 
 		source[p] ??= new type(value);
 

@@ -4,10 +4,10 @@ let cat as NUMBER;
 
 cat = 150;
 
-fn test (){
-	cheese.touch = 5;
+fn test (math){
+	cheese.touch = 5 + math;
 
 	return cheese;
 };
 
-print cat & test() & cheese;
+print cat & test(3) & cheese;
