@@ -82,13 +82,9 @@ const updateActivityFN = new customFunction('activity', function ({ iter, scope 
 		
 		handleImage('small', items, activity);
 	}
-	else if (method == 'state'){
-		activity.state = this.parseNext(iter, scope);
-	}
-
-	else if (method == 'details'){
-		activity.details = this.parseNext(iter, scope);
-	}
+	
+	else if (method == 'state') activity.state = this.parseNext(iter, scope);
+	else if (method == 'details') activity.details = this.parseNext(iter, scope);
 
 	else if (method == 'set'){
 		if (scope.data.discordRPC.ready)
@@ -107,7 +103,4 @@ const rpcFunctions = [
 	updateActivityFN
 ];
 
-export {
-	rpcKeywords,
-	rpcFunctions
-};
+export { rpcKeywords, rpcFunctions };

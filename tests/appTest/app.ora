@@ -1,0 +1,3 @@
+createApp 'meow' ({
+	index: 'index.html'
+});

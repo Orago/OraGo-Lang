@@ -7,8 +7,8 @@ import { oraLexer, chunkLexed } from './util/lexer.js';
 
 import defaultFunctions from './util/functions/default.js';
 import logging from './util/functions/logging.js';
-
 import OraType from './util/DataTypes.js';
+
 import { customFunctionContainer, customFunction, customKeyword } from './util/extensions.js';
 
 function getValue (variable, property){
