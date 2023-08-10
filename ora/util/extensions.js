@@ -65,9 +65,13 @@ class customKeyword {
 
 class customExtension {
 	constructor ({ keyword: KW, function: FN, processors }){
-		if (KW instanceof customKeyword != true){
-			throw '^ Invalid keyword instance for extension';
-		}
+		if (KW != null) //= |
+			if (KW instanceof customKeyword)
+				this.keyword = KW;
+			else {
+				console.log(KW);
+				throw '^ Invalid keyword instance for extension';
+			}
 
 		if (FN != null) //= |
 			if (FN instanceof customFunction)
@@ -88,9 +92,6 @@ class customExtension {
 				
 			this.processors = processors;
 		}
-			
-		
-		this.keyword = KW;
 	}
 }
 

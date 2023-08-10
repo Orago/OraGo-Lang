@@ -4,7 +4,6 @@ const printKW = new customKeyword('print', ['print']);
 
 const printFN = new customFunction('print', function ({ iter, scope }) {
 	const { keywords: kw } = this;
-	
 	const input = iter.next();
 	
 	if (!input.value) return;

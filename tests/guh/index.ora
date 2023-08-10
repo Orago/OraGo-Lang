@@ -1,3 +1,5 @@
-let cat = 'meow hehehehee';
+let cats = ['oragos'];
 
-print cat & 'gg';
+cats push 'success' push 'mistakes' pop join ['hello', 'world'];
+
+print cats;

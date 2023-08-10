@@ -1,9 +1,11 @@
 import {
 	valueProcessor,
+	valuePostProcessor,
+	valuePreProcessor,
+
 	customFunction,
 	customKeyword,
-	customExtension,
-	extensionPack
+	customExtension
 } from '../ora/util/extensions.js';
 
 
@@ -83,3 +85,56 @@ const oraValueSetter = new customExtension({
 });
 
 export { oraValueSetter };
+
+
+//* Arrays
+
+const oraArrayAddon = new customExtension({
+	processors: [
+		new valuePostProcessor({
+			validate ({ value }){
+				return Array.isArray(value);
+			},
+			parse ({ iter, value, scope }){
+				const Next = () => this.parseNext(iter, scope);
+
+				const handle = (arr) => {
+					if (iter.disposeIf('push')){
+						arr.push(Next());
+
+						return handle(arr);
+					}
+					else if (iter.disposeIf('pop')){
+						arr.pop();
+
+						return handle(arr);
+					}
+					else if (iter.disposeIf('concat')){
+						const nextItem = Next();
+
+						if (Array.isArray(nextItem) != true)
+							throw 'Cannot concat on non array';
+						
+						return handle([].concat.apply([], [arr, nextItem]));
+					}
+					else if (iter.disposeIf('join')){
+						const nextItem = Next();
+
+						if (Array.isArray(nextItem) != true)
+							throw 'Cannot join on non array';
+
+						arr.push(...nextItem);
+
+						return handle(arr);
+					}
+
+					return arr;
+				}
+
+				return handle(value);
+			}
+		})
+	],
+});
+
+export { oraArrayAddon };

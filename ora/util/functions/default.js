@@ -40,49 +40,52 @@ export default function (){
 		// 	else throw `Invalid Variable Name: (${varname})`;
 		// },
 
-		[kw.id.shift] ({ iter, scope }) {
-			const variable = this.expectSetVar({ iter, scope }, false);
+		// [kw.id.shift] ({ iter, scope }) {
+		// 	const variable = this.expectSetVar({ iter, scope }, false);
 
-			if (Array.isArray(variable.data))
-				variable.data.shift();
+		// 	if (Array.isArray(variable.data))
+		// 		variable.data.shift();
 
-			else if (typeof variable.data == 'object')
-				delete variable.data[Object.keys(variable.data)[0]];
-		},
+		// 	else if (typeof variable.data == 'object')
+		// 		delete variable.data[Object.keys(variable.data)[0]];
+		// },
 
-		[kw.id.pop] ({ iter, scope }) {
-			const variable = this.expectSetVar({ iter, scope }, false);
+		// [kw.id.pop] ({ iter, scope }) {
+		// 	const variable = this.expectSetVar({ iter, scope }, false);
 
-			if (Array.isArray(variable.data))
-				variable.data.pop();
+		// 	if (Array.isArray(variable.data))
+		// 		variable.data.pop();
 
-			else if (typeof variable.data == 'object'){
-				const keys = Object.keys(variable.data);
-				delete variable.data[keys[keys.length - 1]];
-			}
-		},
+		// 	else if (typeof variable.data == 'object'){
+		// 		const keys = Object.keys(variable.data);
+		// 		delete variable.data[keys[keys.length - 1]];
+		// 	}
+		// },
 
-		[kw.id.push] ({ iter, data }) {
-			const items = [this.parseInput(iter, iter.next(), scope)];
+		// [kw.id.push] ({ iter, scope }) {
+		// 	console.log(iter.stack, iter.items, iter.peek())
+		// 	const items = [this.parseNext(iter, scope)];
 
-			while (iter.disposeIf(',') && parseInput(iter.clone(), iter.peek(1), scope) != null)
-				items.push(
-					parseInput(iter, iter.next(), scope)
-				);
+		// 	while (iter.disposeIf(',') && this.parseInput(iter.clone(), iter.peek(1), scope) != null)
+		// 		items.push(
+		// 			this.parseNext(iter, scope)
+		// 		);
+				
+		// 	const nextSeq = iter.next();
 
-			const nextSeq = iter.next();
+		// 	console.log('n', nextSeq, iter.stack)
 
-			if (nextSeq.done || !kw.is(nextSeq.value, kw.id.assign) || !isA_0(iter.peek(1).value))
-				return;
+		// 	if (nextSeq.done || !kw.is(nextSeq.value, kw.id.assign) || !isA_0(iter.peek(1).value))
+		// 		return;
 			
-			const variable = this.expectSetVar.bind(this)({ iter, scope });
-			const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : scope);
+		// 	const variable = this.expectSetVar.bind(this)({ iter, scope });
+		// 	const { variables } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : scope);
 
-			this.setOnPath({
-				source: variables,
-				path: variable.path,
-				value: [...variable.data, ...items]
-			});
-		},
+		// 	this.setOnPath({
+		// 		source: variables,
+		// 		path: variable.path,
+		// 		value: [...variable.data, ...items]
+		// 	});
+		// },
 	};
 };

@@ -4,7 +4,7 @@ const defaultKeywords = {
 	//#region //* Commands *//
 	// comment: ['comment', '#'],
 	set: ['let'],
-	assign: ['='],
+	assign: ['=', 'to'],
 	delete: ['delete'],
 	// print: ['print'],
 	loop: ['loop'],
@@ -119,7 +119,9 @@ class keywordDict {
 	}
 
 	addKeyword (id, keywords){
-		(this.keywords[id] ??= []).push(...keywords);
+		const notIncluded = keywords.filter(kw => this.keywords?.[id]?.includes(kw) != true);
+
+		(this.keywords[id] ??= []).push(...notIncluded);
 
 		this.refreshKeywordIDs();
 	}

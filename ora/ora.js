@@ -597,28 +597,6 @@ class Ora {
 				else value = processed;
 			}
 
-		if (value == 'sleep'){
-			this.paused.value = true;
-			setTimeout(() => {
-				this.paused.value = false;
-
-				console.log('not sleeping anymore!')
-			}, 5000);
-		}
-
-		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
-			console.log('alt setting')
-			if (value != undefined)
-				this.setOnPath({
-					source: variables,
-					path: [value, ...extendedPath],
-					value: this.parseInput(iter, iter.next(), scope)
-				});
-			else throw 'Cannot mod a raw variable to a value!'
-				
-			// return variables;
-		}
-
 		if (isA_0(value) && variables.hasOwnProperty(value))
 			return this.parseInputToVariable(iter, { value }, scope);
 
@@ -852,13 +830,13 @@ class Ora {
 			}
 		}
 
-		//* Greater Than
-		if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
-			result = result > getValue(iter.next());
+		// // //* Greater Than
+		// if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
+		// 	result = result > getValue(iter.next());
 
-		//* Less Than
-		if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
-			result = result < getValue(iter.next());
+		// //* Less Than
+		// if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
+		// 	result = result < getValue(iter.next());
 
 		//* String repeater
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {
