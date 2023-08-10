@@ -1,6 +1,0 @@
-{
-	"type": "module",
-	"dependencies": {
-		"electron": "^25.4.0"
-	}
-}

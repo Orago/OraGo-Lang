@@ -1,4 +1,4 @@
-import { customFunction, customKeyword } from '../../ora/util/extensions.js';
+import { customFunction, customKeyword } from '../ora/util/extensions.js';
 import rpc from 'discord-rpc';
 
 let activityLoad;
