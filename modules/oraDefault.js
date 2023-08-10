@@ -1,11 +1,11 @@
 import {
 	valueProcessor,
 	valuePostProcessor,
-	valuePreProcessor,
 
 	customFunction,
 	customKeyword,
-	customExtension
+	customExtension,
+	extensionPack
 } from '../ora/util/extensions.js';
 
 
@@ -138,3 +138,10 @@ const oraArrayAddon = new customExtension({
 });
 
 export { oraArrayAddon };
+
+const oraBasicExtension = new extensionPack(
+	oraComment,
+	oraReturn,
+	oraValueSetter,
+	oraArrayAddon
+);

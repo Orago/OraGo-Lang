@@ -45,8 +45,6 @@ const oraAlertFN = new customFunction('alert', function ({ iter, scope }) {
 
 		if (iter.disposeIf(')') != true)
 			throw 'Missing closing parenthesis for alert';
-
-		console.log('printing', [JSON.stringify(dialogText)])
 		
 		const command = `mshta vbscript:Execute("msgbox "${JSON.stringify(dialogText)}"")`;
 
@@ -61,7 +59,6 @@ const oraAlert = new customExtension({
 	keyword: new customKeyword('alert', ['jankyalert']),
 	function: oraAlertFN
 });
-
 
 
 // Handle terminal close
@@ -87,7 +84,12 @@ const oraExitProcess = new customExtension({
 	})
 });
 
-const oraDeveloperUtil = new extensionPack(oraExecute, oraDialog, oraAlert, oraExitProcess);
+const oraDeveloperUtil = new extensionPack(
+	oraExecute,
+	oraDialog,
+	oraAlert,
+	oraExitProcess
+);
 
 export {
 	oraDeveloperUtil,

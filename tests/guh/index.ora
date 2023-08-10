@@ -2,4 +2,8 @@ let cats = ['oragos'];
 
 cats push 'success' push 'mistakes' pop join ['hello', 'world'];
 
+loop 10 {
+	cats pop;
+}
+
 print cats;

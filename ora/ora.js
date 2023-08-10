@@ -157,8 +157,11 @@ class Ora {
 			throw 'Invalid extension input';
 
 		for (const extension of extensions){
-			if (extension.keyword) customKeywords.push(extension.keyword);
-			if (extension.function) customFunctions.push(extension.function);
+			if (extension.keyword && customKeywords.includes(extension.keyword) != true)
+				customKeywords.push(extension.keyword);
+			
+			if (extension.function && customFunctions.includes(extension.function) != true)
+				customFunctions.push(extension.function);
 
 			if (extension.processors){
 				for (const processor of extension.processors){

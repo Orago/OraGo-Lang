@@ -10,6 +10,9 @@ import { oraMessageBoxOk } from '../../modules/MessageBox/index.js';
 import { oraValueSetter } from '../../modules/oraDefault.js';
 import { oraComparison } from '../../modules/oraMath.js';
 import { oraArrayAddon } from '../../modules/oraDefault.js';
+import { getClipboardText } from '../../modules/MessageBox/clipboard.js';
+
+console.log(getClipboardText())
 
 const run = (code) => {
 	const instance = new ora({
