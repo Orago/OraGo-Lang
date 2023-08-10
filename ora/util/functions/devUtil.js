@@ -6,7 +6,6 @@ export default function (){
 		[kw.id.log_variables] ({ scope }) {
 			console.log('\n', `ORA LANG VARIABLES:`, '\n',  scope.variables, '\n')
 		},
-
 		[kw.id.log_scope] ({ scope }) {
 			console.log('\n', `ORA LANG SCOPE:`, '\n', scope, '\n')
 		},

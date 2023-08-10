@@ -1,19 +1,20 @@
 import fs from 'fs';
 import ora from '../../ora/ora.js';
-import loops from '../../ora/util/functions/loops.js';
 import oraModules from '../../modules/oraModules.js';
 
 import { oraPrint } from '../../modules/oraLogging.js';
+import { oraLoopPack } from '../../modules/oraLoops.js';
+import { oraDeveloperUtil } from '../../modules/oraDeveloper.js';
+import { oraMessageBoxOk } from '../../modules/MessageBox/index.js';
 
 const run = (code) => {
 	const instance = new ora({
 		extensions: [
+			oraDeveloperUtil,
 			oraPrint,
-			oraModules
-		],
-
-		functions: [
-			loops
+			oraModules,
+			oraLoopPack,
+			oraMessageBoxOk
 		]
 	});
 	

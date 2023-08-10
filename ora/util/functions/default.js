@@ -1,5 +1,5 @@
 export default function (){
-	const { keywords: kw, DataType} = this;
+	const { keywords: kw, DataType } = this;
 	const { isA_0 } = this.utils;
 
 	return {

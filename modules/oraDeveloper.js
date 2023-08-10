@@ -1,5 +1,6 @@
-import { customFunction, customKeyword, customExtension } from '../ora/util/extensions.js';
+import { customFunction, customKeyword, customExtension, extensionPack } from '../ora/util/extensions.js';
 import { exec } from 'child_process';
+
 
 const execProcesses = [];
 
@@ -61,14 +62,15 @@ const oraAlert = new customExtension({
 	function: oraAlertFN
 });
 
+
+
 // Handle terminal close
 function onKill (code){
 	for (const process of execProcesses)
 		process.kill();
 
-	console.log('PROCESSES', execProcesses)
   // Your cleanup or finalization code here
-  console.log('Node.js process is about to exit with code:', code);
+  // console.log('Node.js process is about to exit with code:', code);
 }
 
 // Signal listeners
@@ -78,5 +80,21 @@ process.on('SIGINT', () => {
 	process.exit(0);
 });
 
+const oraExitProcess = new customExtension({
+	keyword: new customKeyword('exit_process', ['exit_process']),
+	function: new customFunction('exit_process', function () {
+		return process.exit();
+	})
+});
 
-export { oraExecute, oraDialog, oraAlert };
+const oraDeveloperUtil = new extensionPack(oraExecute, oraDialog, oraAlert, oraExitProcess);
+
+export {
+	oraDeveloperUtil,
+
+	// extensions
+	oraExecute,
+	oraDialog,
+	oraAlert,
+	oraExitProcess
+};
