@@ -1,4 +1,4 @@
-import { customFunction, customKeyword } from '../ora/util/extensions.js';
+import { customFunction, customKeyword, customExtension, extensionPack } from '../../ora/util/extensions.js';
 import rpc from 'discord-rpc';
 
 let activityLoad;
@@ -39,6 +39,7 @@ const createRpcFN = new customFunction('createRPC', function ({ iter, scope }) {
 	});
 });
 
+
 const updateActivityKW = new customKeyword('activity', ['activity']);
 
 function defaultActivity (){
@@ -72,23 +73,19 @@ const updateActivityFN = new customFunction('activity', function ({ iter, scope 
 
 	const { activity } = scope.data.rpcActivity;
 
-	if (method == 'large'){
-		const items = this.trueValue(this.parseNext(iter, scope));
-		
-		handleImage(method, items, activity);
-	}
-	else if (method == 'small'){
-		const items = this.trueValue(this.parseNext(iter, scope));
-		
-		handleImage('small', items, activity);
-	}
+	if (method == 'large')
+		handleImage(method, this.trueValue(this.parseNext(iter, scope)), activity);
 	
-	else if (method == 'state') activity.state = this.parseNext(iter, scope);
+	else if (method == 'small')
+		handleImage('small', this.trueValue(this.parseNext(iter, scope)), activity);
+	
+	else if (method == 'state')   activity.state = this.parseNext(iter, scope);
 	else if (method == 'details') activity.details = this.parseNext(iter, scope);
 
 	else if (method == 'set'){
 		if (scope.data.discordRPC.ready)
 			scope.data.discordRPC.client.request('SET_ACTIVITY', scope.data.rpcActivity);
+		
 		else activityLoad = scope.data.rpcActivity;
 	}
 });

@@ -1,28 +1,15 @@
 import fs from 'fs';
 import ora from '../../ora/ora.js';
-import logging from '../../ora/util/functions/logging.js';
-import loops from '../../ora/util/functions/loops.js';
-import {
-	exportKW,
-	importKW,
-	exportFunc,
-	importFunc
-} from '../../ora/esm.js';
 
-import { rpcKeywords, rpcFunctions } from './discordRpc.js';
+
+import { rpcKeywords, rpcFunctions } from '../../modules/oraDiscordRPC/index.js';
 
 const run = (code) => {
 	const instance = new ora({
 		keywords: [
-			exportKW,
-			importKW,
 			...rpcKeywords
 		],
 		functions: [
-			logging,
-			loops,
-			exportFunc,
-			importFunc,
 			...rpcFunctions
 		]
 	});
