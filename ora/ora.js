@@ -8,7 +8,13 @@ import { oraLexer, chunkLexed } from './util/lexer.js';
 import defaultFunctions from './util/functions/default.js';
 import OraType from './util/DataTypes.js';
 
-import { customFunctionContainer, customFunction, customKeyword, customExtension, extensionPack } from './util/extensions.js';
+import {
+	customFunctionContainer,
+	customFunction as oraFunction,
+	customKeyword as oraKeyword,
+	customExtension as oraExtension,
+	extensionPack as oraExtensionPack
+} from './util/extensions.js';
 import VariableObserver from './_observer.js';
 
 function getValue (variable, property){
@@ -88,7 +94,7 @@ class Ora {
 			customTypes,
 			keywords: customKeywords,
 			extensions,
-			variables
+			variables,
 		} = forceType.forceObject(settings);
 
 		this.utils.parseInput = this.parseInput;
@@ -121,6 +127,7 @@ class Ora {
 		const extensions = forceType.forceArray(initExtensions);
 		const customKeywords = forceType.forceArray(initKW);
 		const customFunctions = forceType.forceArray(initFN);
+		const valuePreProcessors = [];
 
 		if (Array.isArray(initData.customFunctions))
 			customFunctions.push(...initData.customFunctions);
@@ -128,9 +135,10 @@ class Ora {
 		this.keywords = new keywordDict();
 		this.customKeywords = customKeywords;
 		this.customFunctions = customFunctions;
+		this.valuePreProcessors = valuePreProcessors;
 
 		{
-			const finder = e => e instanceof extensionPack;
+			const finder = e => e instanceof oraExtensionPack;
 			while (extensions.some(finder)){
 				const item = extensions.find(finder);
 				const index = extensions.indexOf(item);
@@ -140,16 +148,17 @@ class Ora {
 		}
 
 		// Handle Extensions
-		if (extensions.some(e => e instanceof customExtension != true))
+		if (extensions.some(e => e instanceof oraExtension != true))
 			throw 'Invalid extension input';
 
 		for (const extension of extensions){
 			if (extension.keyword) customKeywords.push(extension.keyword);
 			if (extension.function) customFunctions.push(extension.function);
+			if (extension.valuePreProcessor) valuePreProcessors.push(extension.valuePreProcessor);
 		}
 
 		// Handle Keywords
-		if (customKeywords.some(e => e instanceof customKeyword != true))
+		if (customKeywords.some(e => e instanceof oraKeyword != true))
 			throw 'Invalid custom keyword';
 
 		for (const customKW of customKeywords)
@@ -166,7 +175,7 @@ class Ora {
 		let mappedFunctions = {};
 
 		if (Array.isArray(customFunctions)){
-			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
+			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof oraFunction != true))
 				throw 'Invalid custom function input';
 
 			mappedFunctions = Object.assign({}, ...customFunctions.map(custom => custom.bound(this)));
@@ -436,6 +445,10 @@ class Ora {
 	}
 
 	parseValueBasic (iter, value, scope = {}){
+		for (const preProcessor of this.valuePreProcessors)
+			if (preProcessor.validate({ iter, value, scope }) === true)
+				return preProcessor.parse({ iter, value, scope });
+
 		if (isString(value)) return parseString(value);
 
 		if (value == '{'){
@@ -907,7 +920,6 @@ class Ora {
 
 		for (const chunk of chunks){
 			if (this.paused.value){
-				console.log('sleeping')
 				this.paused.once(() => this.#handleChunks(chunks.slice(parsed, chunks.length)));
 				break;
 			}

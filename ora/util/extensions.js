@@ -64,15 +64,47 @@ class customKeyword {
 }
 
 class customExtension {
-	constructor ({ keyword: KW, function: FN }){
+	constructor ({ keyword: KW, function: FN, valuePreProcessor: PreP }){
 		if (KW instanceof customKeyword != true)
 			throw 'Invalid keyword instance for extension';
 
-		if (FN instanceof customFunction != true)
-			throw 'Invalid function instance for extension';
+		if (FN != null) //= |
+			if (FN instanceof customFunction)
+				this.function = FN;
+			else throw 'Invalid function instance for extension';
 
+		if (PreP != null) //= |
+			if (PreP instanceof valuePreProcessor)
+				this.valuePreProcessor = PreP;
+			else throw 'Invalid preprocessor instance for extension';
+		
 		this.keyword = KW;
-		this.function = FN;
+	}
+}
+
+// class customPreProcessor {
+// 	validate ({ iter, value }){
+// 		return false;
+// 	}
+
+// 	parse ({ iter, }){
+		
+// 	}
+// }
+
+class valuePreProcessor {
+	validate;
+	parse;
+
+	constructor ({ validate, parse }){
+		if (typeof validate != 'function')
+			throw 'Invalid validator for PreProcessor';
+
+		if (typeof parse != 'function')
+			throw 'Invalid parser for PreProcessor';
+
+		this.validate = validate;
+		this.parse = parse;
 	}
 }
 
@@ -107,5 +139,6 @@ export {
 	customFunction,
 	customKeyword,
 	customExtension,
-	extensionPack
+	extensionPack,
+	valuePreProcessor
 };

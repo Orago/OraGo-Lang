@@ -7,6 +7,20 @@ import { oraLoopPack } from '../../modules/oraLoops.js';
 import { oraDeveloperUtil } from '../../modules/oraDeveloper.js';
 import { oraMessageBoxOk } from '../../modules/MessageBox/index.js';
 
+import { valuePreProcessor, customExtension, customKeyword } from '../../ora/util/extensions.js';
+
+const gibby = new customExtension({
+	keyword: new customKeyword('gibby', ['gibby']),
+	valuePreProcessor: new valuePreProcessor({
+		validate ({ value }){
+			return value === 'gibby';
+		},
+		parse ({ value }){
+			return 'meyehehehehe'
+		}
+	})
+})
+
 const run = (code) => {
 	const instance = new ora({
 		extensions: [
@@ -14,7 +28,8 @@ const run = (code) => {
 			oraPrint,
 			oraModules,
 			oraLoopPack,
-			oraMessageBoxOk
+			oraMessageBoxOk,
+			gibby
 		]
 	});
 	

@@ -1,4 +1,2 @@
-
 print 'starting';
-msgBoxOk('cat', 'test');
-print 'ended';
+print gibby;

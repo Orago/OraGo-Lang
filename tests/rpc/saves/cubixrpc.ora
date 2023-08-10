@@ -1,0 +1,8 @@
+rpc "964920505100554270";
+
+activity state 'In Lobby';
+activity details 'Idling';
+activity large ['gameicon-2', 'Cubix Worlds'];
+activity small ['gameicon-2', 'Cubix Worlds'];
+
+activity set;

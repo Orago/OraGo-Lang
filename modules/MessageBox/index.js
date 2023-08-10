@@ -1,6 +1,6 @@
 import { customFunction, customKeyword, customExtension } from '../../ora/util/extensions.js';
 import FFI from 'ffi-napi';
-import { ref } from 'ref-napi';
+import ref from 'ref-napi';
 
 const user32 = new FFI.Library('user32', {
   MessageBoxW: ['int', ['int', 'string', 'string', 'int']],
@@ -13,7 +13,7 @@ const MB_ICONINFORMATION = 0x00000040;
 
 const TEXT = text => Buffer.from(text + '\0', 'ucs2')
 
-const ok = async (title, message) => {
+const ok = (title, message) => {
   const id = user32.MessageBoxW(
 		null,
 		TEXT(message),
@@ -22,13 +22,13 @@ const ok = async (title, message) => {
 	);
 };
 
-const okCancel = async (title, message) => {
-  let response = await user32.MessageBoxW(0, TEXT(message), TEXT(title), 1);
+const okCancel = (title, message) => {
+  let response = user32.MessageBoxW(0, TEXT(message), TEXT(title), 1);
   return response == 1 ? 'OK' : 'CANCEL'
 };
 
-const abortRetryIgnore = async (title, message) => {
-  let response = await user32.MessageBoxW(0, TEXT(message), TEXT(title), 2);
+const abortRetryIgnore = (title, message) => {
+  let response = user32.MessageBoxW(0, TEXT(message), TEXT(title), 2);
   return response == 3 ? 'ABORT' : response == 4 ? 'RETRY' : 'IGNORE'
 };
 
@@ -52,7 +52,7 @@ const oraMessageBoxOk = new customExtension({
 			if (iter.disposeIf(')') != true)
 				throw 'Missing closing parenthesis for alert';
 
-			ok(dialogTitle, dialogMessage);
+			const res = ok(dialogTitle, dialogMessage);
 
 			return;
 		}
