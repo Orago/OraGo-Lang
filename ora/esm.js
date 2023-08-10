@@ -7,8 +7,8 @@ import { isA_0 } from './util/forceType.js';
 const exportKW = new customKeyword('export', ['export']);
 const importKW = new customKeyword('import', ['import']);
 
-const exportFunc = new customFunction('export', function ({ iter, data }) {
-	const value = this.parseInput(iter, iter.next(), data);
+const exportFunc = new customFunction('export', function ({ iter, scope }) {
+	const value = this.parseInput(iter, iter.next(), scope);
 
 	return {
 		exit: true,
@@ -16,14 +16,14 @@ const exportFunc = new customFunction('export', function ({ iter, data }) {
 	};
 });
 
-const importFunc = new customFunction('import', function ({ iter, data }){
+const importFunc = new customFunction('import', function ({ iter, scope }){
 	try {
-		let { variables } = data;
+		let { variables } = scope;
 
 		const variableName = iter.next().value;
 		const path = [variableName];
 		
-		if (data.functions.hasOwnProperty(variableName))
+		if (scope.functions.hasOwnProperty(variableName))
 			throw `Cannot set variable to function name: ${variableName}`;
 
 		while (iter.disposeIf('.') && isA_0(iter.peek(1).value))

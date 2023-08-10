@@ -1,25 +1,19 @@
 import fs from 'fs';
 import ora from '../../ora/ora.js';
-import logging from '../../ora/util/functions/logging.js';
 import loops from '../../ora/util/functions/loops.js';
-import {
-	exportKW,
-	importKW,
-	exportFunc,
-	importFunc
-} from '../../ora/esm.js';
+import oraModules from '../../modules/oraModules.js';
+
+import { oraPrint } from '../../modules/oraLogging.js';
 
 const run = (code) => {
 	const instance = new ora({
-		keywords: [
-			exportKW,
-			importKW,
+		extensions: [
+			oraPrint,
+			oraModules
 		],
+
 		functions: [
-			logging,
-			loops,
-			exportFunc,
-			importFunc
+			loops
 		]
 	});
 	

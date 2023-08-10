@@ -6,7 +6,7 @@ const defaultKeywords = {
 	set: ['set', 'let'],
 	assign: ['to', '='],
 	delete: ['delete'],
-	print: ['print'],
+	// print: ['print'],
 	loop: ['loop'],
 	for: ['for'],
 	if: ['if'],

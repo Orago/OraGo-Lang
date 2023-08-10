@@ -56,33 +56,56 @@ class customKeyword {
 	}
 
 	bound ({ keywords }){
-		if (keywords.hasID(this.#id))
-			throw `Keyword already exists (#${this.#id})`;
+		// if (keywords.hasID(this.#id))
+		// 	throw `Keyword already exists (#${this.#id})`;
 
 		return [this.#id, this.#keywords];
 	}
 }
 
-
 class customExtension {
-	keyword;
-	function;
-	
-	constructor (keywordInstance, functionInstance){
-		if (keywordInstance instanceof customKeyword != true)
+	constructor ({ keyword: KW, function: FN }){
+		if (KW instanceof customKeyword != true)
 			throw 'Invalid keyword instance for extension';
 
-		if (functionInstance instanceof functionInstance != true)
+		if (FN instanceof customFunction != true)
 			throw 'Invalid function instance for extension';
 
-		this.keyword = keywordInstance;
-		this.function = functionInstance;
+		this.keyword = KW;
+		this.function = FN;
 	}
+}
+
+class extensionPack {
+	#extensions = [];
+
+	constructor (...extensionsToPack){
+		for (const extension of extensionsToPack)
+			// Add extension
+			if (extension instanceof customExtension)
+				this.#extensions.push(extension);
+
+			// Decompress and add extensions
+			else if (extension instanceof extensionPack)
+				this.#extensions.push(...extension);
+
+			// Throw
+			else {
+				console.log(extension);
+				throw '^ Cannot pack extension';
+			}
+	}
+
+	*[Symbol.iterator]() {
+    for (const item of this.#extensions)
+      yield item;
+  }
 }
 
 export {
 	customFunctionContainer,
 	customFunction,
 	customKeyword,
-	customExtension
+	customExtension,
+	extensionPack
 };

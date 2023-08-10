@@ -6,10 +6,9 @@ import { isString, parseString, parseBlock } from './util/parseTools.js';
 import { oraLexer, chunkLexed } from './util/lexer.js';
 
 import defaultFunctions from './util/functions/default.js';
-import logging from './util/functions/logging.js';
 import OraType from './util/DataTypes.js';
 
-import { customFunctionContainer, customFunction, customKeyword, customExtension } from './util/extensions.js';
+import { customFunctionContainer, customFunction, customKeyword, customExtension, extensionPack } from './util/extensions.js';
 import VariableObserver from './_observer.js';
 
 function getValue (variable, property){
@@ -130,12 +129,24 @@ class Ora {
 		this.customKeywords = customKeywords;
 		this.customFunctions = customFunctions;
 
+		{
+			const finder = e => e instanceof extensionPack;
+			while (extensions.some(finder)){
+				const item = extensions.find(finder);
+				const index = extensions.indexOf(item);
+
+				extensions.splice(index, 1, ...item);
+			}
+		}
+
 		// Handle Extensions
 		if (extensions.some(e => e instanceof customExtension != true))
 			throw 'Invalid extension input';
 
-		for (const customKW of extensions.map(extension => extension.keyword))
-			this.keywords.addKeyword( ...customKW.bound(this) );
+		for (const extension of extensions){
+			if (extension.keyword) customKeywords.push(extension.keyword);
+			if (extension.function) customFunctions.push(extension.function);
+		}
 
 		// Handle Keywords
 		if (customKeywords.some(e => e instanceof customKeyword != true))
@@ -143,6 +154,7 @@ class Ora {
 
 		for (const customKW of customKeywords)
 			this.keywords.addKeyword( ...customKW.bound(this) );
+
 
 		// Handle variables and classes
 		this.variables = forceType.forceObject(variables);
@@ -152,8 +164,6 @@ class Ora {
 		const parseInput = this.parseInput.bind(this);
 
 		let mappedFunctions = {};
-
-		customFunctions.push(logging);
 
 		if (Array.isArray(customFunctions)){
 			if (customFunctions.some(e => e instanceof customFunctionContainer != true && e instanceof customFunction != true))
@@ -897,6 +907,7 @@ class Ora {
 
 		for (const chunk of chunks){
 			if (this.paused.value){
+				console.log('sleeping')
 				this.paused.once(() => this.#handleChunks(chunks.slice(parsed, chunks.length)));
 				break;
 			}

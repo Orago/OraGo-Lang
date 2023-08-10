@@ -1,5 +1,9 @@
+import cat from './test.ora';
+
+
 print 'SLEEPING***********************';
 
 # sleep;
 
 print 'NOT SLEEPING^^^^^^^^^^^^^^^^^^^^^';
+print 'Kitty test' & cat;
