@@ -11,14 +11,16 @@ import { valuePreProcessor, customExtension, customKeyword } from '../../ora/uti
 
 const gibby = new customExtension({
 	keyword: new customKeyword('gibby', ['gibby']),
-	valuePreProcessor: new valuePreProcessor({
-		validate ({ value }){
-			return value === 'gibby';
-		},
-		parse ({ value }){
-			return 'meyehehehehe'
-		}
-	})
+	valuePreProcessors: [
+		new valuePreProcessor({
+			validate ({ value }){
+				return value === 'gibby';
+			},
+			parse ({ value }){
+				return 'meyehehehehe'
+			}
+		})
+	]
 })
 
 const run = (code) => {

@@ -154,7 +154,7 @@ class Ora {
 		for (const extension of extensions){
 			if (extension.keyword) customKeywords.push(extension.keyword);
 			if (extension.function) customFunctions.push(extension.function);
-			if (extension.valuePreProcessor) valuePreProcessors.push(extension.valuePreProcessor);
+			if (extension.valuePreProcessors) valuePreProcessors.push(...extension.valuePreProcessors);
 		}
 
 		// Handle Keywords

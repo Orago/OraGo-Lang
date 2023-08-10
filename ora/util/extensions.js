@@ -64,7 +64,7 @@ class customKeyword {
 }
 
 class customExtension {
-	constructor ({ keyword: KW, function: FN, valuePreProcessor: PreP }){
+	constructor ({ keyword: KW, function: FN, valuePreProcessors: PrePs }){
 		if (KW instanceof customKeyword != true)
 			throw 'Invalid keyword instance for extension';
 
@@ -73,10 +73,15 @@ class customExtension {
 				this.function = FN;
 			else throw 'Invalid function instance for extension';
 
-		if (PreP != null) //= |
-			if (PreP instanceof valuePreProcessor)
-				this.valuePreProcessor = PreP;
-			else throw 'Invalid preprocessor instance for extension';
+		if (PrePs != null && Array.isArray(PrePs)){
+			for (const PreP of PrePs){
+				if (PreP instanceof valuePreProcessor != true)
+					throw 'Invalid preprocessor instance for extension';
+			}
+				
+			this.valuePreProcessors = PrePs;
+		}
+			
 		
 		this.keyword = KW;
 	}
