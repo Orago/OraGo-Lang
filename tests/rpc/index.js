@@ -1,16 +1,11 @@
 import fs from 'fs';
 import ora from '../../ora/ora.js';
-
-
-import { rpcKeywords, rpcFunctions } from '../../modules/oraDiscordRPC/index.js';
+import { oraRPC } from '../../modules/oraDiscordRPC/index.js';
 
 const run = (code) => {
 	const instance = new ora({
-		keywords: [
-			...rpcKeywords
-		],
-		functions: [
-			...rpcFunctions
+		extensions: [
+			oraRPC
 		]
 	});
 	

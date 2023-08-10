@@ -1,28 +1,29 @@
-import { customFunction, customKeyword, customExtension, extensionPack } from '../../ora/util/extensions.js';
+import { customFunction, customKeyword, customExtension } from '../../ora/util/extensions.js';
 import rpc from 'discord-rpc';
 
+function defaultActivity (){
+	return {
+		pid: process.pid,
+		activity: {
+			details: 'Pending Details',
+			state: 'pending state',
+			assets: {}
+		}
+	}
+}
+
+let rpcInstance;
+let rpcActivity = defaultActivity();
 let activityLoad;
 
-const createRpcKW = new customKeyword('createRPC', ['rpc']);
-
-const createRpcFN = new customFunction('createRPC', function ({ iter, scope }) {
-	if (scope.data.hasOwnProperty('discordRPC'))
-		throw 'RPC already exists!';
-
-	const clientID = this.parseNext(iter, scope);
-	
+function createClient (clientID){
 	if (typeof clientID != 'number' && typeof clientID != 'string')
 		throw 'Invalid client ID';
 
 	const client = new rpc.Client({ transport: 'ipc' });
-
-	const RPC = {
-		clientID,
-		client,
-		ready: false
-	};
+	const RPC = { clientID, client, ready: false };
 	
-	scope.data.discordRPC = RPC;
+	rpcInstance = RPC;
 
 	client.login({ clientId: (RPC.clientID + '') }).catch(console.error);
 
@@ -37,21 +38,8 @@ const createRpcFN = new customFunction('createRPC', function ({ iter, scope }) {
 
 		activityLoad = undefined;
 	});
-});
-
-
-const updateActivityKW = new customKeyword('activity', ['activity']);
-
-function defaultActivity (){
-	return {
-		pid: process.pid,
-		activity: {
-			details: 'Pending Details',
-			state: 'pending state',
-			assets: {}
-		}
-	}
 }
+
 
 function handleImage (size, items, activity){
 	if (Array.isArray(items) != true || items.length != 2)
@@ -63,15 +51,18 @@ function handleImage (size, items, activity){
 	activity.assets[`${size}_text`] = text;
 }
 
-const updateActivityFN = new customFunction('activity', function ({ iter, scope }) {
-	if (scope.data.hasOwnProperty('discordRPC') != true)
-		throw 'RPC doesn\'t exist!';
-
+const updateActivityFN = new customFunction('rich_presence', function ({ iter, scope }) {
 	const method = this.parseNext(iter, scope);
 
-	scope.data.rpcActivity ??= defaultActivity();
+	if (method == 'connect'){
+		if (rpcInstance) throw 'Already in a rpc instance';
+		else return createClient(this.parseNext(iter, scope));
+	}
 
-	const { activity } = scope.data.rpcActivity;
+	if (rpcInstance == null)
+		throw 'RPC isn\'t instanced!';
+
+	const { activity } = rpcActivity;
 
 	if (method == 'large')
 		handleImage(method, this.trueValue(this.parseNext(iter, scope)), activity);
@@ -82,22 +73,18 @@ const updateActivityFN = new customFunction('activity', function ({ iter, scope 
 	else if (method == 'state')   activity.state = this.parseNext(iter, scope);
 	else if (method == 'details') activity.details = this.parseNext(iter, scope);
 
-	else if (method == 'set'){
-		if (scope.data.discordRPC.ready)
-			scope.data.discordRPC.client.request('SET_ACTIVITY', scope.data.rpcActivity);
+	else if (method == 'update'){
+		if (rpcInstance?.ready)
+			rpcInstance.client.request('SET_ACTIVITY', rpcActivity);
 		
-		else activityLoad = scope.data.rpcActivity;
+		else activityLoad = rpcActivity;
 	}
 });
 
-const rpcKeywords = [
-	createRpcKW,
-	updateActivityKW
-];
+const oraRPC = new customExtension({
+	keyword: new customKeyword('rich_presence', ['rpc']),
+	function: updateActivityFN
+})
 
-const rpcFunctions = [
-	createRpcFN,
-	updateActivityFN
-];
 
-export { rpcKeywords, rpcFunctions };
+export { oraRPC };
