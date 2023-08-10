@@ -13,7 +13,9 @@ import {
 	customFunction as oraFunction,
 	customKeyword as oraKeyword,
 	customExtension as oraExtension,
-	extensionPack as oraExtensionPack
+	extensionPack as oraExtensionPack,
+	valuePreProcessor,
+	valuePostProcessor
 } from './util/extensions.js';
 import VariableObserver from './_observer.js';
 
@@ -127,7 +129,6 @@ class Ora {
 		const extensions = forceType.forceArray(initExtensions);
 		const customKeywords = forceType.forceArray(initKW);
 		const customFunctions = forceType.forceArray(initFN);
-		const valuePreProcessors = [];
 
 		if (Array.isArray(initData.customFunctions))
 			customFunctions.push(...initData.customFunctions);
@@ -135,7 +136,8 @@ class Ora {
 		this.keywords = new keywordDict();
 		this.customKeywords = customKeywords;
 		this.customFunctions = customFunctions;
-		this.valuePreProcessors = valuePreProcessors;
+		this.valuePreProcessors = [];
+		this.valuePostProcessors = [];
 
 		{
 			const finder = e => e instanceof oraExtensionPack;
@@ -154,7 +156,16 @@ class Ora {
 		for (const extension of extensions){
 			if (extension.keyword) customKeywords.push(extension.keyword);
 			if (extension.function) customFunctions.push(extension.function);
-			if (extension.valuePreProcessors) valuePreProcessors.push(...extension.valuePreProcessors);
+
+			if (extension.processors){
+				for (const processor of extension.processors){
+					if (processor instanceof valuePreProcessor)
+						this.valuePreProcessors.push(processor);
+
+					else if (processor instanceof valuePostProcessor)
+						this.valuePostProcessors.push(processor);
+				}
+			}
 		}
 
 		// Handle Keywords
@@ -445,9 +456,13 @@ class Ora {
 	}
 
 	parseValueBasic (iter, value, scope = {}){
-		for (const preProcessor of this.valuePreProcessors)
-			if (preProcessor.validate({ iter, value, scope }) === true)
-				return preProcessor.parse({ iter, value, scope });
+		for (const processor of this.valuePreProcessors)
+			if (processor.validate({ iter, value, scope }) === true){
+				const processed = processor.parse({ iter, value, scope });
+
+				if (processor.immediate) return processed;
+				else result = processed;
+			}
 
 		if (isString(value)) return parseString(value);
 
@@ -503,47 +518,47 @@ class Ora {
 		}
 
 		if (this.keywords.is(value, this.keywords.id.function)){
-				const args = [];
+			const args = [];
 
-				if (iter.disposeIf('(')){
-					let passes = 0;
-			
-					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-	
-						args.push(iter.next().value);
-						
-						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
-					}
+			if (iter.disposeIf('(')){
+				let passes = 0;
+		
+				while (!iter.disposeIf(')')){
+					if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
+
+					args.push(iter.next().value);
+					
+					if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
+				}
+			}
+
+			const items = parseBlock({ iter, scope });
+
+			const func = (...inputs) => {
+				const variables = {};
+
+				for (const [key, value] of Object.entries(scope.variables))
+					variables[key] = value;
+
+				for (const [i, value] of Object.entries(args)){
+					if (['object', 'function'].includes(typeof inputs[i]))
+						variables[value] = inputs[i];
+
+					else variables[value] = parseInput(
+						new betterIterable([], { tracking: true }),
+						{ value: inputs[i] },
+						scope
+					);
 				}
 
-				const items = parseBlock({ iter, scope });
-
-				const func = (...inputs) => {
-					const variables = {};
-
-					for (const [key, value] of Object.entries(scope.variables))
-						variables[key] = value;
-
-					for (const [i, value] of Object.entries(args)){
-						if (['object', 'function'].includes(typeof inputs[i]))
-							variables[value] = inputs[i];
-
-						else variables[value] = parseInput(
-							new betterIterable([], { tracking: true }),
-							{ value: inputs[i] },
-							scope
-						);
+				return this.handleItems(
+					new betterIterable(items, { tracking: true }),
+					{
+						functions: scope.functions,
+						variables
 					}
-
-					return this.handleItems(
-						new betterIterable(items, { tracking: true }),
-						{
-							functions: scope.functions,
-							variables
-						}
-					)
-				}
+				)
+			}
 
 			return func;
 		}
@@ -600,7 +615,6 @@ class Ora {
 			});
 
 		if (value === 'CURRENT_DATE') return Date.now();
-
 		
 
 		return value;
@@ -767,18 +781,26 @@ class Ora {
 
 		let result = getValue(input);
 
+		for (const processor of this.valuePostProcessors){
+			if (processor.validate({ iter, value: result, scope }) === true){
+				const processed = processor.parse({ iter, value: result, scope });
+
+				if (processor.immediate) return processed;
+				else result = processed;
+			}
+		}
+
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
 			const value = getValue(iter.next());
 
-			if (typeof result == 'string'){
+			if (typeof result == 'string')
 				switch (symbol){
 					case '+': result = result.concat(value); break;
 					case '-': result = result.replace(value, ''); break;
 					case '*': throw 'Not a feature yet';
 					case '/': result = result.replaceAll(value, ''); break;
 				}
-			}
 
 			if (typeof result == 'number')
 				result = evalMath(`${result} ${symbol} ${value}`);

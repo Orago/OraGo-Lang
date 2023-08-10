@@ -64,7 +64,7 @@ class customKeyword {
 }
 
 class customExtension {
-	constructor ({ keyword: KW, function: FN, valuePreProcessors: PrePs }){
+	constructor ({ keyword: KW, function: FN, processors }){
 		if (KW instanceof customKeyword != true)
 			throw 'Invalid keyword instance for extension';
 
@@ -73,13 +73,15 @@ class customExtension {
 				this.function = FN;
 			else throw 'Invalid function instance for extension';
 
-		if (PrePs != null && Array.isArray(PrePs)){
-			for (const PreP of PrePs){
-				if (PreP instanceof valuePreProcessor != true)
-					throw 'Invalid preprocessor instance for extension';
+		if (processors != null && Array.isArray(processors)){
+			for (const PreP of processors){
+				if (
+					PreP instanceof valuePreProcessor != true &&
+					PreP instanceof valuePostProcessor != true
+				) throw 'Invalid processor instance for extension';
 			}
 				
-			this.valuePreProcessors = PrePs;
+			this.processors = processors;
 		}
 			
 		
@@ -97,20 +99,33 @@ class customExtension {
 // 	}
 // }
 
-class valuePreProcessor {
+class valueProcessor {
+	static prefix = 'Null';
 	validate;
 	parse;
+	immediate = false;
 
-	constructor ({ validate, parse }){
+	constructor ({ validate, parse, immediate }){
 		if (typeof validate != 'function')
-			throw 'Invalid validator for PreProcessor';
+			throw `Invalid validator for ${this.prefix}Processor`;
 
 		if (typeof parse != 'function')
-			throw 'Invalid parser for PreProcessor';
+			throw `Invalid parser for ${this.prefix}Processor`;
 
 		this.validate = validate;
 		this.parse = parse;
+		
+		if (immediate === true)
+			this.immediate = true;
 	}
+}
+
+class valuePreProcessor extends valueProcessor {
+	static prefix = 'Pre';
+}
+
+class valuePostProcessor extends valueProcessor {
+	static prefix = 'Post';
 }
 
 class extensionPack {
@@ -145,5 +160,7 @@ export {
 	customKeyword,
 	customExtension,
 	extensionPack,
-	valuePreProcessor
+	
+	valuePreProcessor,
+	valuePostProcessor
 };

@@ -7,20 +7,20 @@ import { oraLoopPack } from '../../modules/oraLoops.js';
 import { oraDeveloperUtil } from '../../modules/oraDeveloper.js';
 import { oraMessageBoxOk } from '../../modules/MessageBox/index.js';
 
-import { valuePreProcessor, customExtension, customKeyword } from '../../ora/util/extensions.js';
+import { valuePostProcessor, customExtension, customKeyword } from '../../ora/util/extensions.js';
 
 const gibby = new customExtension({
 	keyword: new customKeyword('gibby', ['gibby']),
-	valuePreProcessors: [
-		new valuePreProcessor({
+	processors: [
+		new valuePostProcessor({
 			validate ({ value }){
 				return value === 'gibby';
 			},
 			parse ({ value }){
-				return 'meyehehehehe'
+				return 2523532532;
 			}
 		})
-	]
+	],
 })
 
 const run = (code) => {

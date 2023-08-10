@@ -1,2 +1,4 @@
 print 'starting';
-print gibby;
+print {
+	cat: 'hi'
+};
