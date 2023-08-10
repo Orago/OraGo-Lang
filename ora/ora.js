@@ -9,7 +9,8 @@ import defaultFunctions from './util/functions/default.js';
 import logging from './util/functions/logging.js';
 import OraType from './util/DataTypes.js';
 
-import { customFunctionContainer, customFunction, customKeyword } from './util/extensions.js';
+import { customFunctionContainer, customFunction, customKeyword, customExtension } from './util/extensions.js';
+import VariableObserver from './_observer.js';
 
 function getValue (variable, property){
 	if (variable instanceof OraType.any)
@@ -18,9 +19,8 @@ function getValue (variable, property){
 	if (property != null){
 
 		if (Array.isArray(property)){
-			if (variable?.[property[0]] != null){
+			if (variable?.[property[0]] != null)
 				return getValue(variable[property.shift()], property.length > 0 ? property : undefined);
-			}
 			
 			return undefined;
 		}
@@ -53,6 +53,12 @@ class OraScope {
 	}
 }
 
+class sleepObserver extends VariableObserver {
+	validate (newValue){
+		return typeof newValue == 'boolean';
+	}
+}
+
 class Ora {
 	settings = {};
 	customKeywords;
@@ -74,12 +80,15 @@ class Ora {
 
 	DataType = OraType;
 
+	paused = new sleepObserver(false);
+
 	constructor (settings = {}) {
 		const {
 			functions: customFunctions,
 			customClasses,
 			customTypes,
 			keywords: customKeywords,
+			extensions,
 			variables
 		} = forceType.forceObject(settings);
 
@@ -91,6 +100,7 @@ class Ora {
 		this.init({
 			customFunctions,
 			classes: customClasses,
+			extensions,
 			customKeywords,
 			variables
 		});
@@ -101,25 +111,40 @@ class Ora {
 	}
 
 	init (initData){
-		const {
-			customFunctions = [], classes, customKeywords,
+		let {
+			customKeywords: initKW,
+			customFunctions: initFN,
+			classes,
+			extensions: initExtensions,
 			variables
 		} = initData;
+
+		const extensions = forceType.forceArray(initExtensions);
+		const customKeywords = forceType.forceArray(initKW);
+		const customFunctions = forceType.forceArray(initFN);
+
+		if (Array.isArray(initData.customFunctions))
+			customFunctions.push(...initData.customFunctions);
 
 		this.keywords = new keywordDict();
 		this.customKeywords = customKeywords;
 		this.customFunctions = customFunctions;
 
+		// Handle Extensions
+		if (extensions.some(e => e instanceof customExtension != true))
+			throw 'Invalid extension input';
 
-		if (Array.isArray(customKeywords)){
-			if (customKeywords.some(e => e instanceof customKeyword != true))
-				throw 'Invalid custom keyword';
+		for (const customKW of extensions.map(extension => extension.keyword))
+			this.keywords.addKeyword( ...customKW.bound(this) );
 
+		// Handle Keywords
+		if (customKeywords.some(e => e instanceof customKeyword != true))
+			throw 'Invalid custom keyword';
 
-			for (const custom of customKeywords)
-				this.keywords.addKeyword( ...custom.bound(this) );
-		}
+		for (const customKW of customKeywords)
+			this.keywords.addKeyword( ...customKW.bound(this) );
 
+		// Handle variables and classes
 		this.variables = forceType.forceObject(variables);
 		this.classes = forceType.forceObject(classes);
 
@@ -276,31 +301,6 @@ class Ora {
 	
 	createScope (data, variables){
 		return new OraScope(this, { data, variables });
-	}
-
-	handleItems (iter, scope = this.mainScope) {
-		const {  variables } = scope;
-		const { functions } = this;
-		const { keywords: kw } = this;
-
-		for (const method of iter) {
-			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
-				
-				// if (variables?.hasOwnProperty(method))
-					this.parseInput(iter, { value: method }, scope);
-				
-				continue;
-			}
-
-			const response = functions[kw.match(method)]({
-				iter,
-				scope,
-				handleItems: this.handleItems.bind(this)
-			});
-			
-			if (response?.break == true) break;
-			if (response) return response;
-		}
 	}
 
 	setOnPath ({ source, path, value, type = OraType.any, $delete = false }) {
@@ -541,6 +541,15 @@ class Ora {
 		const { keywords: kw, functions } = this;
 
 		const extendedPath = this.getPath({ iter, scope });
+
+		if (value == 'sleep'){
+			this.paused.value = true;
+			setTimeout(() => {
+				this.paused.value = false;
+
+				console.log('not sleeping anymore!')
+			}, 5000);
+		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
 			if (value != undefined)
@@ -850,11 +859,48 @@ class Ora {
 		return result;
 	};
 
+	handleItems (iter, scope = this.mainScope) {
+		const { functions } = this;
+		const { keywords: kw } = this;
+
+		for (const method of iter) {
+			if (!kw.has(method) || !functions.hasOwnProperty(kw.match(method))){
+				
+				// if (variables?.hasOwnProperty(method))
+					this.parseInput(iter, { value: method }, scope);
+				
+				continue;
+			}
+
+			const response = functions[kw.match(method)]({
+				iter,
+				scope,
+				handleItems: this.handleItems.bind(this)
+			});
+			
+			if (response?.break == true) break;
+			if (response) return response;
+		}
+	}
+
 	run (codeInput){
 		const lexed = oraLexer(codeInput);
 		const chunks = chunkLexed(lexed);
 
+		const chunkRes = this.#handleChunks(chunks);
+
+		if (chunkRes) return chunkRes;
+	}
+
+	#handleChunks (chunks){
+		let parsed = 0;
+
 		for (const chunk of chunks){
+			if (this.paused.value){
+				this.paused.once(() => this.#handleChunks(chunks.slice(parsed, chunks.length)));
+				break;
+			}
+			
 			const response = this.handleItems(
 				new betterIterable(
 					chunk,
@@ -863,6 +909,8 @@ class Ora {
 			);
 
 			if (response?.exit == true) return response?.value;
+			
+			parsed++;
 		}
 	}
 

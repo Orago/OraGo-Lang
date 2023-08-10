@@ -119,7 +119,7 @@ class keywordDict {
 	}
 
 	addKeyword (id, keywords){
-		this.keywords[id] = keywords;
+		(this.keywords[id] ??= []).push(...keywords);
 
 		this.refreshKeywordIDs();
 	}

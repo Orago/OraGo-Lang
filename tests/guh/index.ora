@@ -1,11 +1,5 @@
-let cat as NUMBER;
+print 'SLEEPING***********************';
 
-cat = 150;
+# sleep;
 
-fn test (math){
-	cheese.touch = 5 + math;
-
-	return cheese;
-};
-
-print cat & test(3) & cheese;
+print 'NOT SLEEPING^^^^^^^^^^^^^^^^^^^^^';

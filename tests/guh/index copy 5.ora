@@ -1,0 +1,12 @@
+let cat as NUMBER;
+sleep;
+
+cat = 150;
+
+fn test (math){
+	cheese.touch = 5 + math;
+
+	return cheese;
+};
+
+print cat & test(3) & cheese;

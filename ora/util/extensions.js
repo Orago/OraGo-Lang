@@ -63,4 +63,26 @@ class customKeyword {
 	}
 }
 
-export { customFunctionContainer, customFunction, customKeyword };
+
+class customExtension {
+	keyword;
+	function;
+	
+	constructor (keywordInstance, functionInstance){
+		if (keywordInstance instanceof customKeyword != true)
+			throw 'Invalid keyword instance for extension';
+
+		if (functionInstance instanceof functionInstance != true)
+			throw 'Invalid function instance for extension';
+
+		this.keyword = keywordInstance;
+		this.function = functionInstance;
+	}
+}
+
+export {
+	customFunctionContainer,
+	customFunction,
+	customKeyword,
+	customExtension
+};
