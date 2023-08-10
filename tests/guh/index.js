@@ -8,6 +8,7 @@ import { oraDeveloperUtil } from '../../modules/oraDeveloper.js';
 import { oraMessageBoxOk } from '../../modules/MessageBox/index.js';
 
 import { valuePostProcessor, customExtension, customKeyword } from '../../ora/util/extensions.js';
+import { oraValueSetter } from '../../modules/oraDefault.js';
 
 const gibby = new customExtension({
 	keyword: new customKeyword('gibby', ['gibby']),
@@ -31,6 +32,7 @@ const run = (code) => {
 			oraModules,
 			oraLoopPack,
 			oraMessageBoxOk,
+			oraValueSetter,
 			gibby
 		]
 	});

@@ -46,7 +46,7 @@ class customKeyword {
 		if (typeof id != 'string' || !isA_0(id))
 			throw `Invalid custom keywordID ${id}`;
 
-		if (!Array.isArray(keywords) || keywords.some(e => typeof e != 'string' || !isA_0(e))){
+		if (!Array.isArray(keywords) || keywords.some(e => typeof e != 'string' || (!isA_0(e) && e.length != 1))){
 			console.log(keywords);
 			throw `^ Invalid custom keywordList (#${id}),\nMust only include strings`;
 		}
@@ -65,20 +65,25 @@ class customKeyword {
 
 class customExtension {
 	constructor ({ keyword: KW, function: FN, processors }){
-		if (KW instanceof customKeyword != true)
-			throw 'Invalid keyword instance for extension';
+		if (KW instanceof customKeyword != true){
+			throw '^ Invalid keyword instance for extension';
+		}
 
 		if (FN != null) //= |
 			if (FN instanceof customFunction)
 				this.function = FN;
-			else throw 'Invalid function instance for extension';
+			else {
+				console.log(FN);
+				throw '^ Invalid function instance for extension';
+			}
 
 		if (processors != null && Array.isArray(processors)){
 			for (const PreP of processors){
-				if (
-					PreP instanceof valuePreProcessor != true &&
-					PreP instanceof valuePostProcessor != true
-				) throw 'Invalid processor instance for extension';
+				if (PreP instanceof valueProcessor != true){
+					console.log(PreP);
+
+					throw '^ Invalid processor instance for extension';
+				}
 			}
 				
 			this.processors = processors;
@@ -100,7 +105,7 @@ class customExtension {
 // }
 
 class valueProcessor {
-	static prefix = 'Null';
+	static prefix = 'Value';
 	validate;
 	parse;
 	immediate = false;
@@ -121,11 +126,11 @@ class valueProcessor {
 }
 
 class valuePreProcessor extends valueProcessor {
-	static prefix = 'Pre';
+	static prefix = 'ValuePre';
 }
 
 class valuePostProcessor extends valueProcessor {
-	static prefix = 'Post';
+	static prefix = 'ValuePost';
 }
 
 class extensionPack {
@@ -160,7 +165,8 @@ export {
 	customKeyword,
 	customExtension,
 	extensionPack,
-	
+
+	valueProcessor,	
 	valuePreProcessor,
 	valuePostProcessor
 };

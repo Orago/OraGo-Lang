@@ -3,42 +3,42 @@ export default function (){
 	const { isA_0 } = this.utils;
 
 	return {
-		[kw.id.comment]: () => ({ break: true }),
+		// [kw.id.comment]: () => ({ break: true }),
 		
-		[kw.id.return]: ({ iter, scope }) => this.parseInput(iter, iter.next(), scope),
+		// [kw.id.return]: ({ iter, scope }) => this.parseInput(iter, iter.next(), scope),
 
-		[kw.id.set] ({ iter, scope }) {
-			const { variables: source } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : scope);
-			const varname = iter.next().value;
+		// [kw.id.set] ({ iter, scope }) {
+		// 	const { variables: source } = (iter.disposeIf(next => kw.is(next, kw.id.global)) ? this : scope);
+		// 	const varname = iter.next().value;
 			
-			if (kw.has(varname))
-				throw `Cannot set variable to function name: ${varname}`;
+		// 	if (kw.has(varname))
+		// 		throw `Cannot set variable to function name: ${varname}`;
 			
-			let type = DataType.any;
+		// 	let type = DataType.any;
 
-			if (iter.disposeIf(next => kw.is(next, kw.id.as)))
-				type = this.keywordToType(iter.next().value);
+		// 	if (iter.disposeIf(next => kw.is(next, kw.id.as)))
+		// 		type = this.keywordToType(iter.next().value);
 
-			if (isA_0(varname) ){
-				if (iter.disposeIf(next => kw.is(next, kw.id.assign)))
-					this.setOnPath({
-						source,
-						path: [varname, ...this.getPath({ iter, scope })],
-						type,
-						value: this.parseInput(iter, iter.next(), scope)
-					});
+		// 	if (isA_0(varname) ){
+		// 		if (iter.disposeIf(next => kw.is(next, kw.id.assign)))
+		// 			this.setOnPath({
+		// 				source,
+		// 				path: [varname, ...this.getPath({ iter, scope })],
+		// 				type,
+		// 				value: this.parseInput(iter, iter.next(), scope)
+		// 			});
 					
-				else 
-					this.setOnPath({
-						source,
-						path: [varname, ...this.getPath({ iter, scope })],
-						type,
-						value: type.default
-					});
-			}
+		// 		else 
+		// 			this.setOnPath({
+		// 				source,
+		// 				path: [varname, ...this.getPath({ iter, scope })],
+		// 				type,
+		// 				value: type.default
+		// 			});
+		// 	}
 
-			else throw `Invalid Variable Name: (${varname})`;
-		},
+		// 	else throw `Invalid Variable Name: (${varname})`;
+		// },
 
 		[kw.id.shift] ({ iter, scope }) {
 			const variable = this.expectSetVar({ iter, scope }, false);

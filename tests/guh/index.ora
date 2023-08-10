@@ -1,4 +1,3 @@
-print 'starting';
-print {
-	cat: 'hi'
-};
+let cat = 'meow hehehehee';
+
+print cat & 'gg';

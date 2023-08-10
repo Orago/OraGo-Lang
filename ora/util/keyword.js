@@ -2,9 +2,9 @@ import { Enum } from './forceType.js';
 
 const defaultKeywords = {
 	//#region //* Commands *//
-	comment: ['comment', '#'],
-	set: ['set', 'let'],
-	assign: ['to', '='],
+	// comment: ['comment', '#'],
+	set: ['let'],
+	assign: ['='],
 	delete: ['delete'],
 	// print: ['print'],
 	loop: ['loop'],

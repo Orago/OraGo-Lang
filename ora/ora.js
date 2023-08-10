@@ -14,6 +14,7 @@ import {
 	customKeyword as oraKeyword,
 	customExtension as oraExtension,
 	extensionPack as oraExtensionPack,
+	valueProcessor,
 	valuePreProcessor,
 	valuePostProcessor
 } from './util/extensions.js';
@@ -136,6 +137,8 @@ class Ora {
 		this.keywords = new keywordDict();
 		this.customKeywords = customKeywords;
 		this.customFunctions = customFunctions;
+
+		this.valueProcessors = [];
 		this.valuePreProcessors = [];
 		this.valuePostProcessors = [];
 
@@ -164,6 +167,9 @@ class Ora {
 
 					else if (processor instanceof valuePostProcessor)
 						this.valuePostProcessors.push(processor);
+
+					else if (processor instanceof valueProcessor)
+						this.valueProcessors.push(processor)
 				}
 			}
 		}
@@ -457,11 +463,11 @@ class Ora {
 
 	parseValueBasic (iter, value, scope = {}){
 		for (const processor of this.valuePreProcessors)
-			if (processor.validate({ iter, value, scope }) === true){
-				const processed = processor.parse({ iter, value, scope });
+			if (processor.validate.bind(this)({ iter, value, scope }) === true){
+				const processed = processor.parse.bind(this)({ iter, value, scope });
 
 				if (processor.immediate) return processed;
-				else result = processed;
+				else value = processed;
 			}
 
 		if (isString(value)) return parseString(value);
@@ -579,6 +585,17 @@ class Ora {
 		const { keywords: kw, functions } = this;
 
 		const extendedPath = this.getPath({ iter, scope });
+		const path = [value, ...extendedPath];
+
+		const feedProcessor = { iter, value, scope, path, extendedPath };
+
+		for (const processor of this.valueProcessors)
+			if (processor.validate.bind(this)(feedProcessor) === true){
+				const processed = processor.parse.bind(this)(feedProcessor);
+
+				if (processor.immediate) return processed;
+				else value = processed;
+			}
 
 		if (value == 'sleep'){
 			this.paused.value = true;
@@ -590,6 +607,7 @@ class Ora {
 		}
 
 		if (iter.disposeIf(next => kw.is(next, kw.id.assign))){
+			console.log('alt setting')
 			if (value != undefined)
 				this.setOnPath({
 					source: variables,
@@ -598,7 +616,7 @@ class Ora {
 				});
 			else throw 'Cannot mod a raw variable to a value!'
 				
-			return variables;
+			// return variables;
 		}
 
 		if (isA_0(value) && variables.hasOwnProperty(value))
@@ -782,8 +800,8 @@ class Ora {
 		let result = getValue(input);
 
 		for (const processor of this.valuePostProcessors){
-			if (processor.validate({ iter, value: result, scope }) === true){
-				const processed = processor.parse({ iter, value: result, scope });
+			if (processor.validate.bind(this)({ iter, value: result, scope }) === true){
+				const processed = processor.parse.bind(this)({ iter, value: result, scope });
 
 				if (processor.immediate) return processed;
 				else result = processed;
