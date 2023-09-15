@@ -1,6 +1,6 @@
 import { valuePostProcessor, customExtension } from '../ora/util/extensions.js';
 
-const oraComparison = new customExtension({
+export const oraComparison = new customExtension({
 	processors: [
 		// Greater Than
 		new valuePostProcessor({
@@ -17,6 +17,7 @@ const oraComparison = new customExtension({
 		new valuePostProcessor({
 			validate ({ iter }){
 				const { keywords: kw } = this;
+				
 				return iter.disposeIf(next => kw.is(next, kw.id.less_than));
 			},
 			parse ({ iter, value, scope }){
@@ -25,5 +26,3 @@ const oraComparison = new customExtension({
 		}),
 	]
 });
-
-export { oraComparison };

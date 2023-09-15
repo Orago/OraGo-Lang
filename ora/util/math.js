@@ -1,3 +1,5 @@
+export const Enum = (...args) => Object.freeze(args.reduce((v, arg, i) => (v[arg] = i, v), {}));
+
 function applyMath(symbol, first, second) {
 	switch (symbol) {
 		case '+': return second + first;
@@ -8,7 +10,7 @@ function applyMath(symbol, first, second) {
 	}
 }
 
-function evalMath(mathString) {
+export default function evalMath(mathString) {
 	try {
 		// using a stack and a postfix notation algorithm to evaluate the math string
 		const operators = ['+', '-', '*', '/', '^'];
@@ -65,5 +67,3 @@ function evalMath(mathString) {
 		return NaN;
 	}
 }
-
-export default evalMath;

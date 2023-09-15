@@ -1,8 +1,8 @@
 import { customFunction, customKeyword, customExtension } from '../../ora/util/extensions.js';
 
-import { ok, okCancel, abortRetryIgnore } from './messagebox.js';
+import { ok } from './messagebox.js';
 
-const oraMessageBoxOk = new customExtension({
+export const oraMessageBoxOk = new customExtension({
 	keyword: new customKeyword('M.B_Ok', ['msgBoxOk']),
 	function: new customFunction('M.B_Ok', function ({ iter, scope }) {
 		if (iter.disposeIf('(')){
@@ -29,20 +29,3 @@ const oraMessageBoxOk = new customExtension({
 		else throw 'Missing openening parenthesis for alert';
 	})
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-export { oraMessageBoxOk };

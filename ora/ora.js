@@ -1,11 +1,10 @@
 import betterIterable from './util/betterIterables.js';
-import evalMath from './util/evalMath.js';
+import evalMath from './util/math.js';
 import { keywordDict } from './util/keyword.js';
-import { forceType, isNum, isA_0 } from './util/forceType.js';
+import { forceType } from './util/forceType.js';
 import { isString, parseString, parseBlock } from './util/parseTools.js';
 import { oraLexer, chunkLexed } from './util/lexer.js';
 
-import defaultFunctions from './util/functions/default.js';
 import OraType from './util/DataTypes.js';
 
 import {
@@ -16,31 +15,26 @@ import {
 	extensionPack as oraExtensionPack,
 	valueProcessor,
 	valuePreProcessor,
-	valuePostProcessor
+	valuePostProcessor,
 } from './util/extensions.js';
+
 import VariableObserver from './_observer.js';
 
-function getValue (variable, property){
-	if (variable instanceof OraType.any)
-		variable = variable.value;
+const isNum = num => !isNaN(num);
+const isA_0 = x => x != undefined && /[a-z0-9_]/i.test(x);
 
-	if (property != null){
+function getValue(variable, property) {
+  if (variable instanceof OraType.any)
+    variable = variable.value;
 
-		if (Array.isArray(property)){
-			if (variable?.[property[0]] != null)
-				return getValue(variable[property.shift()], property.length > 0 ? property : undefined);
-			
-			return undefined;
-		}
+  if (property != null) {
+    if (Array.isArray(property))
+      return getValue(variable?.[property.shift()], property.length > 0 ? property : undefined);
 
-		
-		if (variable?.[property] != null)
-			return getValue(variable[property]);
+    return getValue(variable?.[property]);
+  }
 
-		return undefined;
-	}
-
-	return variable;
+  return variable;
 }
 
 class OraScopeVariables {};
@@ -67,7 +61,7 @@ class sleepObserver extends VariableObserver {
 	}
 }
 
-class Ora {
+export default class Ora {
 	settings = {};
 	customKeywords;
 	customFunctions;
@@ -182,7 +176,9 @@ class Ora {
 			throw 'Invalid custom keyword';
 
 		for (const customKW of customKeywords)
-			this.keywords.addKeyword( ...customKW.bound(this) );
+			this.keywords.addKeyword(
+				...customKW.bound(this)
+			);
 
 
 		// Handle variables and classes
@@ -202,8 +198,6 @@ class Ora {
 		}
 
 		this.functions = {
-			...defaultFunctions.bind(this)(),
-
 			[kw.id.delete] ({ iter, scope }) {
 				const source = iter.disposeIf(next => kw.is(next, kw.id.global)) ? this.variables : scope.variables;
 				const varname = iter.next().value;
@@ -271,7 +265,7 @@ class Ora {
 					scope.classes[className] = { items, scope };
 			},
 
-			[kw.id.function] ({ iter, scope, handleItems }) {
+			[kw.id.functdwaion] ({ iter, scope, handleItems }) {
 				const path = [iter.next().value];
 
 				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
@@ -383,21 +377,20 @@ class Ora {
 	typeToKeyword (type){
 		switch (true){
 			case type === OraType.object: return 'OBJECT';
-			case type === OraType.array: return 'ARRAY';
+			case type === OraType.array:  return 'ARRAY';
 			case type === OraType.string: return 'STRING';
 			case type === OraType.number: return 'NUMBER';
-			case type === OraType.bool: return 'BOOLEAN';
-
+			case type === OraType.bool:   return 'BOOLEAN';
 			default: return 'ANY';
 		}
 	}
 
 	valueToType (value){
 		switch (true){
-			case Array.isArray(value): return OraType.array;
-			case typeof value == 'object': return OraType.object;
-			case typeof value == 'string': return OraType.string;
-			case typeof value == 'number': return OraType.number;
+			case Array.isArray(value):      return OraType.array;
+			case typeof value == 'object':  return OraType.object;
+			case typeof value == 'string':  return OraType.string;
+			case typeof value == 'number':  return OraType.number;
 			case typeof value == 'boolean': return OraType.bool;
 			default: return OraType.any;
 		}
@@ -427,9 +420,6 @@ class Ora {
 				const next = iter.next().value;
 				const parsed = this.parseValueBasic(iter, next, scope);
 
-				// if (parsed == null && isA_0(next))
-				// 	path.push(parsed);
-
 				if (Array.isArray(parsed))
 					path.push(...parsed.filter(isA_0));
 
@@ -445,21 +435,20 @@ class Ora {
 		return path;
 	}
 
-	expectSetVar ({ iter, scope }, arrayForce = true){
+	expectSetVar ({ iter, scope, data }, arrayForce = true){
 		let varData = this.parseInput(iter.clone(), iter.peek(1), scope);
 
 		if (arrayForce)
 			varData = forceType.forceArray(varData);
 
 		const name = iter.next().value;
-		const path = [name, ...this.getPath({ iter, scope })];
 
 		if (data.functions.hasOwnProperty(name))
 			throw `Cannot set variable to function name: ${name}`;
 
 		return {
 			name,
-			path,
+			path: [name, ...this.getPath({ iter, scope })],
 			data: varData
 		}
 	}
@@ -469,11 +458,14 @@ class Ora {
 			if (processor.validate.bind(this)({ iter, value, scope }) === true){
 				const processed = processor.parse.bind(this)({ iter, value, scope });
 
-				if (processor.immediate) return processed;
+				if (processor.immediate)
+					return processed;
+
 				else value = processed;
 			}
 
-		if (isString(value)) return parseString(value);
+		if (isString(value))
+			return parseString(value);
 
 		if (value == '{'){
 			const object = {};
@@ -528,6 +520,14 @@ class Ora {
 
 		if (this.keywords.is(value, this.keywords.id.function)){
 			const args = [];
+			let functionName = false;
+			
+			const peekNext = iter.peek().value;
+
+			if (isA_0(peekNext)){
+				iter.next();
+				functionName = isString(peekNext) ? parseString(peekNext) : peekNext;
+			}
 
 			if (iter.disposeIf('(')){
 				let passes = 0;
@@ -540,42 +540,56 @@ class Ora {
 					if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
 				}
 			}
+			else throw new Error('Missing Opening \'(\' after parameters');
 
 			const items = parseBlock({ iter, scope });
 
-			const func = (...inputs) => {
-				const variables = {};
+			const handleItems = this.handleItems.bind(this);
+			const parseInput = this.parseInput.bind(this);
 
-				for (const [key, value] of Object.entries(scope.variables))
-					variables[key] = value;
+			const temp = {
+				[functionName] (...inputs){
+					const variables = {};
 
-				for (const [i, value] of Object.entries(args)){
-					if (['object', 'function'].includes(typeof inputs[i]))
-						variables[value] = inputs[i];
+					for (const [key, value] of Object.entries(scope.variables))
+						variables[key] = value;
 
-					else variables[value] = parseInput(
-						new betterIterable([], { tracking: true }),
-						{ value: inputs[i] },
-						scope
+					for (const [i, value] of Object.entries(args)) {
+						if (['object', 'function'].includes(typeof inputs[i]))
+							variables[value] = inputs[i];
+
+						else variables[value] = parseInput(
+							new betterIterable([], { tracking: true }),
+							{ value: inputs[i] },
+							scope
+						);
+					}
+
+					return handleItems(
+						new betterIterable(items, { tracking: true }),
+						{
+							functions: scope.functions,
+							variables
+						}
 					);
 				}
-
-				return this.handleItems(
-					new betterIterable(items, { tracking: true }),
-					{
-						functions: scope.functions,
-						variables
-					}
-				)
 			}
 
-			return func;
+			if (functionName != false){
+				this.setOnPath({
+					source: scope.variables,
+					path: [functionName],
+					value: temp[functionName]
+				})
+			}
+
+			return temp[functionName];
 		}
 
 		if (isNum(value))
 			return Number(value);
 
-	if (isA_0(value))
+		if (isA_0(value))
 			return value;
 	}
 
@@ -612,10 +626,7 @@ class Ora {
 				scope,
 				handleItems: this.handleItems.bind(this)
 			});
-
-		if (value === 'CURRENT_DATE') return Date.now();
 		
-
 		return value;
 	}
 
@@ -634,11 +645,11 @@ class Ora {
 
 			if (iter.disposeIf(next => kw.is(next, kw.id.bind))){
 				if (typeof scopeV == 'function' && !isClass){
-					const toBind = forceType.forceObject(
-						parseInput(iter, iter.next(), scope)
+					scopeV = scopeV.bind(
+						forceType.forceObject(
+							parseInput(iter, iter.next(), scope)
+						)
 					);
-					
-					scopeV = scopeV.bind(toBind);
 				}
 				else if (typeof scopeV == 'object'){
 					if (iter.disposeIf('(')){
@@ -662,24 +673,20 @@ class Ora {
 
 						scopeV = Object.assign(scopeV, ...toBind);
 					}
-					else {
-						const toBind = forceType.forceObject(
+					else scopeV = Object.assign(scopeV, 
+						forceType.forceObject(
 							parseInput(iter, iter.next(), scope, false)
-						);
-
-						scopeV = Object.assign(scopeV, toBind);
-					}
+						)
+					);
 				}
 			}
 			
 
 			//* Try Looping on path
 			if (iter.disposeIf('.')){
-				const property = this.parseValue(iter, iter.next().value, scopeV);
-
 				return scaleTree({
 					source: scopeV,
-					property
+					property: this.parseValue(iter, iter.next().value, scopeV)
 				});
 			}
 
@@ -696,14 +703,14 @@ class Ora {
 			// 	return source;
 			// }
 
-			//* Scope Fix
+			// Scope Fix
 			if (typeof scopeV?.value === 'function') scopeV = scopeV.value;
 
-			//* Try Calling Function
+			// Try Calling Function
 			if (functions && iter.disposeIf('(')){
-				//* Validate Function
+				// Validate Function
 				if (!(typeof scopeV === 'function' || isClass)){
-					//* Fail Function
+					// Fail Function
 					console.error('Cannot call function on non-function', property,
 						'\n',
 						iter.stack
@@ -718,10 +725,7 @@ class Ora {
 				while (!iter.disposeIf(')')){
 					if (iter.disposeIf(',')) continue;
 
-
-					items.push(
-						this.parseInput(iter, iter.next(), scope)
-					);
+					items.push(this.parseNext(iter, scope));
 					
 					if (passes++ > 100)
 						return console.error(
@@ -804,12 +808,12 @@ class Ora {
 			if (typeof result == 'number')
 				result = evalMath(`${result} ${symbol} ${value}`);
 
-			//* For Arrays
+			// For Arrays
 			else if (Array.isArray(result))
 				for (let i = 0; i < result.length; i++)
 					result[i] = evalMath(`${result[i]} ${symbol} ${value}`);
 
-			//* For Objects
+			// For Objects
 			else if (typeof result == 'object'){
 				result = this.trueValue(result);
 
@@ -832,14 +836,6 @@ class Ora {
 					result = JSON.stringify(result);
 			}
 		}
-
-		// // //* Greater Than
-		// if (iter.disposeIf(next => kw.is(next, kw.id.greater_than)))
-		// 	result = result > getValue(iter.next());
-
-		// //* Less Than
-		// if (iter.disposeIf(next => kw.is(next, kw.id.less_than)))
-		// 	result = result < getValue(iter.next());
 
 		//* String repeater
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {
@@ -966,5 +962,3 @@ class Ora {
 		});
 	}
 }
-
-export default Ora;

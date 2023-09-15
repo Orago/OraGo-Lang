@@ -8,26 +8,21 @@ import {
 	extensionPack
 } from '../ora/util/extensions.js';
 
-
-const oraComment = new customExtension({
+export const oraComment = new customExtension({
 	keyword: new customKeyword('comment', ['comment', '#']),
 	function: new customFunction('comment', function () {
 		return ({ break: true });
 	})
 });
 
-export { oraComment };
-
-const oraReturn = new customExtension({
+export const oraReturn = new customExtension({
 	keyword: new customKeyword('return', ['return']),
 	function: new customFunction('return', function ({ iter, scope }) {
-		return this.parseNext(iter, scope)
+		return this.parseInput(iter, iter.next(), scope)
 	})
 });
 
-export { oraReturn };
-
-const oraValueSetter = new customExtension({
+export const oraValueSetter = new customExtension({
 	keyword: new customKeyword('set', ['let']),
 	processors: [
 		new valueProcessor({
@@ -84,40 +79,50 @@ const oraValueSetter = new customExtension({
 	})
 });
 
-export { oraValueSetter };
-
-
 //* Arrays
-
-const oraArrayAddon = new customExtension({
+export const oraArrayAddon = new customExtension({
 	processors: [
 		new valuePostProcessor({
 			validate ({ value }){
 				return Array.isArray(value);
 			},
 			parse ({ iter, value, scope }){
+				const { keywords: kw } = this;
 				const Next = () => this.parseNext(iter, scope);
 
-				const handle = (arr) => {
-					if (iter.disposeIf('push')){
+				function ReflectArray(oldArr, newArr) {
+					while (oldArr.length > 0)
+						oldArr.pop();
+
+					oldArr.push(...newArr);
+
+					return newArr;
+				}
+
+				function handle(arr) {
+					// console.log('Peeky', iter.stack, arr)
+					// if (iter.disposeIfNot(next => kw.is(next, kw.id.concat)))
+					// 	return arr;
+					
+					if (iter.disposeIf('push')) {
 						arr.push(Next());
 
 						return handle(arr);
 					}
-					else if (iter.disposeIf('pop')){
+					else if (iter.disposeIf('pop')) {
 						arr.pop();
 
 						return handle(arr);
 					}
-					else if (iter.disposeIf('concat')){
+					else if (iter.disposeIf('concat')) {
 						const nextItem = Next();
 
 						if (Array.isArray(nextItem) != true)
 							throw 'Cannot concat on non array';
-						
+
 						return handle([].concat.apply([], [arr, nextItem]));
 					}
-					else if (iter.disposeIf('join')){
+					else if (iter.disposeIf('join')) {
 						const nextItem = Next();
 
 						if (Array.isArray(nextItem) != true)
@@ -126,6 +131,22 @@ const oraArrayAddon = new customExtension({
 						arr.push(...nextItem);
 
 						return handle(arr);
+					}
+					else if (iter.disposeIf(next => kw.is(next, kw.id.has))){
+						return arr.includes(Next());
+					}
+					else if (iter.disposeIf('map')){
+						const nextItem = Next();
+
+						if (typeof nextItem != 'function')
+							throw 'Invalid function to map to';
+
+						const mapped = arr.map(nextItem);
+
+						if (iter.disposeIf('reflect'))
+							ReflectArray(arr, mapped);
+
+						return mapped;
 					}
 
 					return arr;
@@ -137,11 +158,25 @@ const oraArrayAddon = new customExtension({
 	],
 });
 
-export { oraArrayAddon };
 
-const oraBasicExtension = new extensionPack(
+export const oraObjectAddon = new customExtension({
+	processors: [
+		new valuePostProcessor({
+			validate ({ value }){
+				return typeof value === 'object' && Array.isArray(value) != true;
+			},
+			parse ({ iter, value, scope }){
+				console.log('THIS OBJ', value.hello)
+				return value;
+			}
+		})
+	],
+});
+
+export const oraDEFAULTS = new extensionPack(
 	oraComment,
 	oraReturn,
 	oraValueSetter,
-	oraArrayAddon
+	oraArrayAddon,
+	oraObjectAddon
 );

@@ -1,4 +1,4 @@
-class VariableObserver {
+export default class VariableObserver {
   listeners = [];
   #value;
 
@@ -58,6 +58,3 @@ class VariableObserver {
     return newValue;
   }
 }
-
-
-export default VariableObserver;

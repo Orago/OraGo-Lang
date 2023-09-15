@@ -1,7 +1,7 @@
 import { customFunction, customKeyword, customExtension, extensionPack } from '../ora/util/extensions.js';
 import { parseBlock } from '../ora/util/parseTools.js';
 
-const oraLoop = new customExtension({
+export const oraLoop = new customExtension({
 	keyword: new customKeyword('loop', ['loop']),
 	function: new customFunction('loop', function ({ iter, scope, handleItems }) {
 		const input = iter.next().value;
@@ -20,7 +20,7 @@ const oraLoop = new customExtension({
 	})
 });
 
-const oraFor = new customExtension({
+export const oraFor = new customExtension({
 	keyword: new customKeyword('for', ['for']),
 	function: new customFunction('for', function ({ iter, scope, handleItems }) {
 		const input = iter.next();
@@ -37,10 +37,4 @@ const oraFor = new customExtension({
 	})
 });
 
-const oraLoopPack = new extensionPack(oraLoop, oraFor);
-
-export {
-	oraLoopPack,
-	oraLoop,
-	oraFor,
-};
+export const oraLoopPack = new extensionPack(oraLoop, oraFor);

@@ -1,9 +1,5 @@
-let cats = ['oragos'];
-
-cats push 'success' push 'mistakes' pop join ['hello', 'world'];
-
-loop 10 {
-	cats pop;
+fn 'cat' (item){
+	return 'no ' + item;
 }
 
-print cats;
+print cat('balls');

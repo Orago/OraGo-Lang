@@ -3,22 +3,18 @@
   "version": "1.44.1",
   "description": "A basic programming language",
   "main": "ora.js",
-	"type": "module",
-	
+  "type": "module",
   "scripts": {
     "test": "test",
     "min": "uglifyjs --compress --mangle --output ora.min.js -- ora.js "
   },
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Orago/OraGo-Lang.git"
   },
-
   "keywords": [
     "language"
   ],
-
   "author": "Orago",
   "license": "MIT",
   "bugs": {
@@ -30,6 +26,7 @@
     "rollup": "^3.20.2"
   },
   "dependencies": {
+    "@orago/force-type": "^1.0.2",
     "node-fetch": "^3.3.1",
     "uglify-js": "^3.17.4"
   }

@@ -4,7 +4,7 @@ import { exec } from 'child_process';
 
 const execProcesses = [];
 
-const oraExecute = new customExtension({
+export const oraExecute = new customExtension({
 	keyword: new customKeyword('exec', ['exec']),
 	function: new customFunction('exec', function ({ iter, scope }) {
 		const command = this.parseNext(iter, scope);
@@ -20,7 +20,7 @@ const oraExecute = new customExtension({
 	})
 });
 
-const oraDialog = new customExtension({
+export const oraDialog = new customExtension({
 	keyword: new customKeyword('dialog', ['dialog']),
 	function: new customFunction('dialog', function ({ iter, scope }) {
 		const dialogText = this.parseNext(iter, scope);
@@ -36,7 +36,7 @@ const oraDialog = new customExtension({
 	})
 });
 
-const oraAlertFN = new customFunction('alert', function ({ iter, scope }) {
+export const oraAlertFN = new customFunction('alert', function ({ iter, scope }) {
 	if (iter.disposeIf('(')){
 		const dialogText = this.parseNext(iter, scope);
 
@@ -55,7 +55,7 @@ const oraAlertFN = new customFunction('alert', function ({ iter, scope }) {
 	else throw 'Missing openening parenthesis for alert';
 });
 
-const oraAlert = new customExtension({
+export const oraAlert = new customExtension({
 	keyword: new customKeyword('alert', ['jankyalert']),
 	function: oraAlertFN
 });
@@ -77,26 +77,16 @@ process.on('SIGINT', () => {
 	process.exit(0);
 });
 
-const oraExitProcess = new customExtension({
+export const oraExitProcess = new customExtension({
 	keyword: new customKeyword('exit_process', ['exit_process']),
 	function: new customFunction('exit_process', function () {
 		return process.exit();
 	})
 });
 
-const oraDeveloperUtil = new extensionPack(
+export const oraDeveloperUtil = new extensionPack(
 	oraExecute,
 	oraDialog,
 	oraAlert,
 	oraExitProcess
 );
-
-export {
-	oraDeveloperUtil,
-
-	// extensions
-	oraExecute,
-	oraDialog,
-	oraAlert,
-	oraExitProcess
-};

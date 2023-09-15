@@ -81,10 +81,7 @@ const updateActivityFN = new customFunction('rich_presence', function ({ iter, s
 	}
 });
 
-const oraRPC = new customExtension({
+export const oraRPC = new customExtension({
 	keyword: new customKeyword('rich_presence', ['rpc']),
 	function: updateActivityFN
-})
-
-
-export { oraRPC };
+});

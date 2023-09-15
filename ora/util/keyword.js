@@ -1,4 +1,4 @@
-import { Enum } from './forceType.js';
+import { Enum } from './math.js';
 
 const defaultKeywords = {
 	//#region //* Commands *//
@@ -61,7 +61,7 @@ const defaultKeywords = {
 	//#endregion //* Types *//
 };
 
-class keywordDict {
+export class keywordDict {
 	keywords = { ...defaultKeywords };
 
 	constructor (input = {}){
@@ -80,7 +80,6 @@ class keywordDict {
 	hasID (id){
 		return this.keywords.hasOwnProperty(id);
 	}
-
 
 	match (search){
 		const res = Object.entries(this.keywords).find(([key, value]) => value.includes(search));
@@ -125,8 +124,4 @@ class keywordDict {
 
 		this.refreshKeywordIDs();
 	}
-}
-
-export {
-	keywordDict
 }

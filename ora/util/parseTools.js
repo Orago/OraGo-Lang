@@ -1,9 +1,9 @@
 const strReg = /(['"])(.*?)\1/;
 
-const isString = input => strReg.test(input);
-const parseString = input => strReg.exec(input)?.[2];
+export const isString = input => strReg.test(input);
+export const parseString = input => strReg.exec(input)?.[2];
 
-function parseBlock ({ iter }) {
+export function parseBlock ({ iter }) {
 	const items = [];
 
 	if (!iter.disposeIf('{'))
@@ -30,9 +30,3 @@ function parseBlock ({ iter }) {
 
 	return items;
 }
-
-export {
-	isString,
-	parseString,
-	parseBlock
-};

@@ -1,6 +1,6 @@
 import { isA_0 } from './forceType.js';
 
-class customFunctionContainer {
+export class customFunctionContainer {
 	#functions;
 
 	constructor (overrideFunctions){
@@ -15,7 +15,7 @@ class customFunctionContainer {
 	}
 }
 
-class customFunction {
+export class customFunction {
 	#fn;
 	#keyword;
 
@@ -38,7 +38,7 @@ class customFunction {
 	}
 }
 
-class customKeyword {
+export class customKeyword {
 	#id;
 	#keywords;
 
@@ -63,7 +63,7 @@ class customKeyword {
 	}
 }
 
-class customExtension {
+export class customExtension {
 	constructor ({ keyword: KW, function: FN, processors }){
 		if (KW != null) //= |
 			if (KW instanceof customKeyword)
@@ -105,7 +105,7 @@ class customExtension {
 // 	}
 // }
 
-class valueProcessor {
+export class valueProcessor {
 	static prefix = 'Value';
 	validate;
 	parse;
@@ -126,15 +126,15 @@ class valueProcessor {
 	}
 }
 
-class valuePreProcessor extends valueProcessor {
+export class valuePreProcessor extends valueProcessor {
 	static prefix = 'ValuePre';
 }
 
-class valuePostProcessor extends valueProcessor {
+export class valuePostProcessor extends valueProcessor {
 	static prefix = 'ValuePost';
 }
 
-class extensionPack {
+export class extensionPack {
 	#extensions = [];
 
 	constructor (...extensionsToPack){
@@ -159,15 +159,3 @@ class extensionPack {
       yield item;
   }
 }
-
-export {
-	customFunctionContainer,
-	customFunction,
-	customKeyword,
-	customExtension,
-	extensionPack,
-
-	valueProcessor,	
-	valuePreProcessor,
-	valuePostProcessor
-};

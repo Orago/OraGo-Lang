@@ -18,12 +18,8 @@ const printFN = new customFunction('print', function ({ iter, scope }) {
 	results.length > 0 && console.log(...results.map(e => this.trueValue(e)));
 });
 
-const oraPrint = 
+export const oraPrint = 
 	new customExtension({
 		keyword: printKW,
 		function: printFN,
 	});
-
-export {
-	oraPrint
-};

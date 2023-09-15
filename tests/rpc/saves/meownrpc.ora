@@ -1,9 +1,7 @@
-rpc "578319500475105341";
+rpc connect "578319500475105341";
+rpc state 'I make game <3';
+rpc details 'W game developer right here!!111!!!';
+rpc large ['boxie', 'hehe cat'];
+rpc small ['boxie', 'hehe cat'];
 
-
-activity state 'I make game <3';
-activity details 'W game developer right here!!111!!!';
-activity large ['boxie', 'hehe cat'];
-activity small ['boxie', 'hehe cat'];
-
-activity set;
+rpc update;
