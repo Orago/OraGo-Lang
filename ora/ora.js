@@ -265,60 +265,6 @@ export default class Ora {
 					scope.classes[className] = { items, scope };
 			},
 
-			[kw.id.functdwaion] ({ iter, scope, handleItems }) {
-				const path = [iter.next().value];
-
-				while (iter.disposeIf('.') && isA_0(iter.peek(1).value))
-					path.push( iter.next().value );
-
-				const args = [];
-
-				if (iter.disposeIf('(')){
-					let passes = 0;
-			
-					while (!iter.disposeIf(')')){
-						if (iter.disposeIf(',') && iter.disposeIfNot(isA_0)) continue;
-	
-						args.push(iter.next().value);
-						
-						if (passes++ > 100) return console.error(new Error('Cannot add more than 100 args on a function'));
-					}
-				}
-
-				const items = parseBlock({ iter, scope });
-
-				const func = (...inputs) => {
-					const variables = {};
-
-					for (const [key, value] of Object.entries(scope.variables))
-						variables[key] = value;
-
-					const nestedScope = this.createScope({ variables });
-					
-					for (const [i, value] of Object.entries(args)){
-						if (['object', 'function'].includes(typeof inputs[i]))
-							nestedScope.variables[value] = inputs[i];
-
-						else nestedScope.variables[value] = parseInput(
-							new betterIterable([], { tracking: true }),
-							{ value: inputs[i] },
-							nestedScope
-						);
-					}
-
-					return handleItems(
-						new betterIterable(items, { tracking: true }),
-						nestedScope
-					)
-				}
-
-				this.setOnPath({
-					source: scope.variables,
-					path,
-					value: func
-				});
-			},
-
 
 			...mappedFunctions,
 		}
@@ -784,14 +730,26 @@ export default class Ora {
 
 		let result = getValue(input);
 
-		for (const processor of this.valuePostProcessors){
-			if (processor.validate.bind(this)({ iter, value: result, scope }) === true){
-				const processed = processor.parse.bind(this)({ iter, value: result, scope });
+		const handleProcessors = () => {
+			let canGoAgain = false;
+			
+			for (const processor of this.valuePostProcessors){
+				if (processor.validate.bind(this)({ iter, value: result, scope }) === true){
+					const processed = processor.parse.bind(this)({ iter, value: result, scope });
 
-				if (processor.immediate) return processed;
-				else result = processed;
+					if (processed != null){
+						if (processor.immediate) return processed;
+						else result = processed;
+
+						canGoAgain = true;
+					}
+				}
 			}
+
+			if (canGoAgain) handleProcessors();
 		}
+
+		console.log('HANDLE RESULT', handleProcessors())
 
 		while (mathSymbols.hasOwnProperty(kw.matchUnsafe(iter.peek().value))) {
 			const symbol = mathSymbols[kw.matchUnsafe(iter.next().value)];
@@ -822,20 +780,20 @@ export default class Ora {
 			}
 		}
 
-		if (iter.disposeIf(next => kw.is(next, kw.id.as))) {
-			if (iter.disposeIf(next => kw.is(next, kw.id.array))) {
-				if (typeof result == 'string')
-					result = result.split('');
-			}
+		// if (iter.disposeIf(next => kw.is(next, kw.id.as))) {
+		// 	if (iter.disposeIf(next => kw.is(next, kw.id.array))) {
+		// 		if (typeof result == 'string')
+		// 			result = result.split('');
+		// 	}
 
-			else if (iter.disposeIf(next => kw.is(next, kw.id.string))) {
-				if (Array.isArray(result))
-					result = result.join('');
+		// 	else if (iter.disposeIf(next => kw.is(next, kw.id.string))) {
+		// 		if (Array.isArray(result))
+		// 			result = result.join('');
 
-				else if (typeof result == 'object')
-					result = JSON.stringify(result);
-			}
-		}
+		// 		else if (typeof result == 'object')
+		// 			result = JSON.stringify(result);
+		// 	}
+		// }
 
 		//* String repeater
 		if (iter.disposeIf(next => kw.is(next, kw.id.multiply))) {

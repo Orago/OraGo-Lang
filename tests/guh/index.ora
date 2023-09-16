@@ -1,5 +1,1 @@
-fn 'cat' (item){
-	return 'no ' + item;
-}
-
-print cat('balls');
+print ['cat', 'dog', 'mouse'] as NUMBER;

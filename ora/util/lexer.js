@@ -15,14 +15,15 @@ export function chunkLexed(lexed) {
 	let scopeDepth = 0;
 
 	for (const item of lexed) {
-			if (item === '{') scopeDepth++;
-			else if (item === '}') scopeDepth--;
+		if (item === '{') scopeDepth++;
+		else if (item === '}') scopeDepth--;
 
-			if (item === ';' && scopeDepth === 0) {
-					chunks.push(chunk);
-					chunk = [];
-			}
-			else if (!['\n', '\t', '\r'].includes(item)) chunk.push(item);
+		if (item === ';' && scopeDepth === 0) {
+			chunks.push(chunk);
+			chunk = [];
+		}
+		else if (!['\n', '\t', '\r'].includes(item))
+			chunk.push(item);
 	}
 
 	return chunks;

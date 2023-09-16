@@ -8,6 +8,8 @@ import {
 	extensionPack
 } from '../ora/util/extensions.js';
 
+import OraType from '../ora/util/DataTypes.js';
+
 export const oraComment = new customExtension({
 	keyword: new customKeyword('comment', ['comment', '#']),
 	function: new customFunction('comment', function () {
@@ -100,10 +102,9 @@ export const oraArrayAddon = new customExtension({
 				}
 
 				function handle(arr) {
-					// console.log('Peeky', iter.stack, arr)
-					// if (iter.disposeIfNot(next => kw.is(next, kw.id.concat)))
-					// 	return arr;
-					
+					if (iter.disposeIf('reverse')) {
+						return handle(arr.reverse());
+					}
 					if (iter.disposeIf('push')) {
 						arr.push(Next());
 
@@ -146,10 +147,8 @@ export const oraArrayAddon = new customExtension({
 						if (iter.disposeIf('reflect'))
 							ReflectArray(arr, mapped);
 
-						return mapped;
+						return handle(mapped);
 					}
-
-					return arr;
 				}
 
 				return handle(value);
@@ -166,8 +165,106 @@ export const oraObjectAddon = new customExtension({
 				return typeof value === 'object' && Array.isArray(value) != true;
 			},
 			parse ({ iter, value, scope }){
-				console.log('THIS OBJ', value.hello)
+				// console.log('THIS OBJ', value.hello)
 				return value;
+			}
+		})
+	],
+});
+
+export const oraStringAddon = new customExtension({
+	processors: [
+		new valuePostProcessor({
+			validate ({ value }){
+				return typeof value === 'string';
+			},
+			parse ({ iter, value, scope }){
+				const { keywords: kw } = this;
+				const Next = () => this.parseNext(iter, scope);
+
+				function handle(str) {
+					if (iter.disposeIf('reverse')) {
+						return handle(str.split('').reverse().join(''));
+					}
+					else if (iter.disposeIf('concat')) {
+						const nextItem = Next();
+
+						if (typeof nextItem != 'string')
+							throw 'Cannot concat on non string';
+
+						return handle(str.concat(nextItem));
+					}
+					else if (iter.disposeIf('split')){
+						return str.split(Next());
+					}
+					else if (iter.disposeIf(next => kw.is(next, kw.id.has))){
+						return str.includes(Next());
+					}
+				}
+
+				return handle(value);
+			}
+		})
+	],
+});
+
+Object.entries({ cat: 'meow', dog: 'woof' }).map(item => item.join(':')).join(',');
+
+export const oraTypeConversion = new customExtension({
+	processors: [
+		new valuePostProcessor({
+			validate ({ iter }){
+				const { keywords: kw } = this;
+
+				return iter.disposeIf(next => kw.is(next, kw.id.as));
+			},
+			parse ({ iter, value, scope }){
+				const Next = () => this.parseNext(iter, scope);
+				const toEnum = arr => Object.fromEntries(arr.map((item, index) => [item, index]));
+				const fromEnum = obj => Object.keys(obj);
+				const err = type => `Invalid casting for ${type}`;
+
+				const handle = (value) => {
+					const castType = this.keywordToType(Next());
+
+					if (Array.isArray(value)){
+						switch (castType){
+							case OraType.string: return value.join('');
+							case OraType.object: return toEnum(value);
+							case OraType.bool: return value.length > 0;
+							case OraType.number: return value.length;
+							default: throw err('array');
+						}
+					}
+					else if (typeof value == 'object'){
+						switch (castType){
+							case OraType.array: return Object.entries(value);
+							case OraType.string: return Object.entries(value)
+								.map(item => item.join(':'))
+								.join(',');
+							case OraType.bool: return Object.keys(value).length > 0;
+							default: throw err('object');
+						}
+					}
+					else if (typeof value == 'string'){
+						switch (castType){
+							case OraType.array: return value.split('');
+							case OraType.number: return isNaN(value) ? 0 : Number(value);
+							case OraType.bool: return value.length > 0;
+							default: throw err('string');
+						}
+					}
+					else if (typeof value === 'number'){
+						switch (castType){
+							case OraType.array: return Array.from({ length: value }, (_, index) => index + 1);
+							case OraType.number: return isNaN(value) ? 0 : Number(value);
+							case OraType.bool: return value > 0;
+							default: throw err('number');
+						}
+					}
+				}
+
+				return handle(value);
 			}
 		})
 	],
@@ -178,5 +275,7 @@ export const oraDEFAULTS = new extensionPack(
 	oraReturn,
 	oraValueSetter,
 	oraArrayAddon,
-	oraObjectAddon
+	oraObjectAddon,
+	oraStringAddon,
+	oraTypeConversion
 );
