@@ -1,9 +1,0 @@
-let scores = {
-	orago: 50,
-	tomb: 162,
-	cat: 61,
-	meow: 12,
-	guh: 3
-};
-
-print scores * 3;

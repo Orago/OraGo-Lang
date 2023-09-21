@@ -1,3 +1,0 @@
-loop 2 {
-	alert('white people be like');
-};

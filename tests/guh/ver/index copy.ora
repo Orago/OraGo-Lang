@@ -1,4 +1,0 @@
-let coolArray: ARRAY = ['hello'];
-
-
-print coolArray.0 && 'balls';

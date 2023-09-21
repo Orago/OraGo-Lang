@@ -1,9 +1,0 @@
-let cats = ['orago'];
-
-fn tryMap (item){
-	return 'no ' + item;
-}
-
-# cats.push 'success'.push 'mistakes'.pop.join ['hello', 'world'] .map tryMap.reflect;
-
-print cats . push 'successo';

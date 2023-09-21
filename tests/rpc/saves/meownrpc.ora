@@ -1,7 +1,0 @@
-rpc connect "578319500475105341";
-rpc state 'I make game <3';
-rpc details 'W game developer right here!!111!!!';
-rpc large ['boxie', 'hehe cat'];
-rpc small ['boxie', 'hehe cat'];
-
-rpc update;

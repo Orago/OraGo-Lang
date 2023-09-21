@@ -1,9 +1,0 @@
-fn 'cat' (item){
-	return 'no ' + item;
-};
-
-fn testo (guh){
-	return 'we love ' + guh;
-};
-
-print cat('balls') & ',' & testo('cats');

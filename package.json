@@ -1,0 +1,9 @@
+{
+	"type": "module",
+	"dependencies": {
+		"jsdoc": "^4.0.2"
+	},
+	"devDependencies": {
+		"typescript": "^5.2.2"
+	}
+}
