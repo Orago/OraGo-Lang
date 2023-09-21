@@ -16,14 +16,14 @@ export class Token {
 		this.depth = depth ?? 0;
 	}
 
-	static CanModify (tokenIn){
+	static isData (tokenIn){
 		return [
 			Token.Type.String,
 			Token.Type.Identifier,
 			Token.Type.Number,
 			
 			Token.Type.Seperator,
-		].some(tokenType => tokenType === tokenIn);
+		].some(tokenType => tokenType === tokenIn.type && tokenIn.value !== ';');
 	}
 }
 
@@ -33,4 +33,4 @@ export class KeywordToken extends Token {
 
 		this.keyword = keyword;
 	}
-}
+};

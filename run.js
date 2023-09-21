@@ -1,5 +1,6 @@
 import Ora, { OraProcessed, CustomKeyword, CustomFunction, ValueProcessor, Extension } from './src/main.js'
 import { Token, KeywordToken } from './src/token.js';
+import { DataType } from './src/dataType.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -7,7 +8,9 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const handleAdd = () => {
 		const token = iter.peek();
 
+		if (Token.isData(token)){
 			results.push(this.getNext({ iter, scope }));
+		}
 		
 		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
 			handleAdd();
@@ -15,7 +18,7 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 
 	handleAdd();
 
-	results.length > 0 && console.log(...results);
+	results.length > 0 && console.log('PRINTING', ...results.map(item => item instanceof DataType.Any ? item.valueOf() : item));
 });
 
 
@@ -36,21 +39,23 @@ const arrayCreation = new Extension({
 	processors: [
 		new ValueProcessor({
 			validate ({ iter, token, value }){
-				return token.type === Token.Type.Seperator && token.value === '[';
-				// return token.type === Token.Type.Keyword && token.keyword === 'print';
+				return (
+					token.type === Token.Type.Seperator &&
+					token.value === '[' &&
+					value instanceof DataType.Array != true
+				);
 			},
 			parse ({ iter, scope }){
 				const array = [];
 				let tries = 0;
 
-				console.log(iter.peek())
-				
 				while (!iter.disposeIf(']')){
-					if (tries++ > 1000) throw new Error('Cannot parse more than 1000 items in an array');
-					if (iter.disposeIf(',') && iter.disposeIfNot(next => {
-						console.log('testnot', next)
-						return false;
-					})) continue;
+					if (tries++ > 20) throw new Error('Cannot parse more than 1000 items in an array');
+					if (iter.disposeIf(',')){
+						if (Token.isData(iter.peek()) != true)
+							iter.dispose(1);
+						continue;
+					}
 
 					const token = iter.read();
 
@@ -61,7 +66,30 @@ const arrayCreation = new Extension({
 					);
 				}
 
-				return array;
+				return new OraProcessed({ value: new DataType.Array(array) });
+			}
+		})
+	]
+});
+
+// must come first
+const toDataType = new Extension({
+	processors: [
+		new ValueProcessor({
+			validate ({ value }){
+				return value instanceof DataType.Any != true;
+				// return token.type === Token.Type.Keyword && token.keyword === 'print';
+			},
+			parse ({ value }){
+				if (typeof value === 'string')
+					return new OraProcessed({
+						value: new DataType.String(value)
+					})
+
+				else if (typeof value === 'number')
+					return new OraProcessed({
+						value: new DataType.Number(value)
+					});
 			}
 		})
 	]
@@ -81,7 +109,7 @@ const stringExt = new Extension({
 				const read = iter.read();
 
 				if (read.type === Token.Type.String){
-					console.log(read.value);
+					console.log('STRING EXT', read.value);
 				}
 				else {
 					console.log(read)
@@ -95,6 +123,8 @@ const stringExt = new Extension({
 
 const toylang = new Ora({
 	extensions: [
+		// must come first
+		toDataType,
 		arrayCreation,
 
 		oraComment,

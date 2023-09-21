@@ -4,6 +4,7 @@ export { CustomKeyword, CustomFunction, ValueProcessor, Extension };
 
 import { KeywordDict } from './keyword.js';
 import { Token } from './token.js';
+import { DataType } from './dataType.js';
 
 class Scope {
 	data = {};
@@ -16,7 +17,7 @@ class TokenIterator {
 
 	static get Blank (){
 		return {
-			value: ''
+			value: undefined
 		};
 	}
 
@@ -113,12 +114,18 @@ class OraSetup {
 }
 
 export class OraProcessed {
-	constructor (options){
-		if (options?.token instanceof Token) 
-			this.token = options.token;
+	changed = false;
 
-		if (options?.value != null)
+	constructor (options){
+		if (options?.token instanceof Token){
+			this.changed = true;
+			this.token = options.token;
+		}
+
+		if (options?.value != null){
+			this.changed = true;
 			this.value = options.value;
+		}
 	}
 }
 
@@ -152,12 +159,12 @@ export default class Ora {
 		let canGoAgain = false;
 
 		const pass = Object.assign(this.extensionData({ iter }), { token, value, scope });
-		
+
 		for (const processor of this.Options.Processors){
 			if (processor.validate.bind(this)(pass) === true){
 				const processed = processor.parse.bind(this)(pass);
 
-				if (processed instanceof OraProcessed){
+				if (processed instanceof OraProcessed && processed.changed){
 					if (processor?.immediate) return processed.value;
 					else {
 						if (processed.value != null) value = processed.value;
@@ -215,10 +222,6 @@ export default class Ora {
 					}
 				}
 				else throw new Error(`Invalid keyword (${token.value}) / ([${token.keyword}])`);
-			}
-
-			if ([Token.Type.String, Token.Type.Number, Token.Type.Identifier].some(ttype => ttype === token.type)){
-				this.processValue({ iter, value: token.value, token: token, scope });
 			}
 		}
 	}
