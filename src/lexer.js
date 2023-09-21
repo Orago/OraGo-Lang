@@ -13,25 +13,27 @@ export class Lexer {
     while (cursor < code.length) {
       let char = code[cursor];
 
-      if (char === ' ') cursor++;
-			else if (char === '"') {
-        // Handle string literals
-        let stringValue = '';
-        cursor++; // Skip the opening double quote
+			if (char === ' ') {
+				cursor++;
+			} else if (char === '"' || char === "'") {
+				// Handle string literals
+				const quoteType = char; // Store the opening quote character
+				let stringValue = '';
+				cursor++; // Skip the opening quote
 
-        while (cursor < code.length && code[cursor] !== '"') {
-          stringValue += code[cursor];
-          cursor++;
-        }
+				while (cursor < code.length && code[cursor] !== quoteType) {
+					stringValue += code[cursor];
+					cursor++;
+				}
 
-        if (code[cursor] === '"') {
-          tokens.push(new Token(Token.Type.String, stringValue, blockLevel));
-          cursor++; // Skip the closing double quote
-        }
-				// Unterminated string
-        else throw new Error('Unterminated string');
-
-      }
+				if (code[cursor] === quoteType) {
+					tokens.push(new Token(Token.Type.String, stringValue, blockLevel));
+					cursor++; // Skip the closing quote
+				} else {
+					// Unterminated string
+					throw new Error('Unterminated string');
+				}
+			}
 			else if (/[a-zA-Z_]/.test(char)) {
         // Handle identifiers and keywords
         let identifier = '';
@@ -63,19 +65,23 @@ export class Lexer {
       }
 			else if (char === '{') {
         // Handle block start
-        tokens.push(new Token(Token.Type.BlockStart, '{', blockLevel));
+        tokens.push(new Token(Token.Type.Seperator, '{', blockLevel));
         cursor++;
         blockLevel++;
       }
 			else if (char === '}') {
         // Handle block end
         if (blockLevel > 0) {
-          tokens.push(new Token(Token.Type.BlockEnd, '}', blockLevel));
+          tokens.push(new Token(Token.Type.Seperator, '}', blockLevel));
           cursor++;
           blockLevel--;
         }
 				else throw new Error('Unmatched closing curly brace');
       }
+			else if (['[', ']', '(', ')', ';'].some(seperator => seperator == char)){
+				tokens.push(new Token(Token.Type.Seperator, char, blockLevel));
+        cursor++;
+			}
 			else {
         // Handle other characters as operators or symbols
         tokens.push(new Token(Token.Type.Op, char, blockLevel));

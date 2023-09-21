@@ -55,7 +55,7 @@ class TokenIterator {
 		const item = this.peek(n);
 		
 		return (
-			(typeof check === 'string' && check == item) ||
+			(typeof check === 'string' && check == item.value) ||
 			(check instanceof Function && check(item) === true) ||
 			(check instanceof RegExp   && check.test(item))
 		);
@@ -112,6 +112,16 @@ class OraSetup {
 	}
 }
 
+export class OraProcessed {
+	constructor (options){
+		if (options?.token instanceof Token) 
+			this.token = options.token;
+
+		if (options?.value != null)
+			this.value = options.value;
+	}
+}
+
 export default class Ora {
 	scope = new Scope;
 	Keywords = new KeywordDict;
@@ -141,15 +151,18 @@ export default class Ora {
 	processValue ({ iter, value, token, scope }){
 		let canGoAgain = false;
 
-		const pass = Object.assign(this.extensionData({ iter }), { token, scope });
+		const pass = Object.assign(this.extensionData({ iter }), { token, value, scope });
 		
 		for (const processor of this.Options.Processors){
 			if (processor.validate.bind(this)(pass) === true){
 				const processed = processor.parse.bind(this)(pass);
 
-				if (processed != null){
-					if (processor.immediate) return processed;
-					else value = processed;
+				if (processed instanceof OraProcessed){
+					if (processor?.immediate) return processed.value;
+					else {
+						if (processed.value != null) value = processed.value;
+						if (processed.token != null) token = processed.token
+					}
 
 					canGoAgain = true;
 				}
@@ -159,6 +172,23 @@ export default class Ora {
 		if (canGoAgain) return this.processValue({ iter, value, token, scope });
 
 		return value;
+	}
+
+	testArrow (iter){
+		return (
+			(
+				iter.peek().type === Token.Type.Op &&
+				iter.peek().value === '-'
+			) &&
+			(
+				iter.peek(2).type === Token.Type.Op &&
+				iter.peek(2).value === '>'
+			)
+		);
+	}
+
+	disposeIfArrow (iter){
+		return this.testArrow(iter) && iter.dispose(2).length == 2;
 	}
 
 	getNext ({ iter, scope }){
@@ -171,6 +201,7 @@ export default class Ora {
 		const lexed = new Lexer(this.Keywords).tokenize(code);
 		const iter = new TokenIterator(lexed.tokens);
 		const scope = this.scope;
+		const { Methods } = this.Options;
 
 		while (lexed.tokens.length > 0){
 			const [token] = iter.dispose(1);
@@ -179,15 +210,15 @@ export default class Ora {
 				// Validate keyword
 				if (this.Keywords.hasID(token.keyword)){
 					// Validate method for keyword
-					if (this.Options.Methods.hasOwnProperty(token.keyword)){
-						this.Options.Methods[token.keyword].bind(this)({ iter, scope });
+					if (Methods.hasOwnProperty(token.keyword)){
+						Methods[token.keyword].bind(this)({ iter, scope });
 					}
 				}
 				else throw new Error(`Invalid keyword (${token.value}) / ([${token.keyword}])`);
 			}
 
 			if ([Token.Type.String, Token.Type.Number, Token.Type.Identifier].some(ttype => ttype === token.type)){
-				this.processValue({ iter, value, token: token, scope })
+				this.processValue({ iter, value: token.value, token: token, scope });
 			}
 		}
 	}
