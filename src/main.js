@@ -173,23 +173,22 @@ export default class Ora {
 		const scope = this.scope;
 
 		while (lexed.tokens.length > 0){
-			const peeked = iter.peek();
+			const [token] = iter.dispose(1);
 
-			if (peeked.type === Token.Type.Keyword){
-				iter.dispose(1);
-
+			if (token.type === Token.Type.Keyword){
 				// Validate keyword
-				if (this.Keywords.hasID(peeked.keyword)){
+				if (this.Keywords.hasID(token.keyword)){
 					// Validate method for keyword
-					if (this.Options.Methods.hasOwnProperty(peeked.keyword)){
-						this.Options.Methods[peeked.keyword].bind(this)({ iter, scope });
+					if (this.Options.Methods.hasOwnProperty(token.keyword)){
+						this.Options.Methods[token.keyword].bind(this)({ iter, scope });
 					}
 				}
-
-				else throw new Error(`Invalid keyword (${peeked.value}) / ([${peeked.keyword}])`);
+				else throw new Error(`Invalid keyword (${token.value}) / ([${token.keyword}])`);
 			}
 
-			this.getNext({ iter, scope });
+			if ([Token.Type.String, Token.Type.Number, Token.Type.Identifier].some(ttype => ttype === token.type)){
+				this.processValue({ iter, value, token: token, scope })
+			}
 		}
 	}
 }

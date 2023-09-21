@@ -59,9 +59,11 @@ const toylang = new Ora({
 	]
 });
 
+console.time('processed');
 toylang.run(`
-	printout "hello world" & "ass"
+	printout "hello" & "sami how" & "are you?"
 `);
+console.timeEnd('processed');
 
 /*
 	fn catto {
