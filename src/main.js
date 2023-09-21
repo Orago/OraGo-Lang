@@ -6,16 +6,23 @@ class Scope {
 	data = {};
 }
 
-
 class TokenIterator {
 	constructor (tokens){
 		this.tokens = tokens;
 	};
 
-	peek (pos = 1){
+	static get Blank (){
 		return {
-			status: this.tokens.length > pos - 1,
-			value: this.tokens[pos - 1]
+			value: ''
+		};
+	}
+
+	peek (pos = 1){
+		const status = this.tokens.length > pos - 1;
+
+		return {
+			...status ? this.tokens[pos - 1] : TokenIterator.Blank,
+			status
 		}
 	}
 
@@ -23,10 +30,12 @@ class TokenIterator {
 		const max = pos - 1;
 
 		if (max > 0) this.dispose(max);
+
+		const status = this.tokens.length > 0
 		
 		return {
-			status: this.tokens.length > 0,
-			value: this.tokens.shift()
+			...this.tokens.shift() ?? TokenIterator.Blank,
+			status
 		}
 	}
 
@@ -52,6 +61,16 @@ class OraSetup {
 			if (extension?.keyword instanceof CustomKeyword){
 				extension.keyword.assign(Instance.Options.Lexer.keywords);
 			}
+
+			if (Array.isArray(extension.processors)){
+				if (extension.processors.every(processor => processor instanceof ValueProcessor)){
+					Instance.Options.Processors.push(...extension.processors);
+				}
+				else {
+					console.log(extension.processors);
+					throw 'Invalid Processor';
+				}
+			}
 		}
 	}
 }
@@ -73,21 +92,46 @@ export default class Ora {
 		OraSetup.HandleExtensions(this, options?.extensions);
 	}
 
-	get extensionData () {
+	extensionData ({ iter }) {
 		return {
-			scope: this.scope
+			scope: this.scope,
+			iter
 		}
+	}
+
+	getValue ({ iter, token }){
+		const handleProcessors = () => {
+			let canGoAgain = false;
+
+			const pass = Object.assign(this.extensionData({ iter }), { token });
+			
+			for (const processor of this.Options.Processors){
+				if (processor.validate.bind(this)(pass) === true){
+					const processed = processor.parse.bind(this)(pass);
+
+					if (processed != null){
+						if (processor.immediate) return processed;
+						else result = processed;
+
+						canGoAgain = true;
+					}
+				}
+			}
+
+			if (canGoAgain) handleProcessors();
+		}
+
+		handleProcessors();
 	}
 
 	run (code){
 		const lexed = new Lexer(this.Options.Lexer).tokenize(code);
-
 		const iter = new TokenIterator(lexed.tokens);
 
-		console.log(this.Options.Lexer.keywords)
-
 		for (const token of lexed.tokens){
-			
+			let value = token.value;
+			iter.dispose(1);
+			this.getValue({ iter, token });
 		}
 	}
 }
