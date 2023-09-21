@@ -47,6 +47,32 @@ class TokenIterator {
 
 		return disposed;
 	}
+
+	test (check, n = 1){
+		const item = this.tokens[n - 1];
+		
+		return (
+			(typeof check === 'string' && check == item) ||
+			(check instanceof Function && check(item) === true) ||
+			(check instanceof RegExp   && check.test(item))
+		);
+	}
+
+	disposeIf (check, n = 1) {
+		const status = this.test(check, n);
+
+		status && this.read(n - 1);
+
+		return status;
+	}
+
+	disposeIfNot (check, n = 1){
+		const status = this.test(check, n);
+
+		!status && this.read(n - 1);
+
+		return status;
+	}
 }
 
 class OraSetup {
@@ -99,39 +125,41 @@ export default class Ora {
 		}
 	}
 
-	getValue ({ iter, token }){
-		const handleProcessors = () => {
-			let canGoAgain = false;
+	processValue ({ iter, value, token, scope }){
+		let canGoAgain = false;
 
-			const pass = Object.assign(this.extensionData({ iter }), { token });
-			
-			for (const processor of this.Options.Processors){
-				if (processor.validate.bind(this)(pass) === true){
-					const processed = processor.parse.bind(this)(pass);
+		const pass = Object.assign(this.extensionData({ iter }), { token, scope });
+		
+		for (const processor of this.Options.Processors){
+			if (processor.validate.bind(this)(pass) === true){
+				const processed = processor.parse.bind(this)(pass);
 
-					if (processed != null){
-						if (processor.immediate) return processed;
-						else result = processed;
+				if (processed != null){
+					if (processor.immediate) return processed;
+					else value = processed;
 
-						canGoAgain = true;
-					}
+					canGoAgain = true;
 				}
 			}
-
-			if (canGoAgain) handleProcessors();
 		}
 
-		handleProcessors();
+		if (canGoAgain) return this.processValue({ iter, value, token, scope });
+
+		return value;
+	}
+
+	getNext ({ iter, scope }){
+		const token = iter.read();
+
+		return this.processValue({ iter, scope, value: token.value, token });
 	}
 
 	run (code){
 		const lexed = new Lexer(this.Options.Lexer).tokenize(code);
 		const iter = new TokenIterator(lexed.tokens);
 
-		for (const token of lexed.tokens){
-			let value = token.value;
-			iter.dispose(1);
-			this.getValue({ iter, token });
+		while (lexed.tokens.length > 0){
+			this.getNext({ iter, scope: this.scope });
 		}
 	}
 }
