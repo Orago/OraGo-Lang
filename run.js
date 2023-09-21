@@ -2,29 +2,19 @@ import Ora, { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '.
 import { Token, KeywordToken } from './src/token.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
-	const { keywords: kw } = this;
-	
 	const results = [];
 
 	const handleAdd = () => {
-		const token = iter.read();
+		const token = iter.peek();
 
-		if ([Token.Type.String, Token.Type.Number].some(ttype => ttype === token.type)){
+		if ([Token.Type.String, Token.Type.Number].some(ttype => ttype === token.type))
 			results.push(this.getNext({ iter, scope }));
-		}
 		
+		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
+			handleAdd();
 	}
 
 	handleAdd();
-	
-	// if (false){
-	// 	const results = [this.processValue({ iter, value: token, token })];
-	// }
-
-	// while (iter.disposeIf(next => kw.is(next, kw.id.and)) && !iter.peek().done)
-	// 	results.push(
-	// 		this.parseInput(iter, iter.read(), scope)
-	// 	);
 
 	results.length > 0 && console.log(...results);
 });
@@ -69,7 +59,9 @@ const toylang = new Ora({
 	]
 });
 
-toylang.run(`printout "hello world"`);
+toylang.run(`
+	printout "hello world" & "ass"
+`);
 
 /*
 	fn catto {

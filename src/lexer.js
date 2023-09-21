@@ -2,12 +2,7 @@ import { Token, KeywordToken } from './token.js';
 
 export class Lexer {
   constructor (options) {
-    this.keywords = {
-      'assign': ['let'],
-			'function': ['fn'],
-
-			...(typeof options?.keywords == 'object' ? options.keywords : {})
-    };
+    this.keywords = options.keywords;
   }
 
   tokenize(code) {

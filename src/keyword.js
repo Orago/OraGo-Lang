@@ -11,7 +11,7 @@ const defaultKeywords = {
 	equals: ['equals', 'is'],
 	return: ['return'],
 	class: ['class'],
-	function: ['func', 'fn'],
+	function: ['fn'],
 	exit: ['exit'],
 	push: ['push'],
 	pop: ['pop'],
@@ -59,7 +59,7 @@ const defaultKeywords = {
 	//#endregion //* Types *//
 };
 
-export class keywordDict {
+export class KeywordDict {
 	keywords = { ...defaultKeywords };
 
 	constructor (input = {}){
@@ -68,7 +68,7 @@ export class keywordDict {
 	}
 
 	refreshKeywordIDs (){
-		this.keywordIDs = Object.fromEntries(...Object.keys(this.keywords).map(key => [key, key]));
+		this.keywordIDs = Object.fromEntries(Object.keys(this.keywords).map(key => [key, key]));
 	}
 
 	has (search){

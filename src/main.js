@@ -2,6 +2,9 @@ import { Lexer } from './lexer.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from './extensions.js';
 export { CustomKeyword, CustomFunction, ValueProcessor, Extension };
 
+import { KeywordDict } from './keyword.js';
+import { Token } from './token.js';
+
 class Scope {
 	data = {};
 }
@@ -49,7 +52,7 @@ class TokenIterator {
 	}
 
 	test (check, n = 1){
-		const item = this.tokens[n - 1];
+		const item = this.peek(n);
 		
 		return (
 			(typeof check === 'string' && check == item) ||
@@ -85,7 +88,9 @@ class OraSetup {
 				throw 'Invalid extension'
 
 			if (extension?.keyword instanceof CustomKeyword){
-				extension.keyword.assign(Instance.Options.Lexer.keywords);
+				Instance.Keywords.addKeyword(
+					...extension.keyword.bound
+				);
 			}
 
 			if (Array.isArray(extension.processors)){
@@ -97,23 +102,31 @@ class OraSetup {
 					throw 'Invalid Processor';
 				}
 			}
+
+			if (extension.function instanceof CustomFunction)
+				Object.assign(
+					Instance.Options.Methods,
+					extension.function.bound({ keywords: Instance.Keywords})
+				);
 		}
 	}
 }
 
 export default class Ora {
 	scope = new Scope;
-	
+	Keywords = new KeywordDict;
+
 	Options = {
 		Lexer: {
-			keywords: {}
+			
 		},
+		Methods: {},
 		Processors: []
 	};
 
 	constructor (options){
-		if (typeof options?.keywords === 'object')
-			this.Options.Lexer.keywords = options.keywords;
+		// if (typeof options?.keywords === 'object')
+		// 	this.Options.Lexer.keywords = options.keywords;
 
 		OraSetup.HandleExtensions(this, options?.extensions);
 	}
@@ -155,11 +168,28 @@ export default class Ora {
 	}
 
 	run (code){
-		const lexed = new Lexer(this.Options.Lexer).tokenize(code);
+		const lexed = new Lexer(this.Keywords).tokenize(code);
 		const iter = new TokenIterator(lexed.tokens);
+		const scope = this.scope;
 
 		while (lexed.tokens.length > 0){
-			this.getNext({ iter, scope: this.scope });
+			const peeked = iter.peek();
+
+			if (peeked.type === Token.Type.Keyword){
+				iter.dispose(1);
+
+				// Validate keyword
+				if (this.Keywords.hasID(peeked.keyword)){
+					// Validate method for keyword
+					if (this.Options.Methods.hasOwnProperty(peeked.keyword)){
+						this.Options.Methods[peeked.keyword].bind(this)({ iter, scope });
+					}
+				}
+
+				else throw new Error(`Invalid keyword (${peeked.value}) / ([${peeked.keyword}])`);
+			}
+
+			this.getNext({ iter, scope });
 		}
 	}
 }
