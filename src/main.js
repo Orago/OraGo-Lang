@@ -158,7 +158,7 @@ export default class Ora {
 	processValue ({ iter, value, token, scope }){
 		let canGoAgain = false;
 
-		const pass = Object.assign(this.extensionData({ iter }), { token, value, scope });
+		const pass = Object.assign(this.extensionData({ iter }), { token, value, scope, self: this });
 
 		for (const processor of this.Options.Processors){
 			if (processor.validate.bind(this)(pass) === true){
@@ -168,7 +168,7 @@ export default class Ora {
 					if (processor?.immediate) return processed.value;
 					else {
 						if (processed.value != null) value = processed.value;
-						if (processed.token != null) token = processed.token
+						if (processed.token != null) token = processed.token;
 					}
 
 					canGoAgain = true;
@@ -179,23 +179,6 @@ export default class Ora {
 		if (canGoAgain) return this.processValue({ iter, value, token, scope });
 
 		return value;
-	}
-
-	testArrow (iter){
-		return (
-			(
-				iter.peek().type === Token.Type.Op &&
-				iter.peek().value === '-'
-			) &&
-			(
-				iter.peek(2).type === Token.Type.Op &&
-				iter.peek(2).value === '>'
-			)
-		);
-	}
-
-	disposeIfArrow (iter){
-		return this.testArrow(iter) && iter.dispose(2).length == 2;
 	}
 
 	getNext ({ iter, scope }){

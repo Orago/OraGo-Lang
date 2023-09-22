@@ -12,8 +12,6 @@ export class DataType {
 		}
 	};
 
-
-
 	static String = class String extends DataType.Any {
 		valueOf (){
 			return this.value + '';
@@ -51,10 +49,3 @@ export class DataType {
 		}
 	}
 }
-
-class deez {
-	[Symbol.toPrimitive](hint) {
-		return 5;
-	}
-}
-+new deez() 

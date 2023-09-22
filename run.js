@@ -1,6 +1,7 @@
 import Ora, { OraProcessed, CustomKeyword, CustomFunction, ValueProcessor, Extension } from './src/main.js'
 import { Token, KeywordToken } from './src/token.js';
 import { DataType } from './src/dataType.js';
+import { Arrow, Parenthesis } from './src/parseUtil.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -41,11 +42,11 @@ const arrayCreation = new Extension({
 			validate ({ iter, token, value }){
 				return (
 					token.type === Token.Type.Seperator &&
-					token.value === '[' &&
+					value === '[' &&
 					value instanceof DataType.Array != true
 				);
 			},
-			parse ({ iter, scope }){
+			parse ({ iter, scope, token }){
 				const array = [];
 				let tries = 0;
 
@@ -68,6 +69,8 @@ const arrayCreation = new Extension({
 
 				return new OraProcessed({ value: new DataType.Array(array) });
 			}
+
+
 		})
 	]
 });
@@ -76,8 +79,10 @@ const arrayCreation = new Extension({
 const toDataType = new Extension({
 	processors: [
 		new ValueProcessor({
-			validate ({ value }){
-				return value instanceof DataType.Any != true;
+			validate ({ value, token }){
+				return (
+					value instanceof DataType.Any != true && Token.isData(token)
+				);
 				// return token.type === Token.Type.Keyword && token.keyword === 'print';
 			},
 			parse ({ value }){
@@ -95,27 +100,48 @@ const toDataType = new Extension({
 	]
 })
 
-const stringExt = new Extension({
+const arrayExt = new Extension({
 	processors: [
 		new ValueProcessor({
-			validate ({ iter, token, value }){
+			validate ({ iter, value }){
 				return (
-					token.type === Token.Type.String &&
-					this.disposeIfArrow(iter)
+					value instanceof DataType.Array &&
+					Arrow.disposeIf(iter)
 				);
-				// return token.type === Token.Type.Keyword && token.keyword === 'print';
 			},
 			parse ({ iter, value }){
 				const read = iter.read();
 
-				if (read.type === Token.Type.String){
-					console.log('STRING EXT', read.value);
+				if (read.type === Token.Type.Identifier){
+					switch (read.value){
+						case 'join': {
+							const parenthesis = Parenthesis.parse(iter);
+
+							if (parenthesis.status != true || parenthesis.tokens.length != 1)
+								throw 'Failed to join';
+
+							const [token] = parenthesis.tokens;
+							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
+
+							return new OraProcessed({
+								value: new DataType.String(
+									value.valueOf().join(text)
+								)
+							})
+						};
+
+						case 'reverse': {
+							value.value.reverse();
+
+							return new OraProcessed({ value });
+						}
+						default: throw 'Invalid submethod on array'
+					}
 				}
 				else {
 					console.log(read)
 					throw new Error('^ Invalid value to print');
 				}
-				return value;
 			}
 		})
 	],
@@ -129,13 +155,13 @@ const toylang = new Ora({
 
 		oraComment,
 		OraPrint,
-		stringExt,
+		arrayExt,
 	]
 });
 
 console.time('processed');
 toylang.run(`
-	printout [50, '22']
+	printout [50, '22'] -> reverse -> join(' !!!! ')
 `);
 console.timeEnd('processed');
 
