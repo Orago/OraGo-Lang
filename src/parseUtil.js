@@ -30,6 +30,39 @@ export class Parenthesis {
 		);
 	}
 
+	static parseIdentifiers (iter){
+		const tokens = [];
+
+		const loopSearch = () => {
+			const peek = iter.peek();
+
+			// Return success no params for basic
+			if (peek.value === ')') return true;
+
+			if (peek.type === Token.Type.Identifier)
+				tokens.push(iter.read());
+			else false;
+
+			if (iter.disposeIf(token => token.value === ',' && token.type === Token.Type.Op))
+				return loopSearch();
+
+			return iter.disposeIf(')') == true;
+		}
+
+		if (Parenthesis.test(iter))
+			if (iter.disposeIf('(')){
+				return {
+					status: loopSearch(),
+					tokens
+				};
+			}
+
+		return {
+			status: false,
+			tokens
+		}
+	}
+
 	static parse (Instance, { iter, scope }){
 		const items = [];
 		const item = (value, token) => items.push({ value, token });
@@ -48,24 +81,19 @@ export class Parenthesis {
 				loopSearch();
 		}
 
-
 		if (Parenthesis.test(iter))
 			if (iter.disposeIf('(')){
-
 				loopSearch();
 
-				if (iter.disposeIf(')') != true)
-					throw 'Unended parenthesis';
-
 				return {
-					status: true,
+					status: iter.disposeIf(')') == true,
 					items
-				}
+				};
 			}
 		
 		return {
 			status: false,
-			tokens: items
+			items
 		}
 	}
 }

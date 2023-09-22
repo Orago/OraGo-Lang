@@ -64,9 +64,17 @@ export class ProcessorPriority {
 }
 
 export class ValueProcessor {
+	static Priority = {
+		unimportant: -1,
+		pre: 0,
+		identifier: 0,
+		modifier: 1,
+		post: 2
+	};
+
 	priority = ProcessorPriority.unimportant;
 
-	constructor ({ validate, parse }){
+	constructor ({ validate, parse, priority }){
 		if (typeof validate != 'function')
 			throw `Invalid validator for ${this.prefix}Processor`;
 
@@ -76,6 +84,9 @@ export class ValueProcessor {
 			throw `Invalid parser for ${this.prefix}Processor`;
 		
 		this.parse = parse;
+
+		if (typeof priority === 'number')
+			this.priority = priority;
 	}
 }
 

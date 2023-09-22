@@ -4,6 +4,7 @@ import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../ext
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
 import { Arrow, Parenthesis } from '../parseUtil.js';
+import { ProcessorPriority } from '../extensions.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -39,6 +40,7 @@ export const oraComment = new Extension({
 export const arrayCreation = new Extension({
 	processors: [
 		new ValueProcessor({
+			priority: ValueProcessor.Priority.pre,
 			validate ({ iter, token, value }){
 				return (
 					token.type === Token.Type.Seperator &&
@@ -77,6 +79,7 @@ export const arrayCreation = new Extension({
 export const toDataType = new Extension({
 	processors: [
 		new ValueProcessor({
+			priority: ValueProcessor.Priority.pre,
 			validate ({ value, token }){
 				return (
 					value instanceof DataType.Any != true && Token.isData(token)
@@ -101,6 +104,7 @@ export const toDataType = new Extension({
 export const arrayExt = new Extension({
 	processors: [
 		new ValueProcessor({
+			priority: ValueProcessor.Priority.modifier,
 			validate ({ iter, value }){
 				return (
 					value instanceof DataType.Array &&
@@ -181,6 +185,8 @@ export const arrayExt = new Extension({
 export const stringExt = new Extension({
 	processors: [
 		new ValueProcessor({
+			priority: ValueProcessor.Priority.modifier,
+
 			validate ({ iter, value }){
 				return (
 					value instanceof DataType.String &&
@@ -226,6 +232,7 @@ export const stringExt = new Extension({
 export const objectExt = new Extension({
 	processors: [
 		new ValueProcessor({
+			priority: ValueProcessor.Priority.modifier,
 			validate ({ iter, value }){
 				return (
 					value instanceof DataType.String &&
@@ -256,28 +263,26 @@ export const objectExt = new Extension({
 export const fnExt = new Extension({
 	processors: [
 		new ValueProcessor({
-			validate ({ iter, value }){
-				return (
-					value instanceof DataType.String &&
-					Arrow.disposeIf(iter)
-				);
+			priority: ValueProcessor.Priority.pre,
+			validate ({ iter, value, token }){
+				return token.type === Token.Type.Keyword && token.keyword === 'function';
 			},
-			parse ({ iter, value }){
-				const read = iter.read();
+			parse ({ iter, value, scope: oldScope }){
+				let assign = true;
+				let scope;
+				let varname;
 
-				if (read.type === Token.Type.Identifier){
-					switch (read.value){
-						case 'size': return new OraProcessed({
-							value: new DataType.Number(Object.keys(value.valueOf()).length)
-						});
+				if (iter.peek().type === Token.Type.Identifier){
+					const read = iter.dispose(1);
+					assign = true;
+					scope = this.subscope(oldScope);
+					varname = read.value;
+				}
 
-						default: throw 'Invalid submethod on array'
-					}
-				}
-				else {
-					console.log(read)
-					throw new Error('^ Invalid value to print');
-				}
+				const pst = Parenthesis.parseIdentifiers(iter);
+
+				console.log('bruhhhh', pst)
+				// else throw new Error('Invalid function to create');
 			}
 		})
 	],
@@ -290,5 +295,7 @@ export const allDefaults = [
 	OraPrint,
 
 	arrayExt,
-	stringExt
+	stringExt,
+
+	fnExt
 ];

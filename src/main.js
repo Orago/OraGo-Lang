@@ -7,7 +7,13 @@ import { Token } from './token.js';
 import { DataType } from './dataType.js';
 
 class Scope {
+	parent = this;
 	data = {};
+
+	constructor (parent){
+		if (parent instanceof Scope)
+			this.parent = parent;
+	}
 }
 
 class TokenIterator {
@@ -125,6 +131,11 @@ export class OraProcessed {
 			this.token = options.token;
 		}
 
+		if (options?.scope instanceof Scope){
+			this.changed = true;
+			this.scope = options.scope;
+		}
+
 		if (options?.value != null){
 			this.changed = true;
 			this.value = options.value;
@@ -145,7 +156,7 @@ export default class Ora {
 	constructor (options){
 		OraSetup.HandleExtensions(this, options?.extensions);
 
-		this.Options.Processors = this.Options.Processors.sort((a, b) => b === -1 ? -1 : a-b);
+		this.Options.Processors = this.Options.Processors.sort((a, b) => b < 0 || a < 0 ? b-a : a-b);
 	}
 
 	extensionData ({ iter }) {
@@ -169,6 +180,7 @@ export default class Ora {
 					else {
 						if (processed.value != null) value = processed.value;
 						if (processed.token != null) token = processed.token;
+						if (processed.scope != null) scope = processed.scope;
 					}
 
 					canGoAgain = true;
@@ -187,6 +199,10 @@ export default class Ora {
 		return this.processValue({ iter, scope, value: token.value, token });
 	}
 
+	subscope (scope){
+		return new Scope(scope);
+	}
+
 	run (code){
 		const lexed = new Lexer(this.Keywords).tokenize(code);
 		const iter = new TokenIterator(lexed.tokens);
@@ -203,6 +219,7 @@ export default class Ora {
 					if (Methods.hasOwnProperty(token.keyword)){
 						Methods[token.keyword].bind(this)({ iter, scope });
 					}
+					else this.processValue({ iter, value: token.value, token, scope });
 				}
 				else throw new Error(`Invalid keyword (${token.value}) / ([${token.keyword}])`);
 			}

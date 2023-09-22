@@ -1,6 +1,5 @@
 import Ora from './src/main.js'
 import { allDefaults } from './src/extensions/default.js';
-
 const toylang = new Ora({
 	extensions: allDefaults
 });
