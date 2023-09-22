@@ -13,13 +13,12 @@ console.time('processed');
 
 toylang.run(`
 	fn removeAll (fullText, toRemove){
-		print 'yeah' & fullText / toRemove
-
-		return fullText / 'dog'
+		return fullText / toRemove
 	}
 
+	let silly = 'I am a silly catdog lover, My favorite animals are silly kittdogies'
 
-	print removeAll -> call('I am a silly catdog lover, My favorite animals are silly kittdogies', 'dog')
+	print removeAll -> call(silly, 'dog')
 `);
 
 console.timeEnd('processed');

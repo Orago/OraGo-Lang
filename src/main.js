@@ -243,6 +243,7 @@ export default class Ora {
 
 					return;
 				}
+
 				// Validate keyword
 				if (this.Keywords.hasID(token.keyword)){
 					// Validate method for keyword

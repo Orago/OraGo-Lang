@@ -1,7 +1,7 @@
 const defaultKeywords = {
 	//#region //* Commands *//
 	// comment: ['comment', '#'],
-	set: ['let'],
+	// set: ['let'],
 	assign: ['=', 'to'],
 	delete: ['delete'],
 	// print: ['print'],
@@ -11,7 +11,6 @@ const defaultKeywords = {
 	equals: ['equals', 'is'],
 	return: ['return'],
 	class: ['class'],
-	function: ['fn'],
 	exit: ['exit'],
 	shift: ['shift'],
 	await: ['await'],

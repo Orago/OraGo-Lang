@@ -1,15 +1,15 @@
 import { Token } from './token.js';
 import { DataType } from './dataType.js';
 export class Arrow {
-	static test (iter){
+	static test (iter, pos = 1){
 		return (
 			(
-				iter.peek().type === Token.Type.Op &&
-				iter.peek().value === '-'
+				iter.peek(pos).type === Token.Type.Op &&
+				iter.peek(pos).value === '-'
 			) &&
 			(
-				iter.peek(2).type === Token.Type.Op &&
-				iter.peek(2).value === '>'
+				iter.peek(pos + 1).type === Token.Type.Op &&
+				iter.peek(pos + 1).value === '>'
 			)
 		);
 	}
