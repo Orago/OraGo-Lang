@@ -3,7 +3,7 @@ import Ora, { OraProcessed, Scope } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../extensions.js';
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
-import { Arrow, Parenthesis, Block } from '../parseUtil.js';
+import { Arrow, Parenthesis, Block, Math } from '../parseUtil.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -12,7 +12,7 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 		const token = iter.peek();
 
 		if (Token.isData(token)){
-			results.push(this.processNext({ iter, scope }));
+			results.push(this.processValue({ iter, scope, value: token.value, token }));
 		}
 		
 		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
@@ -237,6 +237,34 @@ export const stringExt = new Extension({
 	],
 });
 
+export const numberExt = new Extension({
+	processors: [
+		new ValueProcessor({
+			priority: ValueProcessor.Priority.modifier,
+			validate ({ iter, token }){
+				if (
+					iter.peek().value === '(' &&
+					iter.peek().type === Token.Type.Seperator && 
+					iter.peek(2).type === Token.Type.Number
+				) return true;
+
+				return (
+					token.type === Token.Type.Number &&
+					iter.peek().type === Token.Type.Op &&
+					Math.Operators.includes(iter.peek().value)
+				);
+			},
+			parse ({ iter, token }){
+				const parsed = Math.parse(iter, token);
+				
+				return new OraProcessed({
+					value: new DataType.Number(parsed)
+				})
+			}
+		})
+	]
+})
+
 export const objectExt = new Extension({
 	processors: [
 		new ValueProcessor({
@@ -405,6 +433,7 @@ export const allDefaults = [
 
 	arrayExt,
 	stringExt,
+	numberExt,
 
 	fnExt
 ];

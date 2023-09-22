@@ -18,7 +18,7 @@ export class DataType {
 		}
 	};
 
-	static Number = class String extends DataType.Any {
+	static Number = class Num extends DataType.Any {
 		valueOf (){
 			return Number(this.value);
 		}

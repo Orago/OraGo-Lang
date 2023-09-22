@@ -7,11 +7,7 @@ const toylang = new Ora({
 console.time('processed');
 
 toylang.run(`
-	fn cat (hello, world){
-		return 'hello' & 'world';
-	}
-
-	print cat -> call();
+	print (36 * 7) + 3 / (5 + 2)
 `);
 
 

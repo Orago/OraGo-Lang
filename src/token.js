@@ -19,7 +19,6 @@ export class Token {
 			Token.Type.String,
 			Token.Type.Identifier,
 			Token.Type.Number,
-			
 			Token.Type.Seperator,
 		].some(tokenType => tokenType === tokenIn.type && tokenIn.value !== ';');
 	}

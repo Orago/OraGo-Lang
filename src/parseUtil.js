@@ -1,5 +1,5 @@
 import { Token } from './token.js';
-
+import { DataType } from './dataType.js';
 export class Arrow {
 	static test (iter){
 		return (
@@ -146,3 +146,74 @@ export class Block {
 		}
 	}
 }
+
+export class Math {
+	static Operators = ['+', '-', '*', '/', '^'];
+
+	static handleValue (value){
+		return value instanceof DataType.Number ? value.valueOf() : value;
+	}
+
+	static test (iter, testValue){
+		const value = this.handleValue(testValue);
+
+		if (iter.peek().type === Token.Type.Op){
+			console.log('valid op');
+		}
+		else console.log('invalid op');
+	}
+
+	static parse (iterator) {
+		function expression() {
+			let left = term();
+
+			while (iterator.peek().status) {
+				const token = iterator.peek().value;
+
+				if (['+', '-'].includes(token)) {
+					iterator.read(); // Consume the operator
+					const right = term();
+					left = token === '+' ? left + right : left - right;
+				}
+				else break;
+			}
+
+			return left;
+		}
+
+		function term() {
+			let left = factor();
+
+			while (iterator.peek().status) {
+				const token = iterator.peek().value;
+
+				if (['*', '/'].includes(token)) {
+					iterator.read(); // Consume the operator
+					const right = factor();
+					left = token === '*' ? left * right : left / right;
+				}
+				else break;
+			}
+
+			return left;
+		}
+
+		function factor() {
+			const token = iterator.read().value;
+
+			if (token === '(') {
+				const result = expression();
+
+				if (!iterator.disposeIf(')'))
+					throw new Error('Unmatched parentheses');
+
+				return result;
+			}
+			else if (!isNaN(token)) return parseFloat(token);
+			else throw new Error('Unexpected token: ' + token);
+		}
+
+		return expression();
+	}
+}
+
