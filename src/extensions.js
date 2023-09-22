@@ -57,7 +57,15 @@ export class CustomKeyword {
 	}
 }
 
+export class ProcessorPriority {
+	static unimportant = -1;
+	static identifier = 0;
+	static modifier = 1; 
+}
+
 export class ValueProcessor {
+	priority = ProcessorPriority.unimportant;
+
 	constructor ({ validate, parse }){
 		if (typeof validate != 'function')
 			throw `Invalid validator for ${this.prefix}Processor`;

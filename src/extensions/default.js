@@ -107,7 +107,7 @@ export const arrayExt = new Extension({
 					Arrow.disposeIf(iter)
 				);
 			},
-			parse ({ iter, value }){
+			parse ({ iter, value, scope }){
 				const read = iter.read();
 
 				if (read.type === Token.Type.Identifier){
@@ -117,12 +117,12 @@ export const arrayExt = new Extension({
 						});
 
 						case 'join': {
-							const parenthesis = Parenthesis.parse(iter);
+							const parenthesis = Parenthesis.parse(this, { iter, scope });
 
 							if (parenthesis.status != true || parenthesis.tokens.length != 1)
 								throw 'Failed to join';
 
-							const [token] = parenthesis.tokens;
+							const [{ token }] = parenthesis.items;
 							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
 
 							return new OraProcessed({
@@ -133,16 +133,31 @@ export const arrayExt = new Extension({
 						};
 
 						case 'get': {
-							const parenthesis = Parenthesis.parse(iter);
+							const parenthesis = Parenthesis.parse(this, { iter, scope });
 
-							if (parenthesis.status != true || parenthesis.tokens.length != 1)
+							if (parenthesis.status != true)
 								throw 'Failed to get';
 
-							const [token] = parenthesis.tokens;
+							const [{ token }] = parenthesis.items;
 							const index = token.type === Token.Type.Number ? token.value : -1
 
 							return new OraProcessed({
 								value: value.valueOf()[index]
+							})
+						};
+
+						case 'push': {
+							const parenthesis = Parenthesis.parse(this, { iter, scope });
+
+							if (parenthesis.status != true || parenthesis.items.length == 0)
+								throw 'Failed to push';
+
+							for (const item of parenthesis.items){
+								value.value.push(item.value);
+							}
+							
+							return new OraProcessed({
+								changed: true
 							})
 						};
 
@@ -172,7 +187,7 @@ export const stringExt = new Extension({
 					Arrow.disposeIf(iter)
 				);
 			},
-			parse ({ iter, value }){
+			parse ({ iter, value, scope }){
 				const read = iter.read();
 
 				if (read.type === Token.Type.Identifier){
@@ -181,28 +196,12 @@ export const stringExt = new Extension({
 							value: new DataType.Number(value.value.length)
 						});
 
-						case 'push': {
-							const parenthesis = Parenthesis.parse(iter);
-							if (parenthesis.status != true || parenthesis.tokens.length != 1)
-								throw 'Failed to push';
-
-							const [token] = parenthesis.tokens;
-							
-							this.processValue()
-
-							return new OraProcessed({
-								value: new DataType.Array(
-									value.valueOf().split(text)
-								)
-							})
-						};
-
 						case 'split': {
-							const parenthesis = Parenthesis.parse(iter);
+							const parenthesis = Parenthesis.parse(this, { iter, scope })
 							if (parenthesis.status != true || parenthesis.tokens.length != 1)
 								throw 'Failed to join';
 
-							const [token] = parenthesis.tokens;
+							const [{ token }] = parenthesis.items;
 							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
 
 							return new OraProcessed({
@@ -225,6 +224,36 @@ export const stringExt = new Extension({
 });
 
 export const objectExt = new Extension({
+	processors: [
+		new ValueProcessor({
+			validate ({ iter, value }){
+				return (
+					value instanceof DataType.String &&
+					Arrow.disposeIf(iter)
+				);
+			},
+			parse ({ iter, value }){
+				const read = iter.read();
+
+				if (read.type === Token.Type.Identifier){
+					switch (read.value){
+						case 'size': return new OraProcessed({
+							value: new DataType.Number(Object.keys(value.valueOf()).length)
+						});
+
+						default: throw 'Invalid submethod on array'
+					}
+				}
+				else {
+					console.log(read)
+					throw new Error('^ Invalid value to print');
+				}
+			}
+		})
+	],
+});
+
+export const fnExt = new Extension({
 	processors: [
 		new ValueProcessor({
 			validate ({ iter, value }){

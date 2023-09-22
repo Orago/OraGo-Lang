@@ -119,7 +119,7 @@ export class OraProcessed {
 	constructor (options){
 		if (options.changed === true)
 			this.changed = true;
-		
+
 		if (options?.token instanceof Token){
 			this.changed = true;
 			this.token = options.token;
@@ -137,18 +137,15 @@ export default class Ora {
 	Keywords = new KeywordDict;
 
 	Options = {
-		Lexer: {
-			
-		},
+		Lexer: {},
 		Methods: {},
 		Processors: []
 	};
 
 	constructor (options){
-		// if (typeof options?.keywords === 'object')
-		// 	this.Options.Lexer.keywords = options.keywords;
-
 		OraSetup.HandleExtensions(this, options?.extensions);
+
+		this.Options.Processors = this.Options.Processors.sort((a, b) => b === -1 ? -1 : a-b);
 	}
 
 	extensionData ({ iter }) {

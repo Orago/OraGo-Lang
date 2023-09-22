@@ -13,8 +13,6 @@ const defaultKeywords = {
 	class: ['class'],
 	function: ['fn'],
 	exit: ['exit'],
-	push: ['push'],
-	pop: ['pop'],
 	shift: ['shift'],
 	await: ['await'],
 	sleep: ['sleep'],

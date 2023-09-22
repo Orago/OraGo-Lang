@@ -7,9 +7,10 @@ const toylang = new Ora({
 
 console.time('processed');
 toylang.run(`
-	print [50, '22'] -> size
-`);
+	fn cat () ->
 
+	print [50, '22'] -> push(5, 3, ['3', '2']) -> reverse -> get(0)
+`);
 console.timeEnd('processed');
 
 /*

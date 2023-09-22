@@ -30,23 +30,42 @@ export class Parenthesis {
 		);
 	}
 
-	static parse (iter){
-		const tokens = [];
+	static parse (Instance, { iter, scope }){
+		const items = [];
+		const item = (value, token) => items.push({ value, token });
+
+		const loopSearch = () => {
+			if (Token.isData(iter.peek())){
+				const token = iter.read();
+
+				item(
+					Instance.processValue({ iter, value: token.value, token, scope }),
+					token
+				);
+			}
+
+			if (iter.disposeIf(token => token.value === ',' && token.type === Token.Type.Op))
+				loopSearch();
+		}
+
 
 		if (Parenthesis.test(iter))
 			if (iter.disposeIf('(')){
-				while (!iter.disposeIf(')'))
-					tokens.push(iter.read());
+
+				loopSearch();
+
+				if (iter.disposeIf(')') != true)
+					throw 'Unended parenthesis';
 
 				return {
 					status: true,
-					tokens
+					items
 				}
 			}
 		
 		return {
 			status: false,
-			tokens
+			tokens: items
 		}
 	}
 }

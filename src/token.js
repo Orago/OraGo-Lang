@@ -5,9 +5,7 @@ export class Token {
 		String: Symbol('Token.String'),
 		Seperator: Symbol('Token.Seperator'),
 		Identifier: Symbol('Token.Identifier'),
-		Number: Symbol('Token.Number'),
-		// BlockStart: Symbol('Token.BlockStart'),
-		// BlockEnd: Symbol('Token.BlockEnd')
+		Number: Symbol('Token.Number')
 	};
 
 	constructor(type, value, depth) {
