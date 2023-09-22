@@ -37,11 +37,11 @@ export class Parenthesis {
 			const peek = iter.peek();
 
 			// Return success no params for basic
-			if (peek.value === ')') return true;
+			if (peek.value === ')') return (iter.dispose(1), true);
 
 			if (peek.type === Token.Type.Identifier)
 				tokens.push(iter.read());
-			else false;
+			else return false;
 
 			if (iter.disposeIf(token => token.value === ',' && token.type === Token.Type.Op))
 				return loopSearch();
@@ -68,6 +68,10 @@ export class Parenthesis {
 		const item = (value, token) => items.push({ value, token });
 
 		const loopSearch = () => {
+			const peek = iter.peek();
+
+			if (peek.value === ')') return (iter.dispose(1), true);
+
 			if (Token.isData(iter.peek())){
 				const token = iter.read();
 
@@ -76,17 +80,18 @@ export class Parenthesis {
 					token
 				);
 			}
+			else return false;
 
 			if (iter.disposeIf(token => token.value === ',' && token.type === Token.Type.Op))
-				loopSearch();
+				return loopSearch();
+
+			return iter.disposeIf(')') == true;
 		}
 
 		if (Parenthesis.test(iter))
 			if (iter.disposeIf('(')){
-				loopSearch();
-
 				return {
-					status: iter.disposeIf(')') == true,
+					status: loopSearch(),
 					items
 				};
 			}

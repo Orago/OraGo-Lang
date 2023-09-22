@@ -34,7 +34,6 @@ export class Scope {
 		let scope = this;
 
 		while (scope?.parent != undefined){
-			console.log('cur scope', scope)
 			scope = scope.parent;
 			dataOut = Object.assign({}, scope.data, dataOut);
 		}
@@ -216,10 +215,6 @@ export default class Ora {
 		}
 
 		if (canGoAgain) return this.processValue({ iter, value, token, scope });
-
-		if (token.type === Token.Type.Identifier)
-			return scope.flat?.[value] || undefined;
-
 
 		return value;
 	}

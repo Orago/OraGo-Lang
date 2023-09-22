@@ -93,7 +93,7 @@ export const toDataType = new Extension({
 					}
 					else if (token.type === Token.Type.Identifier){
 						return new OraProcessed({
-							value: 
+							value: scope.flat?.[value]
 						})
 					}
 				}
@@ -359,7 +359,6 @@ export const fnExt = new Extension({
 		new ValueProcessor({
 			priority: ValueProcessor.Priority.modifier,
 			validate ({ iter, value, token }){
-				console.log('testing', token, value?.valueOf(), value instanceof DataType.Function)
 				return (
 					value instanceof DataType.Function &&
 					Arrow.disposeIf(iter)
@@ -368,15 +367,13 @@ export const fnExt = new Extension({
 			parse ({ iter, value, scope }){
 				const read = iter.read();
 
-				console.log('next')
-
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'call': {
 							const parenthesis = Parenthesis.parse(this, { iter, scope });
 							const args = [];
 
-							if (parenthesis.status != true || parenthesis.items.length == 0)
+							if (parenthesis.status != true)
 								throw 'Failed to call';
 
 							for (const item of parenthesis.items){
@@ -386,7 +383,7 @@ export const fnExt = new Extension({
 							console.log('VALUES TO RUN', args)
 							
 							return new OraProcessed({
-								changed: true
+								value: value.call(...args)
 							})
 						};
 
