@@ -1,15 +1,19 @@
 import Ora from './src/main.js'
-import { allDefaults } from './src/extensions/default.js';
+import * as Defaults from './src/extensions/default.js';
+import * as Basics from './src/extensions/basic.js';
+
 const toylang = new Ora({
-	extensions: allDefaults
+	extensions: [
+		...Object.values(Defaults),
+		...Object.values(Basics),
+	]
 });
 
 console.time('processed');
 
 toylang.run(`
-	print (36 * 7) + 3 / (5 + 2)
+	print 'hello' + 'world'
 `);
-
 
 console.timeEnd('processed');
 
