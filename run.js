@@ -12,7 +12,14 @@ const toylang = new Ora({
 console.time('processed');
 
 toylang.run(`
-	print (36 * 7) + 3 / (5 + 2)
+	fn removeAll (fullText, toRemove){
+		print 'yeah' & fullText / toRemove
+
+		return fullText / 'dog'
+	}
+
+
+	print removeAll -> call('I am a silly catdog lover, My favorite animals are silly kittdogies', 'dog')
 `);
 
 console.timeEnd('processed');

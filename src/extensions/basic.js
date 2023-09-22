@@ -211,10 +211,12 @@ DataType.Function = class FunctionDataType extends DataType.Any {
 	}
 
 	call (...args){
-		let i = -1;
+		let i = 0;
 
 		for (const arg of args)
-			this.scope[this.arguments[i++]] = arg;
+			this.scope.data[this.arguments[i++]] = arg;
+
+		console.log(this.scope.data)
 
 		return this.Instance.runTokens(this);
 	}

@@ -218,30 +218,30 @@ export class Math {
 
 	static StringMathOperators = ['+', '-', '/'];
 
-	static performStringOperation (iter) {
+	static performStringOperation (Instance, { iter, scope }) {
 		let result = iter.read().value;
 
 		while (this.StringMathOperators.includes(iter.peek().value)) {
 			const token = iter.read();
 
 			if (token.value === '+') {
-				if (iter.peek().status && iter.peek().type === Token.Type.String) {
-					result += iter.peek().value;
-					iter.read();
+				
+				if (Token.isData(iter.peek())) {
+					result += Instance.processNext({ iter, scope }) + '';
 				}
 				else throw new Error('Invalid string concatenation');
 			}
 			else if (token.value === '/') {
-				if (iter.peek().status && iter.peek().type === Token.Type.String) {
-					const str2 = iter.peek().value;
+				if (Token.isData(iter.peek())) {
+					const str2 = Instance.processNext({ iter, scope }) + '';
 					result = result.replace(new RegExp(str2, 'g'), '');
 					iter.read();
 				}
 				else throw new Error('Invalid string replacement');
 			}
 			else if (token.value === '-') {
-				if (iter.peek().status && iter.peek().type === Token.Type.String) {
-					const str2 = iter.peek().value;
+				if (Token.isData(iter.peek())) {
+					const str2 = Instance.processNext({ iter, scope }) + '';
 
 					const lastIndex = result.lastIndexOf(str2);
 
@@ -249,7 +249,6 @@ export class Math {
 						result = result.slice(0, lastIndex) + result.slice(lastIndex + str2.length);
 					
 					iter.read();
-					console.log('subbing', result)
 				}
 				else throw new Error('Invalid string removal');
 			}

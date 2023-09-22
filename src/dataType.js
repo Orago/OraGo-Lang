@@ -48,4 +48,8 @@ export class DataType {
 			});
 		}
 	}
+
+	static simple (input){
+		return input instanceof DataType.Any ? input.valueOf() : input;
+	}
 }

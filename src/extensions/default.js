@@ -23,14 +23,14 @@ export const toDataType = new Extension({
 			},
 			parse ({ value, token, scope }){
 				if (typeof value === 'string'){
-					if (token.type === Token.Type.String){
-						return new OraProcessed({
-							value: new DataType.String(value)
-						})
-					}
-					else if (token.type === Token.Type.Identifier){
+					if (token.type === Token.Type.Identifier){
 						return new OraProcessed({
 							value: scope.flat?.[value]
+						})
+					}
+					else if (token.type === Token.Type.String){
+						return new OraProcessed({
+							value: new DataType.String(value)
 						})
 					}
 				}
@@ -50,23 +50,18 @@ export const stringExt = new Extension({
 	processors: [
 		new ValueProcessor({
 			priority: ValueProcessor.Priority.modifier,
-			validate ({ iter, token }){
-				if (
-					token.value === '(' &&
-					token.type === Token.Type.Seperator && 
-					iter.peek().type === Token.Type.String
-				) return true;
-
+			validate ({ iter, value }){
 				return (
-					token.type === Token.Type.String &&
+					(value instanceof DataType.String) &&
 					iter.peek().type === Token.Type.Op &&
 					Math.Operators.includes(iter.peek().value)
 				);
 			},
-			parse ({ iter, token }){
+			parse ({ iter, token, value, scope }){
+				token.value = value.valueOf();
 				iter.tokens.unshift(token);
 
-				const parsed = Math.performStringOperation(iter);
+				const parsed = Math.performStringOperation(this, { iter, scope });
 
 				return new OraProcessed({ value: new DataType.String(parsed) });
 			}
