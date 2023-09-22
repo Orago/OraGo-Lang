@@ -8,10 +8,10 @@ console.time('processed');
 
 toylang.run(`
 	fn cat (hello, world){
-		print 'hello' & 'world';
+		return 'hello' & 'world';
 	}
 
-	print cat -> call()
+	print cat -> call();
 `);
 
 

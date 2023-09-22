@@ -12,7 +12,7 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 		const token = iter.peek();
 
 		if (Token.isData(token)){
-			results.push(this.getNext({ iter, scope }));
+			results.push(this.processNext({ iter, scope }));
 		}
 		
 		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
@@ -305,7 +305,7 @@ DataType.Function = class FunctionDataType extends DataType.Any {
 		for (const arg of args)
 			this.scope[this.arguments[i++]] = arg;
 
-		this.Instance.runTokens(this);
+		return this.Instance.runTokens(this);
 	}
 }
 
@@ -380,8 +380,6 @@ export const fnExt = new Extension({
 								args.push(item.value);
 							}
 
-							console.log('VALUES TO RUN', args)
-							
 							return new OraProcessed({
 								value: value.call(...args)
 							})

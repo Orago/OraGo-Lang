@@ -219,7 +219,7 @@ export default class Ora {
 		return value;
 	}
 
-	getNext ({ iter, scope }){
+	processNext ({ iter, scope }){
 		const token = iter.read();
 
 		return this.processValue({ iter, scope, value: token.value, token });
@@ -233,11 +233,16 @@ export default class Ora {
 		const { Methods } = this.Options;
 		const iter = new TokenIterator(tokens);
 
-
 		while (iter.tokens.length > 0){
 			const [token] = iter.dispose(1);
 
 			if (token.type === Token.Type.Keyword){
+				if (token.keyword === 'return'){
+					if (Token.isData(iter.peek()))
+						return this.processNext({ iter, scope });
+
+					return;
+				}
 				// Validate keyword
 				if (this.Keywords.hasID(token.keyword)){
 					// Validate method for keyword
