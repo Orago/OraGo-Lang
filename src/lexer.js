@@ -64,10 +64,10 @@ export class Lexer {
         tokens.push(new Token(Token.Type.Number, parseFloat(numberValue), blockLevel));
       }
 			else if (char === '{') {
+				cursor++;
+        blockLevel++;
         // Handle block start
         tokens.push(new Token(Token.Type.Seperator, '{', blockLevel));
-        cursor++;
-        blockLevel++;
       }
 			else if (char === '}') {
         // Handle block end

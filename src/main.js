@@ -4,9 +4,8 @@ export { CustomKeyword, CustomFunction, ValueProcessor, Extension };
 
 import { KeywordDict } from './keyword.js';
 import { Token } from './token.js';
-import { DataType } from './dataType.js';
 
-class Scope {
+export class Scope {
 	parent = this;
 	data = {};
 
@@ -203,13 +202,11 @@ export default class Ora {
 		return new Scope(scope);
 	}
 
-	run (code){
-		const lexed = new Lexer(this.Keywords).tokenize(code);
-		const iter = new TokenIterator(lexed.tokens);
-		const scope = this.scope;
+	runTokens ({ tokens, scope }){
 		const { Methods } = this.Options;
+		const iter = new TokenIterator(tokens);
 
-		while (lexed.tokens.length > 0){
+		while (iter.tokens.length > 0){
 			const [token] = iter.dispose(1);
 
 			if (token.type === Token.Type.Keyword){
@@ -224,5 +221,12 @@ export default class Ora {
 				else throw new Error(`Invalid keyword (${token.value}) / ([${token.keyword}])`);
 			}
 		}
+	}
+
+	run (code){
+		const { tokens } = new Lexer(this.Keywords).tokenize(code);
+		const scope = this.scope;
+
+		this.runTokens({ tokens, scope });
 	}
 }

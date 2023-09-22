@@ -1,9 +1,9 @@
 
-import { OraProcessed } from '../main.js';
+import { OraProcessed, Scope } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../extensions.js';
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
-import { Arrow, Parenthesis } from '../parseUtil.js';
+import { Arrow, Parenthesis, Block } from '../parseUtil.js';
 import { ProcessorPriority } from '../extensions.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
@@ -260,6 +260,30 @@ export const objectExt = new Extension({
 	],
 });
 
+class FunctionDataType extends DataType.Any {
+	scope;
+	code;
+	arguments;
+	constructor ({ scope, code, args }){
+		super (Symbol('DataType.Function'));
+
+		if (scope instanceof Scope != true)
+			throw 'Invalid function scope';
+
+		this.scope = scope;
+
+		if (Array.isArray(code) != true)
+			throw new Error('Invalid function code');
+
+		this.code = code;
+
+		if (Array.isArray(args) != true)
+			throw new Error('Invalid function arguments');
+
+		this.args = args;
+	}
+}
+
 export const fnExt = new Extension({
 	processors: [
 		new ValueProcessor({
@@ -269,7 +293,7 @@ export const fnExt = new Extension({
 			},
 			parse ({ iter, value, scope: oldScope }){
 				let assign = true;
-				let scope;
+				let scope = oldScope;
 				let varname;
 
 				if (iter.peek().type === Token.Type.Identifier){
@@ -281,8 +305,21 @@ export const fnExt = new Extension({
 
 				const pst = Parenthesis.parseIdentifiers(iter);
 
-				console.log('bruhhhh', pst)
-				// else throw new Error('Invalid function to create');
+				if (pst.status === true){
+					const args = pst.tokens.map(token => token.value);
+
+					if (Arrow.disposeIf(iter)){
+						console.log ('is arrow func');
+					}
+					else console.log('non arrow func', `BLOCK: ${Block.test(iter)}`)
+					// else if ()
+
+					// const fn = new FunctionDataType({ scope, })
+
+					console.log('bruhhhh', Block.read(iter))
+
+				}
+				else throw new Error('Failed to parse arguments');
 			}
 		})
 	],

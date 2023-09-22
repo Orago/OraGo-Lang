@@ -97,3 +97,47 @@ export class Parenthesis {
 		}
 	}
 }
+
+export class Block {
+	static test (iter){
+		let depth = -1;
+		const hasOpener = (
+			iter.peek().type === Token.Type.Seperator &&
+			iter.peek().value === '{'
+		);
+
+		if (hasOpener) depth = iter.peek().depth;
+
+		const hasCloser = iter.tokens.some(token => (
+			token.type === Token.Type.Seperator &&
+			token.value === '}' &&
+			token.depth === depth
+		));
+
+		return hasOpener && hasCloser;
+	}
+
+	static sameCloser (openToken, closeToken){
+		return (
+			closeToken.value === '}' &&
+			closeToken.depth === openToken.depth &&
+			closeToken.type === Token.Type.Seperator
+		);
+	}
+
+	static read (iter){
+		const tokens = [];
+
+		if (Block.test(iter) === true){
+			const [openToken] = iter.dispose(1); // Delete {
+
+			while (!iter.disposeIf(token => this.sameCloser(openToken, token)))
+				tokens.push(iter.read());
+		}
+
+		return {
+			status: false,
+			tokens
+		}
+	}
+}
