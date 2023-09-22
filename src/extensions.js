@@ -67,7 +67,7 @@ export class ValueProcessor {
 	static Priority = {
 		unimportant: -1,
 		pre: 0,
-		identifier: 0,
+		identifier: .5,
 		modifier: 1,
 		post: 2
 	};

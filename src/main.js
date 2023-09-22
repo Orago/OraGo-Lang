@@ -6,7 +6,7 @@ import { KeywordDict } from './keyword.js';
 import { Token } from './token.js';
 
 export class Scope {
-	parent = this;
+	parent;
 	data = {};
 
 	constructor (parent){
@@ -15,10 +15,26 @@ export class Scope {
 	}
 
 	get flat (){
-		let dataOut = { ...this };
-		let scope;
+		let dataOut = this.data;
 
-		while (scope?.parent != this){
+		// const loop = (scope) => {
+		// 	console.log('ass', scope, scope.parent)
+		// 	if (scope.parent != this){
+		// 		dataOut = Object.assign({}, scope.parent.data, dataOut);
+				
+		// 		return loop(scope);
+		// 	}
+		// };
+
+		// loop(this);
+
+		// return dataOut;
+
+
+		let scope = this;
+
+		while (scope?.parent != undefined){
+			console.log('cur scope', scope)
 			scope = scope.parent;
 			dataOut = Object.assign({}, scope.data, dataOut);
 		}
@@ -201,6 +217,10 @@ export default class Ora {
 
 		if (canGoAgain) return this.processValue({ iter, value, token, scope });
 
+		if (token.type === Token.Type.Identifier)
+			return scope.flat?.[value] || undefined;
+
+
 		return value;
 	}
 
@@ -217,6 +237,7 @@ export default class Ora {
 	runTokens ({ tokens, scope }){
 		const { Methods } = this.Options;
 		const iter = new TokenIterator(tokens);
+
 
 		while (iter.tokens.length > 0){
 			const [token] = iter.dispose(1);

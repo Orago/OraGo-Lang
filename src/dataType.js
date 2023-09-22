@@ -8,7 +8,7 @@ export class DataType {
 		}
 
 		valueOf (){
-			return this;
+			return this.value;
 		}
 	};
 

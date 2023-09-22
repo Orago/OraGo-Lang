@@ -41,16 +41,19 @@ export class Lexer {
           identifier += code[cursor];
           cursor++;
         }
+				let isKeyword = false;
 
         // Check if it's a custom keyword
         for (const keyword in this.keywords)
           if (this.keywords[keyword].includes(identifier)){
+						isKeyword = true;
             tokens.push(new KeywordToken(Token.Type.Keyword, identifier, blockLevel, keyword));
             break;
           }
 
         // If not a custom keyword, treat it as an identifier
-        if (!tokens.find(token => token.value === identifier))
+        // if (!tokens.find(token => token.value === identifier))
+				if (isKeyword != true)
           tokens.push(new Token(Token.Type.Identifier, identifier, blockLevel));
       }
 			else if (/[0-9]/.test(char)) {

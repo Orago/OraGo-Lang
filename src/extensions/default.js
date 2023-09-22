@@ -4,7 +4,6 @@ import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../ext
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
 import { Arrow, Parenthesis, Block } from '../parseUtil.js';
-import { ProcessorPriority } from '../extensions.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -84,18 +83,27 @@ export const toDataType = new Extension({
 				return (
 					value instanceof DataType.Any != true && Token.isData(token)
 				);
-				// return token.type === Token.Type.Keyword && token.keyword === 'print';
 			},
-			parse ({ value }){
-				if (typeof value === 'string')
-					return new OraProcessed({
-						value: new DataType.String(value)
-					})
-
-				else if (typeof value === 'number')
+			parse ({ value, token, scope }){
+				if (typeof value === 'string'){
+					if (token.type === Token.Type.String){
+						return new OraProcessed({
+							value: new DataType.String(value)
+						})
+					}
+					else if (token.type === Token.Type.Identifier){
+						return new OraProcessed({
+							value: 
+						})
+					}
+				}
+	
+				else if (typeof value === 'number' && token.type === Token.Type.Number)
 					return new OraProcessed({
 						value: new DataType.Number(value)
 					});
+
+				// else if (typeof value === 'string ')
 			}
 		})
 	]
@@ -217,7 +225,7 @@ export const stringExt = new Extension({
 							})
 						};
 
-						default: throw 'Invalid submethod on array'
+						default: throw 'Invalid submethod on string'
 					}
 				}
 				else {
@@ -235,7 +243,7 @@ export const objectExt = new Extension({
 			priority: ValueProcessor.Priority.modifier,
 			validate ({ iter, value }){
 				return (
-					value instanceof DataType.String &&
+					value instanceof DataType.Object &&
 					Arrow.disposeIf(iter)
 				);
 			},
@@ -248,7 +256,7 @@ export const objectExt = new Extension({
 							value: new DataType.Number(Object.keys(value.valueOf()).length)
 						});
 
-						default: throw 'Invalid submethod on array'
+						default: throw 'Invalid submethod on object'
 					}
 				}
 				else {
@@ -318,7 +326,7 @@ export const fnExt = new Extension({
 				let varname;
 
 				if (iter.peek().type === Token.Type.Identifier){
-					const read = iter.dispose(1);
+					const [read] = iter.dispose(1);
 					assign = true;
 					scope = this.subscope(oldScope);
 					varname = read.value;
@@ -350,7 +358,8 @@ export const fnExt = new Extension({
 		}),
 		new ValueProcessor({
 			priority: ValueProcessor.Priority.modifier,
-			validate ({ iter, value }){
+			validate ({ iter, value, token }){
+				console.log('testing', token, value?.valueOf(), value instanceof DataType.Function)
 				return (
 					value instanceof DataType.Function &&
 					Arrow.disposeIf(iter)
@@ -359,17 +368,22 @@ export const fnExt = new Extension({
 			parse ({ iter, value, scope }){
 				const read = iter.read();
 
+				console.log('next')
+
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'call': {
 							const parenthesis = Parenthesis.parse(this, { iter, scope });
+							const args = [];
 
 							if (parenthesis.status != true || parenthesis.items.length == 0)
-								throw 'Failed to push';
+								throw 'Failed to call';
 
 							for (const item of parenthesis.items){
-								value.value.push(item.value);
+								args.push(item.value);
 							}
+
+							console.log('VALUES TO RUN', args)
 							
 							return new OraProcessed({
 								changed: true

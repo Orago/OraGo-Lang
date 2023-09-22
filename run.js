@@ -5,13 +5,15 @@ const toylang = new Ora({
 });
 
 console.time('processed');
+
 toylang.run(`
 	fn cat (hello, world){
 		print 'hello' & 'world';
 	}
 
-	print [50, '22'] -> push(5, 3, ['3', '2']) -> reverse -> get(0)
+	print cat -> call()
 `);
+
 
 console.timeEnd('processed');
 
@@ -21,3 +23,13 @@ console.timeEnd('processed');
 	}
 
 */
+
+
+
+// toylang.run(`
+// 	fn cat (hello, world){
+// 		print 'hello' & 'world';
+// 	}
+
+// 	print [50, '22'] -> push(5, 3, ['3', '2']) -> reverse -> get(0)
+// `);
