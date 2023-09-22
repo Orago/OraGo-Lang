@@ -1,9 +1,9 @@
 
-import Ora, { OraProcessed, Scope } from '../main.js';
+import { OraProcessed } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../extensions.js';
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
-import { Arrow, Parenthesis, Block, Math } from '../parseUtil.js';
+import { Arrow, Parenthesis } from '../parseUtil.js';
 
 import { fnExt } from './basic/function.js';
 export { fnExt };
@@ -27,7 +27,6 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 
 	handleAdd();
 
-	console.log(scope)
 	results.length > 0 && console.log('PRINTING', ...results.map(item => item instanceof DataType.Any ? item.valueOf() : item));
 });
 
@@ -96,7 +95,7 @@ export const arrayExt = new Extension({
 						case 'join': {
 							const parenthesis = Parenthesis.parse(this, { iter, scope });
 
-							if (parenthesis.status != true || parenthesis.tokens.length != 1)
+							if (parenthesis.status != true || parenthesis.items.length != 1)
 								throw 'Failed to join';
 
 							const [{ token }] = parenthesis.items;

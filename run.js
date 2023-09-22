@@ -18,7 +18,7 @@ toylang.run(`
 
 	let silly = 'I am a silly catdog lover, My favorite animals are silly kittdogies'
 
-	print removeAll -> call(silly, 'dog')
+	print removeAll -> call(silly, 'dog') -> split(' ') -> reverse -> join('.')
 `);
 
 console.timeEnd('processed');

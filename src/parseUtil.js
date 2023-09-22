@@ -221,17 +221,16 @@ export class Math {
 	static performStringOperation (Instance, { iter, scope }) {
 		let result = iter.read().value;
 
-		while (this.StringMathOperators.includes(iter.peek().value)) {
-			const token = iter.read();
+		opLoop: while (this.StringMathOperators.includes(iter.peek().value)) {
 
-			if (token.value === '+') {
+			if (iter.disposeIf('+')) {
 				
 				if (Token.isData(iter.peek())) {
 					result += Instance.processNext({ iter, scope }) + '';
 				}
 				else throw new Error('Invalid string concatenation');
 			}
-			else if (token.value === '/') {
+			else if (iter.disposeIf('/')) {
 				if (Token.isData(iter.peek())) {
 					const str2 = Instance.processNext({ iter, scope }) + '';
 					result = result.replace(new RegExp(str2, 'g'), '');
@@ -239,7 +238,13 @@ export class Math {
 				}
 				else throw new Error('Invalid string replacement');
 			}
-			else if (token.value === '-') {
+			else if (iter.peek().value == '-') {
+				// Allow arrow func canceling
+				if (iter.peek(2).type === Token.Type.Op && iter.peek(2).value === '>')
+					break opLoop;
+
+				iter.dispose(1);
+
 				if (Token.isData(iter.peek())) {
 					const str2 = Instance.processNext({ iter, scope }) + '';
 

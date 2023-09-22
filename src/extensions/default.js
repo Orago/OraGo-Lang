@@ -77,7 +77,6 @@ export const stringExt = new Extension({
 			},
 			parse ({ iter, value, scope }){
 				const read = iter.read();
-
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'size': return new OraProcessed({
@@ -86,7 +85,7 @@ export const stringExt = new Extension({
 
 						case 'split': {
 							const parenthesis = Parenthesis.parse(this, { iter, scope })
-							if (parenthesis.status != true || parenthesis.tokens.length != 1)
+							if (parenthesis.status != true || parenthesis.items.length != 1)
 								throw 'Failed to join';
 
 							const [{ token }] = parenthesis.items;
