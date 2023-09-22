@@ -12,7 +12,7 @@ const toylang = new Ora({
 console.time('processed');
 
 toylang.run(`
-	print 'hello' + 'world'
+	print (36 * 7) + 3 / (5 + 2)
 `);
 
 console.timeEnd('processed');

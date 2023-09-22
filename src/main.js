@@ -204,9 +204,9 @@ export default class Ora {
 				if (processed instanceof OraProcessed && processed.changed){
 					if (processor?.immediate) return processed.value;
 					else {
-						if (processed.value != null) value = processed.value;
-						if (processed.token != null) token = processed.token;
-						if (processed.scope != null) scope = processed.scope;
+						if (processed.value != null) pass.value = processed.value;
+						if (processed.token != null) pass.token = processed.token;
+						if (processed.scope != null) pass.scope = processed.scope;
 					}
 
 					canGoAgain = true;
@@ -214,9 +214,9 @@ export default class Ora {
 			}
 		}
 
-		if (canGoAgain) return this.processValue({ iter, value, token, scope });
+		if (canGoAgain) return this.processValue(pass);
 
-		return value;
+		return pass.value;
 	}
 
 	processNext ({ iter, scope }){

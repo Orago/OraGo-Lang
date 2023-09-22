@@ -55,7 +55,7 @@ export const stringExt = new Extension({
 					token.value === '(' &&
 					token.type === Token.Type.Seperator && 
 					iter.peek().type === Token.Type.String
-				) return (iter.tokens.unshift(token), true);
+				) return true;
 
 				return (
 					token.type === Token.Type.String &&
@@ -63,13 +63,12 @@ export const stringExt = new Extension({
 					Math.Operators.includes(iter.peek().value)
 				);
 			},
-			parse ({ iter }){
-				// console.log('rahhhh')
+			parse ({ iter, token }){
+				iter.tokens.unshift(token);
+
 				const parsed = Math.performStringOperation(iter);
-				
-				return new OraProcessed({
-					value: new DataType.String(parsed)
-				})
+
+				return new OraProcessed({ value: new DataType.String(parsed) });
 			}
 		}),
 		new ValueProcessor({

@@ -216,54 +216,44 @@ export class Math {
 		return expression();
 	}
 
-	static StringMathOperators = ['+', '-', '/']
+	static StringMathOperators = ['+', '-', '/'];
 
-	static performStringOperation (iterator) {
-		let result = '';
+	static performStringOperation (iter) {
+		let result = iter.read().value;
 
-		while (iterator.disposeIf(token => this.StringMathOperators.includes(token))) {
-			const token = iterator.peek();
+		while (this.StringMathOperators.includes(iter.peek().value)) {
+			const token = iter.read();
 
-			if (token.type === Token.Type.String) {
-				result += token.value;
-				iterator.read();
+			if (token.value === '+') {
+				if (iter.peek().status && iter.peek().type === Token.Type.String) {
+					result += iter.peek().value;
+					iter.read();
+				}
+				else throw new Error('Invalid string concatenation');
 			}
-			else if (token.type === Token.Type.Op) {
-				const operator = token.value;
-
-				if (operator === '+') {
-					iterator.read();
-
-					if (iterator.peek().status && iterator.peek().type === Token.Type.String) {
-						result += iterator.peek().value;
-						iterator.read();
-					}
-					else throw new Error('Invalid string concatenation');
+			else if (token.value === '/') {
+				if (iter.peek().status && iter.peek().type === Token.Type.String) {
+					const str2 = iter.peek().value;
+					result = result.replace(new RegExp(str2, 'g'), '');
+					iter.read();
 				}
-				else if (operator === '/') {
-					iterator.read();
-					if (iterator.peek().status && iterator.peek().type === Token.Type.String) {
-						const str2 = iterator.peek().value;
-						result = result.replace(new RegExp(str2, 'g'), '');
-						iterator.read();
-					}
-					else throw new Error('Invalid string replacement');
-				}
-				else if (operator === '-') {
-					iterator.read();
-					if (iterator.peek().status && iterator.peek().type === Token.Type.String) {
-						const str2 = iterator.peek().value;
-						const lastIndex = result.lastIndexOf(str2);
-						if (lastIndex !== -1) {
-							result = result.slice(0, lastIndex) + result.slice(lastIndex + str2.length);
-						}
-						iterator.read();
-					}
-					else throw new Error('Invalid string removal');
-				}
-				else throw new Error('Unsupported operator: ' + `(${operator})`);
+				else throw new Error('Invalid string replacement');
 			}
-			else throw new Error('Unexpected token: ' + JSON.stringify(token));
+			else if (token.value === '-') {
+				if (iter.peek().status && iter.peek().type === Token.Type.String) {
+					const str2 = iter.peek().value;
+
+					const lastIndex = result.lastIndexOf(str2);
+
+					if (lastIndex !== -1)
+						result = result.slice(0, lastIndex) + result.slice(lastIndex + str2.length);
+					
+					iter.read();
+					console.log('subbing', result)
+				}
+				else throw new Error('Invalid string removal');
+			}
+			else throw new Error('Unsupported operator: ' + `(${token.value})`);
 		}
 
 		return result;
