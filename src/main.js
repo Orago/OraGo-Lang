@@ -117,6 +117,9 @@ export class OraProcessed {
 	changed = false;
 
 	constructor (options){
+		if (options.changed === true)
+			this.changed = true;
+		
 		if (options?.token instanceof Token){
 			this.changed = true;
 			this.token = options.token;
