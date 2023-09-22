@@ -1,5 +1,5 @@
 
-import { OraProcessed, Scope } from '../main.js';
+import Ora, { OraProcessed, Scope } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../extensions.js';
 import { DataType } from '../dataType.js';
 import { Token } from '../token.js';
@@ -260,12 +260,20 @@ export const objectExt = new Extension({
 	],
 });
 
-class FunctionDataType extends DataType.Any {
+DataType.Function = class FunctionDataType extends DataType.Any {
+	Instance;
+
 	scope;
-	code;
+	tokens;
 	arguments;
-	constructor ({ scope, code, args }){
+
+	constructor (Instance, { scope, code, args }){
 		super (Symbol('DataType.Function'));
+
+		if (Instance instanceof Ora != true)
+			throw 'Invalid Instance';
+
+		this.Instance = Instance;
 
 		if (scope instanceof Scope != true)
 			throw 'Invalid function scope';
@@ -275,12 +283,21 @@ class FunctionDataType extends DataType.Any {
 		if (Array.isArray(code) != true)
 			throw new Error('Invalid function code');
 
-		this.code = code;
+		this.tokens = code;
 
 		if (Array.isArray(args) != true)
 			throw new Error('Invalid function arguments');
 
-		this.args = args;
+		this.arguments = args;
+	}
+
+	call (...args){
+		let i = -1;
+
+		for (const arg of args)
+			this.scope[this.arguments[i++]] = arg;
+
+		this.Instance.runTokens(this);
 	}
 }
 
@@ -289,7 +306,11 @@ export const fnExt = new Extension({
 		new ValueProcessor({
 			priority: ValueProcessor.Priority.pre,
 			validate ({ iter, value, token }){
-				return token.type === Token.Type.Keyword && token.keyword === 'function';
+				return (
+					token.type === Token.Type.Keyword &&
+					token.keyword === 'function' &&
+					value instanceof DataType.Function != true
+				);
 			},
 			parse ({ iter, value, scope: oldScope }){
 				let assign = true;
@@ -311,15 +332,57 @@ export const fnExt = new Extension({
 					if (Arrow.disposeIf(iter)){
 						console.log ('is arrow func');
 					}
-					else console.log('non arrow func', `BLOCK: ${Block.test(iter)}`)
-					// else if ()
+					else if (Block.test(iter)){
+						const { tokens: code } = Block.read(iter);
 
-					// const fn = new FunctionDataType({ scope, })
+						const fn = new DataType.Function(this, { scope, code, args });
 
-					console.log('bruhhhh', Block.read(iter))
+						if (varname != null && assign) oldScope.data[varname] = fn;
 
+						return new OraProcessed({
+							value: fn
+						});
+					}
+					else throw new Error('Invalid function continuance');
 				}
 				else throw new Error('Failed to parse arguments');
+			}
+		}),
+		new ValueProcessor({
+			priority: ValueProcessor.Priority.modifier,
+			validate ({ iter, value }){
+				return (
+					value instanceof DataType.Function &&
+					Arrow.disposeIf(iter)
+				);
+			},
+			parse ({ iter, value, scope }){
+				const read = iter.read();
+
+				if (read.type === Token.Type.Identifier){
+					switch (read.value){
+						case 'call': {
+							const parenthesis = Parenthesis.parse(this, { iter, scope });
+
+							if (parenthesis.status != true || parenthesis.items.length == 0)
+								throw 'Failed to push';
+
+							for (const item of parenthesis.items){
+								value.value.push(item.value);
+							}
+							
+							return new OraProcessed({
+								changed: true
+							})
+						};
+
+						default: throw 'Invalid submethod on function'
+					}
+				}
+				else {
+					console.log(read)
+					throw new Error('^ Invalid value to printdwadwadaw func');
+				}
 			}
 		})
 	],

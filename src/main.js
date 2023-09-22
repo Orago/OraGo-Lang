@@ -13,6 +13,18 @@ export class Scope {
 		if (parent instanceof Scope)
 			this.parent = parent;
 	}
+
+	get flat (){
+		let dataOut = { ...this };
+		let scope;
+
+		while (scope?.parent != this){
+			scope = scope.parent;
+			dataOut = Object.assign({}, scope.data, dataOut);
+		}
+
+		return dataOut;
+	}
 }
 
 class TokenIterator {
