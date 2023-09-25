@@ -1,7 +1,7 @@
 import { Lexer } from './lexer.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from './extensions.js';
 export { CustomKeyword, CustomFunction, ValueProcessor, Extension };
-
+import { DataType } from './dataType.js';
 import { KeywordDict } from './keyword.js';
 import { Token } from './token.js';
 
@@ -261,6 +261,10 @@ export default class Ora {
 		const { tokens } = new Lexer(this.Keywords).tokenize(code);
 		const scope = this.scope;
 
-		this.runTokens({ tokens, scope });
+		const out = this.runTokens({ tokens, scope });
+
+		if (out instanceof DataType.Any)
+			return out.valueOf();
+		else return out;
 	}
 }

@@ -12,13 +12,13 @@ const toylang = new Ora({
 console.time('processed');
 
 toylang.run(`
-	fn removeAll (fullText, toRemove){
-		return fullText / toRemove
-	}
+fn removeAll (fullText, toRemove){
+  return fullText / toRemove
+}
 
-	let silly = 'I am a silly catdog lover, My favorite animals are silly kittdogies'
+let silly = 'I am a silly catdog lover, My favorite animals are silly kittdogies'
 
-	print removeAll -> call(silly, 'dog') -> split(' ') -> reverse -> join('.')
+print removeAll -> call(silly, 'dog') -> split(' ') -> reverse -> join('.')
 `);
 
 console.timeEnd('processed');
