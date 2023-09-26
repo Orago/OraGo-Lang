@@ -8,11 +8,13 @@ export class Token {
 		Number: Symbol('Token.Number')
 	};
 
-	constructor(type, value, depth = 0, tabs = 0) {
+	constructor(type, value, depth = 0, tabs = 0, options) {
 		this.type = type;
 		this.value = value;
 		this.depth = depth;
 		this.tabs = tabs;
+		if (typeof options?.keyword === 'string')
+			this.keyword = options.keyword;
 	}
 
 	static isData (tokenIn){
@@ -24,15 +26,6 @@ export class Token {
 		].some(tokenType => tokenType === tokenIn.type && tokenIn.value !== ';');
 	}
 }
-
-export class KeywordToken extends Token {
-	constructor(type, value, depth, tabs, keyword) {
-		super(type, value, depth, tabs);
-
-		this.keyword = keyword;
-	}
-};
-
 
 export class TokenIterator {
 	constructor (tokens){

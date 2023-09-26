@@ -1,4 +1,4 @@
-import { Token, KeywordToken } from './token.js';
+import { Token } from './token.js';
 
 export class Lexer {
   constructor (options) {
@@ -46,7 +46,7 @@ export class Lexer {
         for (const keyword in this.keywords)
           if (this.keywords[keyword].includes(identifier)){
 						isKeyword = true;
-            tokens.push(new KeywordToken(Token.Type.Keyword, identifier, blockLevel, tabLevel, keyword));
+            tokens.push(new Token(Token.Type.Keyword, identifier, blockLevel, tabLevel, { keyword }));
             break;
           }
 
