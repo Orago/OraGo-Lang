@@ -1,9 +1,9 @@
 
 import { OraProcessed } from '../main.js';
-import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../extensions.js';
-import { DataType } from '../dataType.js';
-import { Token } from '../token.js';
-import { Arrow, Parenthesis, Math } from '../parseUtil.js';
+import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../util/extensions.js';
+import { DataType } from '../util/dataType.js';
+import { Token } from '../util/token.js';
+import { Arrow, Parenthesis, Math } from '../util/parseUtil.js';
 
 export const oraComment = new Extension({
 	keyword: new CustomKeyword('comment', ['comment', '#']),
@@ -23,24 +23,20 @@ export const toDataType = new Extension({
 			},
 			parse ({ value, token, scope }){
 				if (typeof value === 'string'){
-					if (token.type === Token.Type.Identifier){
+					if (token.type === Token.Type.Identifier)
 						return new OraProcessed({
 							value: scope.flat?.[value]
-						})
-					}
-					else if (token.type === Token.Type.String){
+						});
+					else if (token.type === Token.Type.String)
 						return new OraProcessed({
 							value: new DataType.String(value)
-						})
-					}
+						});
 				}
 	
 				else if (typeof value === 'number' && token.type === Token.Type.Number)
 					return new OraProcessed({
 						value: new DataType.Number(value)
 					});
-
-				// else if (typeof value === 'string ')
 			}
 		})
 	]
@@ -63,7 +59,9 @@ export const stringExt = new Extension({
 
 				const parsed = Math.performStringOperation(this, { iter, scope });
 
-				return new OraProcessed({ value: new DataType.String(parsed) });
+				return new OraProcessed({
+					value: new DataType.String(parsed)
+				});
 			}
 		}),
 		new ValueProcessor({
@@ -79,12 +77,14 @@ export const stringExt = new Extension({
 				const read = iter.read();
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
-						case 'size': return new OraProcessed({
-							value: new DataType.Number(value.value.length)
-						});
+						case 'size':
+							return new OraProcessed({
+								value: new DataType.Number(value.value.length)
+							});
 
 						case 'split': {
-							const parenthesis = Parenthesis.parse(this, { iter, scope })
+							const parenthesis = Parenthesis.parse(this, { iter, scope });
+
 							if (parenthesis.status != true || parenthesis.items.length != 1)
 								throw 'Failed to join';
 

@@ -1,35 +1,14 @@
 const defaultKeywords = {
-	//#region //* Commands *//
-	// comment: ['comment', '#'],
-	// set: ['let'],
+	//* Commands *//
 	assign: ['=', 'to'],
-	delete: ['delete'],
-	// print: ['print'],
-	loop: ['loop'],
-	for: ['for'],
 	if: ['if'],
 	equals: ['equals', 'is'],
 	return: ['return'],
-	class: ['class'],
-	exit: ['exit'],
-	shift: ['shift'],
-	await: ['await'],
-	sleep: ['sleep'],
 	and: ['and', '&'],
 	from: ['from'],
 	bind: ['bind'],
 	as: ['as', ':'],
-	has: ['has'],
-	copy: ['copy'],
-	using: ['using'],
-	jsver: ['JSVER'],
-	random: ['random'],
-	//#endregion //* Commands *//
-
-	log_variables: ['LOG_VARIABLES'],
-	log_scope: ['LOG_SCOPE'],
-
-	//#region //* Operators *//
+	//* Operators *//
 	add: ['+'],
 	subtract: ['-'],
 	multiply: ['*'],
@@ -37,23 +16,14 @@ const defaultKeywords = {
 	power: ['^'],
 	greater_than: ['>'],
 	less_than: ['<'],
-	//#endregion //* Operators *//
 
-	//#region //* Types *//
+	//* Types *//
 	number: ['NUMBER'],
 	string: ['STRING'],
 	boolean: ['BOOLEAN'],
 	object: ['OBJECT'],
 	array: ['ARRAY'],
 	enum: ['ENUM'],
-	true: ['TRUE'],
-	false: ['FALSE'],
-	null: ['NULL'],
-	undefined: ['UNDEFINED'],
-	NaN: ['NAN'],
-	Infinity: ['INFINITY'],
-	negativeInfinity: ['NEGATIVE_INFINITY'],
-	//#endregion //* Types *//
 };
 
 export class KeywordDict {

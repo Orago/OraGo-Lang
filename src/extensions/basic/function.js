@@ -1,8 +1,8 @@
 import Ora, { OraProcessed, Scope, CustomKeyword } from '../../main.js';
-import { ValueProcessor, Extension } from '../../extensions.js';
-import { DataType } from '../../dataType.js';
-import { Token } from '../../token.js';
-import { Arrow, Parenthesis, Block } from '../../parseUtil.js';
+import { ValueProcessor, Extension } from '../../util/extensions.js';
+import { DataType } from '../../util/dataType.js';
+import { Token } from '../../util/token.js';
+import { Arrow, Parenthesis, Block } from '../../util/parseUtil.js';
 
 DataType.Function = class FunctionDataType extends DataType.Any {
 	Instance;
@@ -79,10 +79,10 @@ export const fnExt = new Extension({
 					}
 					else if (Block.test(iter)){
 						const { tokens: code } = Block.read(iter);
-
 						const fn = new DataType.Function(this, { scope, code, args });
 
-						if (varname != null && assign) oldScope.data[varname] = fn;
+						if (varname != null && assign)
+							oldScope.data[varname] = fn;
 
 						return new OraProcessed({
 							value: fn
@@ -108,18 +108,13 @@ export const fnExt = new Extension({
 					switch (read.value){
 						case 'call': {
 							const parenthesis = Parenthesis.parse(this, { iter, scope });
-							const args = [];
 
 							if (parenthesis.status != true)
 								throw 'Failed to call';
 
-							for (const item of parenthesis.items){
-								args.push(item.value);
-							}
-
 							return new OraProcessed({
-								value: value.call(...args)
-							})
+								value: value.call(...parenthesis.items)
+							});
 						};
 
 						default: throw 'Invalid submethod on function'

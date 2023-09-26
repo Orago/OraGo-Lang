@@ -1,9 +1,6 @@
 const isA_0 = x => x != undefined && /[a-z0-9_]/i.test(x);
 
 export class CustomFunction {
-	#fn;
-	#keyword;
-
 	constructor (keyword, fn){
 		if (typeof keyword != 'string' || !isA_0(keyword))
 			throw 'Invalid custom keyword' + keyword;
@@ -11,15 +8,15 @@ export class CustomFunction {
 		if (typeof fn != 'function')
 			throw 'Invalid custom function input';
 
-		this.#keyword = keyword;
-		this.#fn = fn;
+		this.keyword = keyword;
+		this.function = fn;
 	}
 
 	bound ({ keywords }){
-		if (keywords.hasID(this.#keyword) != true)
-			throw 'Invalid keyword to boot: ' + this.#keyword;
+		if (keywords.hasID(this.keyword) != true)
+			throw 'Invalid keyword to boot: ' + this.keyword;
 
-		return { [keywords.id[this.#keyword]]: this.#fn };
+		return { [keywords.id[this.keyword]]: this.function };
 	}
 }
 
@@ -95,6 +92,7 @@ export class Extension {
 		if (keyword != null) //= |
 			if (keyword instanceof CustomKeyword)
 				this.keyword = keyword;
+
 			else {
 				console.log(keyword);
 				throw '^ Invalid keyword instance for extension';
@@ -103,19 +101,19 @@ export class Extension {
 		if (fn != null) //= |
 			if (fn instanceof CustomFunction)
 				this.function = fn;
+
 			else {
 				console.log(fn);
 				throw '^ Invalid function instance for extension';
 			}
 
 		if (processors != null && Array.isArray(processors)){
-			for (const PreP of processors){
+			for (const PreP of processors)
 				if (PreP instanceof ValueProcessor != true){
 					console.log(PreP);
 
 					throw '^ Invalid processor instance for extension';
 				}
-			}
 				
 			this.processors = processors;
 		}

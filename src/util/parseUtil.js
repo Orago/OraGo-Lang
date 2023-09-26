@@ -37,10 +37,12 @@ export class Parenthesis {
 			const peek = iter.peek();
 
 			// Return success no params for basic
-			if (peek.value === ')') return (iter.dispose(1), true);
+			if (peek.value === ')')
+				return (iter.dispose(1), true);
 
 			if (peek.type === Token.Type.Identifier)
 				tokens.push(iter.read());
+
 			else return false;
 
 			if (iter.disposeIf(token => token.value === ',' && token.type === Token.Type.Op))
@@ -60,7 +62,7 @@ export class Parenthesis {
 		return {
 			status: false,
 			tokens
-		}
+		};
 	}
 
 	static parse (Instance, { iter, scope }){
@@ -76,7 +78,12 @@ export class Parenthesis {
 				const token = iter.read();
 
 				item(
-					Instance.processValue({ iter, value: token.value, token, scope }),
+					Instance.processValue({
+						iter,
+						value: token.value,
+						token,
+						scope
+					}),
 					token
 				);
 			}
@@ -89,12 +96,11 @@ export class Parenthesis {
 		}
 
 		if (Parenthesis.test(iter))
-			if (iter.disposeIf('(')){
+			if (iter.disposeIf('('))
 				return {
 					status: loopSearch(),
 					items
 				};
-			}
 		
 		return {
 			status: false,

@@ -9,13 +9,13 @@ export class Lexer {
     const tokens = [];
     let cursor = 0;
 		let blockLevel = 0; // Track nested block scopes
+		let tabLevel = 0;
 
     while (cursor < code.length) {
       let char = code[cursor];
 
-			if (char === ' ') {
-				cursor++;
-			} else if (char === '"' || char === "'") {
+			if (char === ' ') cursor++;
+			else if (char === '"' || char === "'") {
 				// Handle string literals
 				const quoteType = char; // Store the opening quote character
 				let stringValue = '';
@@ -27,12 +27,11 @@ export class Lexer {
 				}
 
 				if (code[cursor] === quoteType) {
-					tokens.push(new Token(Token.Type.String, stringValue, blockLevel));
+					tokens.push(new Token(Token.Type.String, stringValue, blockLevel, tabLevel));
 					cursor++; // Skip the closing quote
-				} else {
-					// Unterminated string
-					throw new Error('Unterminated string');
 				}
+				// Unterminated string
+				else throw new Error('Unterminated string');
 			}
 			else if (/[a-zA-Z_]/.test(char)) {
         // Handle identifiers and keywords
@@ -47,7 +46,7 @@ export class Lexer {
         for (const keyword in this.keywords)
           if (this.keywords[keyword].includes(identifier)){
 						isKeyword = true;
-            tokens.push(new KeywordToken(Token.Type.Keyword, identifier, blockLevel, keyword));
+            tokens.push(new KeywordToken(Token.Type.Keyword, identifier, blockLevel, tabLevel, keyword));
             break;
           }
 
@@ -70,31 +69,30 @@ export class Lexer {
 				cursor++;
         blockLevel++;
         // Handle block start
-        tokens.push(new Token(Token.Type.Seperator, '{', blockLevel));
+        tokens.push(new Token(Token.Type.Seperator, '{', blockLevel, tabLevel));
       }
 			else if (char === '}') {
         // Handle block end
         if (blockLevel > 0) {
-          tokens.push(new Token(Token.Type.Seperator, '}', blockLevel));
+          tokens.push(new Token(Token.Type.Seperator, '}', blockLevel, tabLevel));
           cursor++;
           blockLevel--;
         }
 				else throw new Error('Unmatched closing curly brace');
       }
 			else if (['[', ']', '(', ')', ';'].some(seperator => seperator == char)){
-				tokens.push(new Token(Token.Type.Seperator, char, blockLevel));
+				tokens.push(new Token(Token.Type.Seperator, char, blockLevel, tabLevel));
         cursor++;
 			}
 			else {
+				if (char === '\n') tabLevel = 0;
+				if (char === '\t') tabLevel++;
         // Handle other characters as operators or symbols
-        tokens.push(new Token(Token.Type.Op, char, blockLevel));
+        tokens.push(new Token(Token.Type.Op, char, blockLevel, tabLevel));
         cursor++;
       }
     }
 
-    return {
-			error: false,
-			tokens,
-		};
+    return tokens;
   }
 }

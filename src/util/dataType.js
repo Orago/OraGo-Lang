@@ -1,4 +1,3 @@
-
 export class DataType {
 	static Any = class Any {
 		value;
