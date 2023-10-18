@@ -111,7 +111,6 @@ export default class Ora {
 	run (code){
 		const tokens = new Lexer(this.Keywords).tokenize(code);
 		const scope = this.scope;
-		console.log(tokens)
 
 		const out = this.runTokens({ tokens, scope });
 

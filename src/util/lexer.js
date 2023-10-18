@@ -53,7 +53,7 @@ export class Lexer {
         // If not a custom keyword, treat it as an identifier
         // if (!tokens.find(token => token.value === identifier))
 				if (isKeyword != true)
-          tokens.push(new Token(Token.Type.Identifier, identifier, blockLevel));
+          tokens.push(new Token(Token.Type.Identifier, identifier, blockLevel, tabLevel));
       }
 			else if (/[0-9]/.test(char)) {
         // Handle numbers
@@ -63,7 +63,7 @@ export class Lexer {
           cursor++;
         }
 
-        tokens.push(new Token(Token.Type.Number, parseFloat(numberValue), blockLevel));
+        tokens.push(new Token(Token.Type.Number, parseFloat(numberValue), blockLevel, tabLevel));
       }
 			else if (char === '{') {
 				cursor++;
@@ -86,7 +86,7 @@ export class Lexer {
 			}
 			else {
 				if (char === '\n') tabLevel = 0;
-				if (char === '\t') tabLevel++;
+				else if (char === '\t') tabLevel++;
         // Handle other characters as operators or symbols
         tokens.push(new Token(Token.Type.Op, char, blockLevel, tabLevel));
         cursor++;
