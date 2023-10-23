@@ -51,13 +51,11 @@ export class Parenthesis {
 			return iter.disposeIf(')') == true;
 		}
 
-		if (Parenthesis.test(iter))
-			if (iter.disposeIf('(')){
-				return {
-					status: loopSearch(),
-					tokens
-				};
-			}
+		if (Parenthesis.test(iter) && iter.disposeIf('('))
+			return {
+				status: loopSearch(),
+				tokens
+			};
 
 		return {
 			status: false,
@@ -67,7 +65,8 @@ export class Parenthesis {
 
 	static parse (Instance, { iter, scope }){
 		const items = [];
-		const item = (value, token) => items.push({ value, token });
+		const item = (value, token) =>
+			items.push({ value, token });
 
 		const loopSearch = () => {
 			const peek = iter.peek();

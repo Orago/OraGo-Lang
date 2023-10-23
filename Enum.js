@@ -52,7 +52,7 @@ class ExtendableEnum {
    * @param {any} item - The item to check.
    * @returns {boolean} - True if the item exists, false otherwise.
    */
-  has(item) {
+  has (item) {
     return this.values.hasOwnProperty(item);
   }
 }
@@ -70,6 +70,10 @@ export class Enum extends ExtendableEnum {
   constructor(...values) {
     super(indexArray, values);
   }
+
+	get (id) {
+		return this.values.hasOwnProperty(id) ? this.values[id] : -1;
+	}
 }
 
 /**

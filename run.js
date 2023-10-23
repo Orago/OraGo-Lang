@@ -13,7 +13,7 @@ console.time('processed');
 
 toylang.run(`
 fn removeAll (fullText, toRemove){
-  			return fullText / toRemove
+  return fullText / toRemove
 }
 
 let silly = 'We love cats'

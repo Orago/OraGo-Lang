@@ -1,9 +1,9 @@
-import { Enum, SymbolEnum } from '../Enum.js';
+import { Enum } from '../Enum.js';
 
 const cats = new Enum('orange', 'siamese', 'bengal', 'tiger', 'calico');
 
-console.log([cats.values])
+console.log([cats])
 
-const test = new SymbolEnum('oranjnge', 'siam5ese', 'ben4214gal', 'tigwa12er', 'cd');
+// const test = new SymbolEnum('oranjnge', 'siam5ese', 'ben4214gal', 'tigwa12er', 'cd');
 
-console.log([test.valueOf()])
+// console.log([test.valueOf()])

@@ -13,6 +13,7 @@ export class Token {
 		this.value = value;
 		this.depth = depth;
 		this.tabs = tabs;
+		
 		if (typeof options?.keyword === 'string')
 			this.keyword = options.keyword;
 	}

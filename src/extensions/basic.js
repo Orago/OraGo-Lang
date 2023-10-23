@@ -6,10 +6,10 @@ import { Token } from '../util/token.js';
 import { Arrow, Parenthesis } from '../util/parseUtil.js';
 
 import { fnExt } from './basic/function.js';
-export { fnExt };
+export { fnExt } from './basic/function.js';
 
 import { varExt } from './basic/variable.js';
-export { varExt };
+export { varExt } from './basic/variable.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const results = [];
@@ -17,9 +17,8 @@ const printFN = new CustomFunction('print', function ({ iter, scope }) {
 	const handleAdd = () => {
 		const token = iter.peek();
 
-		if (Token.isData(token)){
+		if (Token.isData(token))
 			results.push(this.processNext({ iter, scope }));
-		}
 		
 		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
 			handleAdd();

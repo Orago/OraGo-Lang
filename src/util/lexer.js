@@ -88,7 +88,10 @@ export class Lexer {
 				if (char === '\n') tabLevel = 0;
 				else if (char === '\t') tabLevel++;
         // Handle other characters as operators or symbols
-        tokens.push(new Token(Token.Type.Op, char, blockLevel, tabLevel));
+        tokens.push(
+					new Token(Token.Type.Op, char, blockLevel, tabLevel)
+				);
+				
         cursor++;
       }
     }

@@ -16,7 +16,9 @@ export class CustomFunction {
 		if (keywords.hasID(this.keyword) != true)
 			throw 'Invalid keyword to boot: ' + this.keyword;
 
-		return { [keywords.id[this.keyword]]: this.function };
+		return {
+			[keywords.id[this.keyword]]: this.function
+		};
 	}
 }
 
