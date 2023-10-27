@@ -43,7 +43,9 @@ export default class Ora {
 				const processed = processor.parse.bind(this)(pass);
 
 				if (processed instanceof OraProcessed && processed.changed){
-					if (processor?.immediate) return processed.value;
+					if (processor?.immediate)
+						return processed.value;
+
 					else {
 						if (processed.value != null)
 							pass.value = processed.value;
@@ -68,7 +70,12 @@ export default class Ora {
 	processNext ({ iter, scope }){
 		const token = iter.read();
 
-		return this.processValue({ iter, scope, value: token.value, token });
+		return this.processValue({
+			iter,
+			scope,
+			value: token.value,
+			token
+		});
 	}
 
 	subscope (scope){
@@ -93,9 +100,9 @@ export default class Ora {
 				// Validate keyword
 				if (this.Keywords.hasID(token.keyword)){
 					// Validate method for keyword
-					if (Methods.hasOwnProperty(token.keyword)){
+					if (Methods.hasOwnProperty(token.keyword))
 						Methods[token.keyword].bind(this)({ iter, scope });
-					}
+
 					else this.processValue({
 						iter,
 						value: token.value,
@@ -117,9 +124,6 @@ export default class Ora {
 			scope
 		});
 
-		if (out instanceof DataType.Any)
-			return out.valueOf();
-
-		else return out;
+		return out instanceof DataType.Any ? out.valueOf() : out;
 	}
 }

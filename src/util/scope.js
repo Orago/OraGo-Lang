@@ -1,5 +1,4 @@
 export class Scope {
-	parent;
 	data = {};
 
 	constructor (parent){

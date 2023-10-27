@@ -1,5 +1,6 @@
 import { Token } from './token.js';
 import { DataType } from './dataType.js';
+
 export class Arrow {
 	static test (iter, pos = 1){
 		return (
@@ -65,8 +66,7 @@ export class Parenthesis {
 
 	static parse (Instance, { iter, scope }){
 		const items = [];
-		const item = (value, token) =>
-			items.push({ value, token });
+		const item = (value, token) => items.push({ value, token });
 
 		const loopSearch = () => {
 			const peek = iter.peek();
@@ -94,15 +94,8 @@ export class Parenthesis {
 			return iter.disposeIf(')') == true;
 		}
 
-		if (Parenthesis.test(iter))
-			if (iter.disposeIf('('))
-				return {
-					status: loopSearch(),
-					items
-				};
-		
 		return {
-			status: false,
+			status: Parenthesis.test(iter) && iter.disposeIf('(') && loopSearch(),
 			items
 		}
 	}
@@ -110,16 +103,13 @@ export class Parenthesis {
 
 export class Block {
 	static test (iter){
+		const hasOpener = iter.peek().value === '{';
+
 		let depth = -1;
-		const hasOpener = (
-			iter.peek().type === Token.Type.Seperator &&
-			iter.peek().value === '{'
-		);
 
 		if (hasOpener) depth = iter.peek().depth;
 
 		const hasCloser = iter.tokens.some(token => (
-			token.type === Token.Type.Seperator &&
 			token.value === '}' &&
 			token.depth === depth
 		));
@@ -160,8 +150,6 @@ export class Math {
 	}
 
 	static test (iter, testValue){
-		const value = this.handleValue(testValue);
-
 		if (iter.peek().type === Token.Type.Op){
 			console.log('valid op');
 		}
@@ -214,7 +202,9 @@ export class Math {
 
 				return result;
 			}
-			else if (!isNaN(token)) return parseFloat(token);
+			else if (!isNaN(token))
+				return parseFloat(token);
+
 			else throw new Error('Unexpected token: ' + token);
 		}
 
@@ -229,16 +219,17 @@ export class Math {
 		opLoop: while (this.StringMathOperators.includes(iter.peek().value)) {
 
 			if (iter.disposeIf('+')) {
-				
-				if (Token.isData(iter.peek())) {
+				if (Token.isData(iter.peek()))
 					result += Instance.processNext({ iter, scope }) + '';
-				}
+
 				else throw new Error('Invalid string concatenation');
 			}
 			else if (iter.disposeIf('/')) {
 				if (Token.isData(iter.peek())) {
 					const str2 = Instance.processNext({ iter, scope }) + '';
+
 					result = result.replace(new RegExp(str2, 'g'), '');
+					
 					iter.read();
 				}
 				else throw new Error('Invalid string replacement');

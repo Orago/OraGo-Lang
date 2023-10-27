@@ -5,33 +5,24 @@ import { Token } from '../../util/token.js';
 import { Arrow, Parenthesis, Block } from '../../util/parseUtil.js';
 
 DataType.Function = class FunctionDataType extends DataType.Any {
-	Instance;
-
-	scope;
-	tokens;
-	arguments;
-
 	constructor (Instance, { scope, code, args }){
-		super (Symbol('DataType.Function'));
-
 		if (Instance instanceof Ora != true)
 			throw 'Invalid Instance';
-
-		this.Instance = Instance;
 
 		if (scope instanceof Scope != true)
 			throw 'Invalid function scope';
 
-		this.scope = scope;
-
 		if (Array.isArray(code) != true)
 			throw new Error('Invalid function code');
-
-		this.tokens = code;
 
 		if (Array.isArray(args) != true)
 			throw new Error('Invalid function arguments');
 
+		super (Symbol('DataType.Function'));
+
+		this.instance = Instance;
+		this.scope = scope;
+		this.tokens = code;
 		this.arguments = args;
 	}
 
@@ -41,7 +32,7 @@ DataType.Function = class FunctionDataType extends DataType.Any {
 		for (const arg of args)
 			this.scope.data[this.arguments[i++]] = arg;
 
-		return this.Instance.runTokens(this);
+		return this.instance.runTokens(this);
 	}
 }
 

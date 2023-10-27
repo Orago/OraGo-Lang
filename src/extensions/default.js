@@ -17,26 +17,19 @@ export const toDataType = new Extension({
 		new ValueProcessor({
 			priority: ValueProcessor.Priority.pre,
 			validate ({ value, token }){
-				return (
-					value instanceof DataType.Any != true && Token.isData(token)
-				);
+				return value instanceof DataType.Any != true && Token.isData(token);
 			},
 			parse ({ value, token, scope }){
 				if (typeof value === 'string'){
 					if (token.type === Token.Type.Identifier)
-						return new OraProcessed({
-							value: scope.flat?.[value]
-						});
+						return new OraProcessed({ value: scope.flat?.[value] });
+
 					else if (token.type === Token.Type.String)
-						return new OraProcessed({
-							value: new DataType.String(value)
-						});
+						return new OraProcessed({ value: new DataType.String(value) });
 				}
 	
 				else if (typeof value === 'number' && token.type === Token.Type.Number)
-					return new OraProcessed({
-						value: new DataType.Number(value)
-					});
+					return new OraProcessed({ value: new DataType.Number(value) });
 			}
 		})
 	]

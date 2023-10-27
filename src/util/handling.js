@@ -1,5 +1,6 @@
 import { Extension, CustomKeyword, ValueProcessor, CustomFunction } from './extensions.js';
-
+import { Token } from './token.js';
+import { Scope } from './scope.js';
 
 export class OraSetup {
 	static HandleExtensions (Instance, extensions){
@@ -35,8 +36,6 @@ export class OraSetup {
 	}
 }
 
-import { Token } from './token.js';
-import { Scope } from './scope.js';
 export class OraProcessed {
 	changed = false;
 

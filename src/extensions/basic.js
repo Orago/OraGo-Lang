@@ -5,10 +5,7 @@ import { DataType } from '../util/dataType.js';
 import { Token } from '../util/token.js';
 import { Arrow, Parenthesis } from '../util/parseUtil.js';
 
-import { fnExt } from './basic/function.js';
 export { fnExt } from './basic/function.js';
-
-import { varExt } from './basic/variable.js';
 export { varExt } from './basic/variable.js';
 
 const printFN = new CustomFunction('print', function ({ iter, scope }) {
@@ -112,11 +109,8 @@ export const arrayExt = new Extension({
 							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
 
 							return new OraProcessed({
-								value:
-									new DataType.String(
-										value.valueOf().join(text)
-									)
-							})
+								value: new DataType.String( value.valueOf().join(text) )
+							});
 						};
 
 						case 'get': {
@@ -126,7 +120,7 @@ export const arrayExt = new Extension({
 								throw 'Failed to get';
 
 							const [{ token }] = parenthesis.items;
-							const index = token.type === Token.Type.Number ? token.value : -1
+							const index = token.type === Token.Type.Number ? token.value : -1;
 
 							return new OraProcessed({
 								value: value.valueOf()[index]
@@ -142,9 +136,7 @@ export const arrayExt = new Extension({
 							for (const item of parenthesis.items)
 								value.value.push(item.value);
 							
-							return new OraProcessed({
-								changed: true
-							});
+							return new OraProcessed({ changed: true });
 						};
 
 						case 'reverse': {

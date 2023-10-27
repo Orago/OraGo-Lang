@@ -1,5 +1,13 @@
 const isA_0 = x => x != undefined && /[a-z0-9_]/i.test(x);
 
+class ProcessorPriority {
+	static unimportant = -1;
+	static pre = 0;
+	static identifier = .5;
+	static modifier = 1;
+	static post = 2;
+}
+
 export class CustomFunction {
 	constructor (keyword, fn){
 		if (typeof keyword != 'string' || !isA_0(keyword))
@@ -39,49 +47,28 @@ export class CustomKeyword {
 		this.#keywords = keywords;
 	}
 
-	get id (){
-		return this.#id;
-	}
-
-	get keywords (){
-		return this.#keywords;
-	}
-
-	get bound (){
-		return [this.#id, this.#keywords];
-	}
-
 	assign (extensions){
 		(extensions[this.id] ??= []).push(...this.#keywords)
 	}
-}
 
-export class ProcessorPriority {
-	static unimportant = -1;
-	static identifier = 0;
-	static modifier = 1; 
+	get id       (){ return this.#id; };
+	get keywords (){ return this.#keywords; };
+	get bound    (){ return [this.#id, this.#keywords]; }
 }
 
 export class ValueProcessor {
-	static Priority = {
-		unimportant: -1,
-		pre: 0,
-		identifier: .5,
-		modifier: 1,
-		post: 2
-	};
+	static Priority = ProcessorPriority;
 
-	priority = ProcessorPriority.unimportant;
+	priority = ValueProcessor.Priority.unimportant;
 
 	constructor ({ validate, parse, priority }){
 		if (typeof validate != 'function')
 			throw `Invalid validator for ${this.prefix}Processor`;
 
-		this.validate = validate;
-
 		if (typeof parse != 'function')
 			throw `Invalid parser for ${this.prefix}Processor`;
 		
+		this.validate = validate;
 		this.parse = parse;
 
 		if (typeof priority === 'number')

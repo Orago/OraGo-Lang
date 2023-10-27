@@ -1,11 +1,11 @@
 export class Token {
 	static Type = {
-		Keyword: Symbol('Token.Keyword'),
 		Op: Symbol('Token.Op'),
 		String: Symbol('Token.String'),
+		Number: Symbol('Token.Number'),
+		Keyword: Symbol('Token.Keyword'),
 		Seperator: Symbol('Token.Seperator'),
 		Identifier: Symbol('Token.Identifier'),
-		Number: Symbol('Token.Number')
 	};
 
 	constructor(type, value, depth = 0, tabs = 0, options) {
@@ -47,9 +47,7 @@ export class TokenIterator {
 	}
 
 	read (pos = 1){
-		const max = pos - 1;
-
-		if (max > 0) this.dispose(max);
+		if (pos > 1) this.dispose(pos - 1);
 
 		const status = this.tokens.length > 0
 		

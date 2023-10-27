@@ -3,7 +3,7 @@ import { Extension, CustomFunction } from '../../util/extensions.js';
 import { Token } from '../../util/token.js';
 
 export const varExt = new Extension({
-	keyword: new CustomKeyword('variable', ['let']),
+	keyword:  new CustomKeyword('variable', ['let']),
 	function: new CustomFunction('variable', function ({ iter, scope }) {
 		if (iter.peek().type === Token.Type.Identifier){
 			const { value: varname } = iter.read();
