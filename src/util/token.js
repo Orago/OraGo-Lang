@@ -8,6 +8,14 @@ export class Token {
 		Identifier: Symbol('Token.Identifier'),
 	};
 
+	/**
+	 * 
+	 * @param {string} type 
+	 * @param {string | number} value 
+	 * @param {number} depth 
+	 * @param {number} tabs 
+	 * @param {object} options 
+	 */
 	constructor(type, value, depth = 0, tabs = 0, options) {
 		this.type = type;
 		this.value = value;
@@ -18,6 +26,10 @@ export class Token {
 			this.keyword = options.keyword;
 	}
 
+	/**
+	 * @param {Token} tokenIn 
+	 * @returns {boolean}
+	 */
 	static isData (tokenIn){
 		return [
 			Token.Type.String,
@@ -29,6 +41,9 @@ export class Token {
 }
 
 export class TokenIterator {
+	/**
+	 * @param {Array<Token>} tokens 
+	 */
 	constructor (tokens){
 		this.tokens = tokens;
 	};

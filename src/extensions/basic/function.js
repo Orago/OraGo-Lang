@@ -1,4 +1,4 @@
-import Ora, { OraProcessed, Scope, CustomKeyword } from '../../main.js';
+import Ora, { ValueChange, Scope, CustomKeyword } from '../../main.js';
 import { ValueProcessor, Extension } from '../../util/extensions.js';
 import { DataType } from '../../util/dataType.js';
 import { Token } from '../../util/token.js';
@@ -55,6 +55,7 @@ export const fnExt = new Extension({
 
 				if (iter.peek().type === Token.Type.Identifier){
 					const [read] = iter.dispose(1);
+
 					assign = true;
 					scope = this.subscope(oldScope);
 					varname = read.value;
@@ -75,9 +76,7 @@ export const fnExt = new Extension({
 						if (varname != null && assign)
 							oldScope.data[varname] = fn;
 
-						return new OraProcessed({
-							value: fn
-						});
+						return new ValueChange({ value: fn });
 					}
 					else throw new Error('Invalid function continuance');
 				}
@@ -103,9 +102,7 @@ export const fnExt = new Extension({
 							if (parenthesis.status != true)
 								throw 'Failed to call';
 
-							return new OraProcessed({
-								value: value.call(...parenthesis.items)
-							});
+							return new ValueChange({ value: value.call(...parenthesis.items.map(item => item.value)) });
 						};
 
 						default: throw 'Invalid submethod on function'

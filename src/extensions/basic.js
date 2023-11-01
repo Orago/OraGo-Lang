@@ -1,5 +1,5 @@
 
-import { OraProcessed } from '../main.js';
+import { ValueChange } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../util/extensions.js';
 import { DataType } from '../util/dataType.js';
 import { Token } from '../util/token.js';
@@ -8,27 +8,25 @@ import { Arrow, Parenthesis } from '../util/parseUtil.js';
 export { fnExt } from './basic/function.js';
 export { varExt } from './basic/variable.js';
 
-const printFN = new CustomFunction('print', function ({ iter, scope }) {
-	const results = [];
-
-	const handleAdd = () => {
-		const token = iter.peek();
-
-		if (Token.isData(token))
-			results.push(this.processNext({ iter, scope }));
-		
-		if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
-			handleAdd();
-	}
-
-	handleAdd();
-
-	results.length > 0 && console.log('PRINTING', ...results.map(item => item instanceof DataType.Any ? item.valueOf() : item));
-});
-
 export const OraPrint = new Extension({
-	keyword: new CustomKeyword('print', ['print']),
-	function: printFN
+	keyword:  new CustomKeyword('print', ['print']),
+	function: new CustomFunction('print', function ({ iter, scope }) {
+		const results = [];
+
+		const handleAdd = () => {
+			const token = iter.peek();
+
+			if (Token.isData(token))
+				results.push(this.processNext({ iter, scope }));
+			
+			if (iter.disposeIf(next => next.type === Token.Type.Op && next.value === '&'))
+				handleAdd();
+		}
+
+		handleAdd();
+
+		results.length > 0 && console.log('PRINTING', ...results.map(item => DataType.simplify(item)));
+	})
 });
 
 export const arrayCreation = new Extension({
@@ -71,7 +69,7 @@ export const arrayCreation = new Extension({
 					);
 				}
 
-				return new OraProcessed({
+				return new ValueChange({
 					value: new DataType.Array(array)
 				});
 			}
@@ -95,7 +93,7 @@ export const arrayExt = new Extension({
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'size':
-							return new OraProcessed({
+							return new ValueChange({
 								value: new DataType.Number(value.value.length)
 							});
 
@@ -108,8 +106,10 @@ export const arrayExt = new Extension({
 							const [{ token }] = parenthesis.items;
 							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
 
-							return new OraProcessed({
-								value: new DataType.String( value.valueOf().join(text) )
+							return new ValueChange({
+								value: new DataType.String(
+									value.valueOf().join(text)
+								)
 							});
 						};
 
@@ -122,7 +122,7 @@ export const arrayExt = new Extension({
 							const [{ token }] = parenthesis.items;
 							const index = token.type === Token.Type.Number ? token.value : -1;
 
-							return new OraProcessed({
+							return new ValueChange({
 								value: value.valueOf()[index]
 							});
 						};
@@ -136,13 +136,13 @@ export const arrayExt = new Extension({
 							for (const item of parenthesis.items)
 								value.value.push(item.value);
 							
-							return new OraProcessed({ changed: true });
+							return new ValueChange({ changed: true });
 						};
 
 						case 'reverse': {
 							value.value.reverse();
 
-							return new OraProcessed({ value });
+							return new ValueChange({ value });
 						}
 						default: throw 'Invalid submethod on array'
 					}
@@ -172,7 +172,7 @@ export const objectExt = new Extension({
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'size':
-							return new OraProcessed({
+							return new ValueChange({
 								value: new DataType.Number(Object.keys(value.valueOf()).length)
 							});
 

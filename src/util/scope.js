@@ -1,6 +1,9 @@
 export class Scope {
 	data = {};
 
+	/**
+	 * @param {Scope} parent 
+	 */
 	constructor (parent){
 		if (parent instanceof Scope)
 			this.parent = parent;

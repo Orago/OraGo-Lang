@@ -18,7 +18,7 @@ fn removeAll (fullText, toRemove){
 
 let silly = 'We love cats'
 
-print silly -> split(' ') -> reverse -> join('.')
+print removeAll -> call(silly, 'e')
 `);
 
 console.timeEnd('processed');

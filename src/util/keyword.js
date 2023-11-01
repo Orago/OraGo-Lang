@@ -85,7 +85,8 @@ export class KeywordDict {
 	addKeyword (id, keywords){
 		const notIncluded = keywords.filter(kw => this.keywords?.[id]?.includes(kw) != true);
 
-		(this.keywords[id] ??= []).push(...notIncluded);
+		(this.keywords[id] ??= [])
+			.push(...notIncluded);
 
 		this.refreshKeywordIDs();
 	}

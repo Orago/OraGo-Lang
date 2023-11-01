@@ -1,5 +1,5 @@
 
-import { OraProcessed } from '../main.js';
+import { ValueChange } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../util/extensions.js';
 import { DataType } from '../util/dataType.js';
 import { Token } from '../util/token.js';
@@ -22,14 +22,14 @@ export const toDataType = new Extension({
 			parse ({ value, token, scope }){
 				if (typeof value === 'string'){
 					if (token.type === Token.Type.Identifier)
-						return new OraProcessed({ value: scope.flat?.[value] });
+						return new ValueChange({ value: scope.flat?.[value] });
 
 					else if (token.type === Token.Type.String)
-						return new OraProcessed({ value: new DataType.String(value) });
+						return new ValueChange({ value: new DataType.String(value) });
 				}
 	
 				else if (typeof value === 'number' && token.type === Token.Type.Number)
-					return new OraProcessed({ value: new DataType.Number(value) });
+					return new ValueChange({ value: new DataType.Number(value) });
 			}
 		})
 	]
@@ -52,7 +52,7 @@ export const stringExt = new Extension({
 
 				const parsed = Math.performStringOperation(this, { iter, scope });
 
-				return new OraProcessed({
+				return new ValueChange({
 					value: new DataType.String(parsed)
 				});
 			}
@@ -71,7 +71,7 @@ export const stringExt = new Extension({
 				if (read.type === Token.Type.Identifier){
 					switch (read.value){
 						case 'size':
-							return new OraProcessed({
+							return new ValueChange({
 								value: new DataType.Number(value.value.length)
 							});
 
@@ -84,7 +84,7 @@ export const stringExt = new Extension({
 							const [{ token }] = parenthesis.items;
 							const text = (token.type === Token.Type.String || token.type === Token.Type.Number) ? token.value : ''
 
-							return new OraProcessed({
+							return new ValueChange({
 								value: new DataType.Array(
 									value.valueOf().split(text)
 								)
@@ -123,7 +123,7 @@ export const numberExt = new Extension({
 			parse ({ iter }){
 				const parsed = Math.parse(iter);
 
-				return new OraProcessed({
+				return new ValueChange({
 					value: new DataType.Number(parsed)
 				});
 			}

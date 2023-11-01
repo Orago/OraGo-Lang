@@ -1,5 +1,7 @@
-import { Token } from './token.js';
+import { Token, TokenIterator } from './token.js';
 import { DataType } from './dataType.js';
+import Ora from '../main.js';
+import { Scope } from '../main.js';
 
 export class Arrow {
 	static test (iter, pos = 1){
@@ -64,6 +66,12 @@ export class Parenthesis {
 		};
 	}
 
+	/**
+	 * 
+	 * @param {Ora} Instance 
+	 * @param {{ iter: TokenIterator, scope: Scope }} param1 
+	 * @returns {{ status: boolean, items: Array<{value:DataType.Any, token: Token}>}}
+	 */
 	static parse (Instance, { iter, scope }){
 		const items = [];
 		const item = (value, token) => items.push({ value, token });

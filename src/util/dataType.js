@@ -1,39 +1,45 @@
+
+class AnyType {
+	constructor (value){
+		this.value = value;
+	}
+
+	valueOf (){ return this.value; };
+};
+
+class StringType extends AnyType {
+	valueOf (){ return this.value + ''; }
+}
+
+class NumberType extends AnyType {
+	valueOf (){ return Number(this.value); }
+};
+
+class ObjectType extends AnyType {
+	valueOf (){
+		return Object.entries(this.value).map(([key, value]) => [
+			key, 
+			value instanceof AnyType ? value.valueOf() : value
+		]);
+	}
+}
+
+class ArrayType extends AnyType {
+	valueOf (){
+		return this.value.map(
+			value => value instanceof AnyType ? value.valueOf() : value
+		);
+	}
+}
+
 export class DataType {
-	static Any = class Any {
-		constructor (value){
-			this.value = value;
-		}
+	static Any = AnyType;
+	static String = StringType;
+	static Number = NumberType;
+	static Object = ObjectType;
+	static Array = ArrayType;
 
-		valueOf (){ return this.value; };
-	};
-
-	static String = class String extends DataType.Any {
-		valueOf (){ return this.value + ''; }
-	};
-
-	static Number = class Num extends DataType.Any {
-		valueOf (){ return Number(this.value); }
-	};
-
-	// Shouldn't be created on it's own
-	static Object = class Object extends DataType.Any {
-		valueOf (){
-			return Object.entries(this.value).map(([key, value]) => [
-				key, 
-				value instanceof DataType.Any ? value.valueOf() : value
-			]);
-		}
-	}
-
-	static Array = class Array extends DataType.Any {
-		valueOf (){
-			return this.value.map(
-				value => value instanceof DataType.Any ? value.valueOf() : value
-			);
-		}
-	}
-
-	static simple (input){
-		return input instanceof DataType.Any ? input.valueOf() : input;
+	static simplify (input){
+		return input instanceof AnyType ? input.valueOf() : input;
 	}
 }

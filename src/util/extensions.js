@@ -9,6 +9,11 @@ class ProcessorPriority {
 }
 
 export class CustomFunction {
+	/**
+	 * 
+	 * @param {String} keyword 
+	 * @param {Function} fn 
+	 */
 	constructor (keyword, fn){
 		if (typeof keyword != 'string' || !isA_0(keyword))
 			throw 'Invalid custom keyword' + keyword;
@@ -24,9 +29,7 @@ export class CustomFunction {
 		if (keywords.hasID(this.keyword) != true)
 			throw 'Invalid keyword to boot: ' + this.keyword;
 
-		return {
-			[keywords.id[this.keyword]]: this.function
-		};
+		return { [keywords.id[this.keyword]]: this.function };
 	}
 }
 

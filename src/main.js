@@ -8,7 +8,7 @@ import { Token, TokenIterator } from './util/token.js';
 import { Scope } from './util/scope.js';
 export { Scope };
 
-import { OraProcessed, OraSetup } from './util/handling.js';
+import { ValueChange, OraSetup } from './util/handling.js';
 export * from './util/handling.js';
 
 export default class Ora {
@@ -21,6 +21,9 @@ export default class Ora {
 		Processors: []
 	};
 
+	/**
+	 * @param {object} options 
+	 */
 	constructor (options){
 		OraSetup.HandleExtensions(this, options?.extensions);
 
@@ -42,7 +45,7 @@ export default class Ora {
 			if (processor.validate.bind(this)(pass) === true){
 				const processed = processor.parse.bind(this)(pass);
 
-				if (processed instanceof OraProcessed && processed.changed){
+				if (processed instanceof ValueChange && processed.changed){
 					if (processor?.immediate)
 						return processed.value;
 
@@ -62,11 +65,13 @@ export default class Ora {
 			}
 		}
 
-		if (canGoAgain) return this.processValue(pass);
-
-		return pass.value;
+		return canGoAgain ? this.processValue(pass) : pass.value;
 	}
-
+	/**
+	 * 
+	 * @param {{ iter: TokenIterator, scope: Scope }} param0 
+	 * @returns {object}
+	 */
 	processNext ({ iter, scope }){
 		const token = iter.read();
 
@@ -78,10 +83,19 @@ export default class Ora {
 		});
 	}
 
+	/**
+	 * @param {Scope} scope 
+	 * @returns {new Scope}
+	 */
 	subscope (scope){
 		return new Scope(scope);
 	}
 
+	/**
+	 * 
+	 * @param {{ tokens: Array<Token>, scope: Scope }} param0 
+	 * @returns {void}
+	 */
 	runTokens ({ tokens, scope }){
 		const { Methods } = this.Options;
 		const iter = new TokenIterator(tokens);
@@ -97,9 +111,13 @@ export default class Ora {
 					return;
 				}
 
-				// Validate keyword
+				/**
+				 * Validate methods for keyword
+				 */
 				if (this.Keywords.hasID(token.keyword)){
-					// Validate method for keyword
+					/**
+					 * Validate methods for keyword
+					 */
 					if (Methods.hasOwnProperty(token.keyword))
 						Methods[token.keyword].bind(this)({ iter, scope });
 
@@ -115,6 +133,11 @@ export default class Ora {
 		}
 	}
 
+	/**
+	 * 
+	 * @param {String} code 
+	 * @returns {any|undefined}
+	 */
 	run (code){
 		const tokens = new Lexer(this.Keywords).tokenize(code);
 		const scope = this.scope;
@@ -124,6 +147,6 @@ export default class Ora {
 			scope
 		});
 
-		return out instanceof DataType.Any ? out.valueOf() : out;
+		return DataType.simplify(out);
 	}
 }

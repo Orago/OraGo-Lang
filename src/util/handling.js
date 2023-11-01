@@ -36,7 +36,7 @@ export class OraSetup {
 	}
 }
 
-export class OraProcessed {
+export class ValueChange {
 	changed = false;
 
 	constructor (options){
