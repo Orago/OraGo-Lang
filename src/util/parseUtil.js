@@ -150,14 +150,14 @@ export class Block {
 	}
 }
 
-export class Math {
+export class OraMath {
 	static Operators = ['+', '-', '*', '/', '^'];
 
 	static handleValue (value){
 		return value instanceof DataType.Number ? value.valueOf() : value;
 	}
 
-	static test (iter, testValue){
+	static test (iter){
 		if (iter.peek().type === Token.Type.Op){
 			console.log('valid op');
 		}
@@ -267,4 +267,3 @@ export class Math {
 		return result;
 	}
 }
-

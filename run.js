@@ -12,13 +12,7 @@ const toylang = new Ora({
 console.time('processed');
 
 toylang.run(`
-fn removeAll (fullText, toRemove){
-  return fullText / toRemove
-}
-
-let silly = 'We love cats'
-
-print removeAll -> call(silly, 'e')
+print 'I am orago, and this is oralang!!!!!!'
 `);
 
 console.timeEnd('processed');

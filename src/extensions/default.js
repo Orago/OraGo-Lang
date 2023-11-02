@@ -3,7 +3,7 @@ import { ValueChange } from '../main.js';
 import { CustomKeyword, CustomFunction, ValueProcessor, Extension } from '../util/extensions.js';
 import { DataType } from '../util/dataType.js';
 import { Token } from '../util/token.js';
-import { Arrow, Parenthesis, Math } from '../util/parseUtil.js';
+import { Arrow, Parenthesis, OraMath } from '../util/parseUtil.js';
 
 export const oraComment = new Extension({
 	keyword: new CustomKeyword('comment', ['comment', '#']),
@@ -43,14 +43,14 @@ export const stringExt = new Extension({
 				return (
 					(value instanceof DataType.String) &&
 					iter.peek().type === Token.Type.Op &&
-					Math.Operators.includes(iter.peek().value)
+					OraMath.Operators.includes(iter.peek().value)
 				);
 			},
 			parse ({ iter, token, value, scope }){
 				token.value = value.valueOf();
 				iter.tokens.unshift(token);
 
-				const parsed = Math.performStringOperation(this, { iter, scope });
+				const parsed = OraMath.performStringOperation(this, { iter, scope });
 
 				return new ValueChange({
 					value: new DataType.String(parsed)
@@ -117,11 +117,11 @@ export const numberExt = new Extension({
 				return (
 					token.type === Token.Type.Number &&
 					iter.peek().type === Token.Type.Op &&
-					Math.Operators.includes(iter.peek().value)
+					OraMath.Operators.includes(iter.peek().value)
 				);
 			},
 			parse ({ iter }){
-				const parsed = Math.parse(iter);
+				const parsed = OraMath.parse(iter);
 
 				return new ValueChange({
 					value: new DataType.Number(parsed)
